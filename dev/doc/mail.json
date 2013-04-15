@@ -1,4 +1,4 @@
-{"text": "Le 26/03/13 17:25, StÃ©phane Depierrepont aka Toorop a Ã©crit :\n\nCa prends forme, en PJ l'infra.\n\nSi je continue je vais commencer pas la monter sur pCC au moins pour le poc.\n\nAprÃ¨s j'ai un peu peur des limitations I/O et je pense que pour un\nservice optimal il faudra passer sur des dÃ©diÃ©s avec du SSD. dans ce cas\nle cout de stockage brut (ie que les serveurs sans le temps humain lie a\nleur gestion) va Ãªtre autour de 1â‚¬ du Go. C'est un peu cher ou alors il\nfaut vraiment axer le produit comme un service trÃ¨s haut de gamme. (ce\nqu'il sera de toute faÃ§on)\n\nJe viens de faire le calcul sur le pCC le cout au Go serait de 0.05 cts...\n\n\n\n--\nStÃ©phane Depierrepont aka Toorop\nhttps://twitter.com/Toorop_\nhttp://www.protecmail.com\n\n", "headers": {
+{"headers": {
     "return-path": "<tt-return-5314-toorop=toorop.fr@lists.protecmail.com>",
     "delivered-to": ["toorop.fr-toorop@toorop.fr", "mailing list tt@lists.protecmail.com"],
     "received": ["(qmail 29339 invoked from network); 27 Mar 2013 08:56:01 -0000", "from 5.mxout.protecmail.com (91.121.228.135) by toorop.dedimail.eu with ESMTPS (DHE-RSA-AES256-SHA encrypted); 27 Mar 2013 08:56:01 -0000", "(qmail 12314 invoked from network); 27 Mar 2013 08:56:02 -0000", "from lists.protecmail.com (91.121.228.134) by 5.mxout.protecmail.com with SMTP; 27 Mar 2013 08:56:02 -0000", "(qmail 22668 invoked by uid 1009); 27 Mar 2013 08:55:59 -0000", "(qmail 22658 invoked from network); 27 Mar 2013 08:55:59 -0000"],
@@ -19,7 +19,7 @@
     "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:17.0) Gecko/20130307 Thunderbird/17.0.4",
     "mime-version": "1.0",
     "to": "tt@lists.protecmail.com",
-    "references": "<5151A8DF.4000302@toorop.fr> <5151A906.5030904@toorop.fr> <5151AA97.1000205@revue-espaces.com> <5151B1BD.2010901@toorop.fr> <5151B6F3.8000806@toorop.fr> <5151B956.80101@revue-espaces.com> <5151BE17.6060707@toorop.fr> <5151C9C3.4090008@revue-espaces.com> <5151CC11.7040708@toorop.fr>",
+    "references": ["<5151A8DF.4000302@toorop.fr>", "<5151A906.5030904@toorop.fr>", "<5151AA97.1000205@revue-espaces.com>"],
     "in-reply-to": "<5151CC11.7040708@toorop.fr>",
     "content-type": "multipart/mixed; boundary=\"------------050804070903060700060900\"",
     "subject": "Re: [tt] C'est juste un test"
@@ -28,84 +28,32 @@
         "address": "toorop@toorop.fr",
         "name": "Stéphane Depierrepont aka Toorop"
     }
-], "replyTo": [
-    {
-        "address": "tt@lists.protecmail.com",
-        "name": ""
-    }
-], "to": [
-    {
-        "address": "tt@lists.protecmail.com",
-        "name": ""
-    }
-], "attachments": [
-    {
-        "contentType": "application/pdf",
-        "fileName": "Infra.pdf",
-        "transferEncoding": "base64",
-        "contentDisposition": "attachment",
-        "generatedFileName": "Infra.pdf",
-        "contentId": "6a338e40dd6f15b0f6ef793c5047ceeb@mailparser",
-        "stream": {
-            "domain": null,
-            "_events": {},
-            "_maxListeners": 10,
-            "writable": true,
-            "checksum": {
-                "_binding": {},
-                "_readableState": {
-                    "highWaterMark": 16384,
-                    "buffer": [],
-                    "length": 0,
-                    "pipes": null,
-                    "pipesCount": 0,
-                    "flowing": false,
-                    "ended": false,
-                    "endEmitted": false,
-                    "reading": false,
-                    "calledRead": false,
-                    "sync": false,
-                    "needReadable": true,
-                    "emittedReadable": false,
-                    "objectMode": false,
-                    "ranOut": false,
-                    "awaitDrain": 0,
-                    "readingMore": false,
-                    "decoder": null
-                },
-                "readable": true,
-                "domain": null,
-                "_events": {},
-                "_maxListeners": 10,
-                "_writableState": {
-                    "highWaterMark": 16384,
-                    "objectMode": false,
-                    "needDrain": false,
-                    "ending": false,
-                    "ended": false,
-                    "finished": false,
-                    "decodeStrings": true,
-                    "length": 0,
-                    "writing": false,
-                    "sync": true,
-                    "bufferProcessing": false,
-                    "writecb": null,
-                    "writelen": 0,
-                    "buffer": []
-                },
-                "writable": true,
-                "allowHalfOpen": true,
-                "_transformState": {
-                    "needTransform": false,
-                    "transforming": false,
-                    "writecb": null,
-                    "writechunk": null
-                }
-            },
+],
+    "replyTo": [
+        {
+            "address": "tt@lists.protecmail.com",
+            "name": ""
+        }
+    ],
+    "to": [
+        {
+            "address": "tt@lists.protecmail.com",
+            "name": ""
+        }
+    ],
+body:{
+
+    "text": "Le 26/03/13 17:25, StÃ©phane Depierrepont aka Toorop a Ã©crit :\n\nCa prends forme, en PJ l'infra.\n\nSi je continue je vais commencer pas la monter sur pCC au moins pour le poc.\n\nAprÃ¨s j'ai un peu peur des limitations I/O et je pense que pour un\nservice optimal il faudra passer sur des dÃ©diÃ©s avec du SSD. dans ce cas\nle cout de stockage brut (ie que les serveurs sans le temps humain lie a\nleur gestion) va Ãªtre autour de 1â‚¬ du Go. C'est un peu cher ou alors il\nfaut vraiment axer le produit comme un service trÃ¨s haut de gamme. (ce\nqu'il sera de toute faÃ§on)\n\nJe viens de faire le calcul sur le pCC le cout au Go serait de 0.05 cts...\n\n\n\n--\nStÃ©phane Depierrepont aka Toorop\nhttps://twitter.com/Toorop_\nhttp://www.protecmail.com\n\n",
+
+    "attachments": [
+        {
+            "contentType": "application/pdf",
+            "fileName": "Infra.pdf",
+            "transferEncoding": "base64",
+            "contentDisposition": "attachment",
+            "generatedFileName": "Infra.pdf",
+            "contentId": "6a338e40dd6f15b0f6ef793c5047ceeb@mailparser",
             "length": 20126,
             "current": ""
         },
-        "checksum": "b8f76dc085c06b3132ecafd816793a1e",
-        "length": 20126
-    }
-]}
+    ]}
