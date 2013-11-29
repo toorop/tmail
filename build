@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Linux 64
+#GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/master master.go
+
+# Mac
+go build -o dist/tmail 

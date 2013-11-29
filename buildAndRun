@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# Mac
+go build -o dist/tmail 
+dist/tmail
