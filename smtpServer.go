@@ -19,28 +19,29 @@ func NewSmtpServer(ip string, port int, tls bool) (server *SmtpServer) {
 	return
 }
 
-func (s *SmtpServer) ListenAndServe() (err error) {
-	tcpAddr, error := net.ResolveTCPAddr("tcp", "0.0.0.0:2525")
-	if error != nil {
-		ERROR.Fatalln("Error: Could not resolve address")
-	} else {
-		netListen, error := net.Listen(tcpAddr.Network(), tcpAddr.String())
+func (s *SmtpServer) ListenAndServe() {
+	go func() {
+		tcpAddr, error := net.ResolveTCPAddr("tcp", "0.0.0.0:2525")
 		if error != nil {
-			TRACE.Println("Erreur", error)
+			ERROR.Fatalln("Error: Could not resolve address")
 		} else {
-			defer netListen.Close()
-			TRACE.Println("tmail server started, waiting for client")
-			for {
-				conn, error := netListen.Accept()
-				if error != nil {
-					TRACE.Println("Client error: ", error)
-				} else {
-					go smtpt(conn)
+			netListen, error := net.Listen(tcpAddr.Network(), tcpAddr.String())
+			if error != nil {
+				TRACE.Println("Erreur", error)
+			} else {
+				defer netListen.Close()
+				TRACE.Println("tmail server started, waiting for client")
+				for {
+					conn, error := netListen.Accept()
+					if error != nil {
+						TRACE.Println("Client error: ", error)
+					} else {
+						go smtpt(conn)
+					}
 				}
 			}
 		}
-	}
-	return
+	}()
 }
 
 func out(conn net.Conn, msg string) {

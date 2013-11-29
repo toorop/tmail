@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -126,20 +127,18 @@ func init() {
 	WARN = getLogger("warn")
 	ERROR = getLogger("error")
 
-	// DSN
+	// DSN for SMTP server
 	var found bool
 	smtpDsn, found = Config.String("smtp.dsn")
 
 	if !found {
 		INFO.Println("No smtp.dsn found in config file (tmail.conf). Listening on 0.0.0.0:25 with no TLS")
 		smtpDsn = "0.0.0.0:25:0"
-	} /*else {
-		//TRACE.Println("dns found")
-		// TODO Are dsn ok
-		for _, dsn := range strings.Split(smtpDsn, ",") {
-			TRACE.Println(dsn)
-		}
-	}*/
+	}
+	// Are dsn OK ? We just validate entry, no check on IP/Port, they will be done with listen & serve
+	for _, dsn := range strings.Split(smtpDsn, ",") {
+		TRACE.Println(dsn)
+	}
 
 	//TRACE.Println("DSN:", smtpDsn)
 	// Load plugins smtpIn_helo_01_monplugin*/
@@ -150,15 +149,15 @@ func init() {
 
 // MAIN
 func main() {
-	// Ah, ha, ha, ha,
-	stayinAlive := make(chan bool)
+	// If channel stayinAlive recieve value tmail will stop
+	stayinAlive := make(chan bool) // Ah, ha, ha, ha,
 
 	INFO.Println("Launching SMTP server on", smtpDsn, "...")
 	server := NewSmtpServer("127.0.0.1", 2525, false)
 	//RACE.Println(server)
-	go server.ListenAndServe()
+	server.ListenAndServe()
 	TRACE.Println("toto")
-	<-stayingAlive
+	<-stayinAlive
 	/*for {
 		fromSmtpChan = <-smtpChan
 		TRACE.Println(fromSmtpChan)
