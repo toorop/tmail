@@ -1,129 +1,46 @@
 package main
 
 import (
-	"fmt"
 	"net"
-	//"os"
-	//"path/filepath"
-	"strings"
 )
 
-type SmtpServer struct {
-	listenIp   string
-	listenPort int
-	useTls     bool
+// DSN IP port and TLS (bool)
+type dsn struct {
+	tcpAddr net.TCPAddr
+	tls     bool
 }
 
-func NewSmtpServer(ip string, port int, tls bool) (server *SmtpServer) {
-	server = &SmtpServer{ip, port, tls}
+// SMTP Server
+type SmtpServer struct {
+	dsn    dsn
+	daChan chan string // common Channel
+}
+
+// Factory
+func NewSmtpServer(d dsn, c chan string) (server *SmtpServer) {
+	server = &SmtpServer{d, c}
 	return
 }
 
+// Listen and serve
 func (s *SmtpServer) ListenAndServe() {
 	go func() {
-		tcpAddr, error := net.ResolveTCPAddr("tcp", "0.0.0.0:2525")
+		netListen, error := net.Listen(s.dsn.tcpAddr.Network(), s.dsn.tcpAddr.String())
 		if error != nil {
-			ERROR.Fatalln("Error: Could not resolve address")
+			TRACE.Fatalln("Erreur", error)
 		} else {
-			netListen, error := net.Listen(tcpAddr.Network(), tcpAddr.String())
-			if error != nil {
-				TRACE.Println("Erreur", error)
-			} else {
-				defer netListen.Close()
-				TRACE.Println("tmail server started, waiting for client")
-				for {
-					conn, error := netListen.Accept()
-					if error != nil {
-						TRACE.Println("Client error: ", error)
-					} else {
-						go smtpt(conn)
-					}
+			defer netListen.Close()
+			//TRACE.Println("Server started, waiting for client")
+			for {
+				conn, error := netListen.Accept()
+				if error != nil {
+					TRACE.Println("Client error: ", error)
+				} else {
+					s := NewSmtpServerSession(conn)
+					go s.handle()
 				}
 			}
 		}
+
 	}()
-}
-
-func out(conn net.Conn, msg string) {
-	conn.Write([]byte(msg))
-	conn.Write([]byte("\n"))
-}
-
-// SMTP IN
-func smtpGreeting(conn net.Conn) {
-	// Todo AS verifier si il y a des data dans le buffer
-	out(conn, fmt.Sprintf("220 tmail V %s ESMTP", TMAIL_VERSION))
-}
-
-// helo
-func smtpHelo(conn net.Conn, msg []string) {
-	out(conn, fmt.Sprintf("250 %s", me))
-}
-
-// quit
-func smtpQuit(conn net.Conn) {
-	out(conn, fmt.Sprintf("221 2.0.0 Bye"))
-}
-
-// SMTP transaction
-func smtpt(conn net.Conn) {
-	var msg []byte
-	var closeCon bool
-	closeCon = false
-
-	buffer := make([]byte, 1)
-
-	// welcome (or not)
-	smtpGreeting(conn)
-
-	for {
-		if closeCon {
-			conn.Close()
-			break
-		}
-		_, error := conn.Read(buffer)
-		if error != nil {
-			if error.Error() == "EOF" {
-				INFO.Println(conn.RemoteAddr().String(), "- Client send EOF")
-			} else {
-				ERROR.Println(conn.RemoteAddr().String(), "- Client connection error: ", error)
-			}
-			conn.Close()
-			break
-		}
-
-		//TRACE.Println(buffer[0])
-		if buffer[0] == 13 || buffer[0] == 0x00 {
-			continue
-		}
-
-		if buffer[0] == 10 {
-			var rmsg string
-			//TRACE.Println(msg)
-			strMsg := strings.ToLower(strings.TrimSpace(string(msg)))
-			TRACE.Println(conn.RemoteAddr().String(), ">", strMsg)
-			splittedMsg := strings.Split(strMsg, " ")
-			//TRACE.Println(splittedMsg)
-			// get command, first word
-			cmd := splittedMsg[0]
-
-			switch cmd {
-
-			default:
-				rmsg = "502 unimplemented (#5.5.1)"
-				// TODO: refactor
-				TRACE.Println(conn.RemoteAddr().String(), "< ", rmsg)
-				out(conn, rmsg)
-			case "helo":
-				smtpHelo(conn, splittedMsg)
-
-			case "quit":
-				smtpQuit(conn)
-				closeCon = true
-			}
-			msg = []byte{}
-		} else {
-			msg = append(msg, buffer[0])
-		}
-	}
 }

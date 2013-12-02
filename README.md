@@ -1,12 +1,4 @@
 
-TODO
-=====
-- [ ] RFC 8281 
-- [x] logger
-- [x] config
-
-
-
 REF
 =====
 - Martini https://github.com/codegangsta/martini

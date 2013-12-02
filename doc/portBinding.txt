@@ -1,0 +1,8 @@
+MAC
+https://gist.github.com/gadr/6389682
+
+LINUX:
+http://wiki.apache.org/httpd/NonRootPortBinding
+
+Solution en python:
+https://gist.github.com/methane/7397627

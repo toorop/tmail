@@ -9,11 +9,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
+	"syscall"
+	//"strings"
 )
 
 const (
-	TMAIL_VERSION = "0.1"
+	TMAIL_VERSION = "0.0.1"
 )
 
 var (
@@ -29,13 +30,9 @@ var (
 	WARN  = log.New(ioutil.Discard, "WARN  -", log.Ldate|log.Ltime)
 	ERROR = log.New(os.Stderr, "ERROR -", log.Ldate|log.Ltime)
 
-	// SMTP server
-	smtpDsn string
+	// SMTP server DSNs
+	smtpDsn []dsn
 )
-
-/*func log(v ...interface{}) {
-	fmt.Println(v)
-}*/
 
 // (from revel Thanks @robfig)
 // Create a logger using log.* directives in app.conf plus the current settings
@@ -128,17 +125,15 @@ func init() {
 	ERROR = getLogger("error")
 
 	// DSN for SMTP server
-	var found bool
-	smtpDsn, found = Config.String("smtp.dsn")
+	//var found bool
+	strSmtpDsn, found := Config.String("smtp.dsn")
 
 	if !found {
 		INFO.Println("No smtp.dsn found in config file (tmail.conf). Listening on 0.0.0.0:25 with no TLS")
-		smtpDsn = "0.0.0.0:25:0"
+		strSmtpDsn = "0.0.0.0:25:0"
 	}
 	// Are dsn OK ? We just validate entry, no check on IP/Port, they will be done with listen & serve
-	for _, dsn := range strings.Split(smtpDsn, ",") {
-		TRACE.Println(dsn)
-	}
+	smtpDsn = getDsnsFromString(strSmtpDsn)
 
 	//TRACE.Println("DSN:", smtpDsn)
 	// Load plugins smtpIn_helo_01_monplugin*/
@@ -149,14 +144,28 @@ func init() {
 
 // MAIN
 func main() {
+	TRACE.Println(syscall.Getgid(), syscall.Getuid())
+
 	// If channel stayinAlive recieve value tmail will stop
 	stayinAlive := make(chan bool) // Ah, ha, ha, ha,
 
-	INFO.Println("Launching SMTP server on", smtpDsn, "...")
-	server := NewSmtpServer("127.0.0.1", 2525, false)
-	//RACE.Println(server)
-	server.ListenAndServe()
-	TRACE.Println("toto")
+	// Chanel to comunicate between all element
+	daChan := make(chan string)
+
+	for _, dsn := range smtpDsn {
+		m := fmt.Sprintf("Launching SMTP server on %s:%d:", dsn.tcpAddr.IP, dsn.tcpAddr.Port)
+		if dsn.tls {
+			m = fmt.Sprintf("%sTLS", m)
+		} else {
+			m = fmt.Sprintf("%snoTLS]", m)
+		}
+		INFO.Printf("%s...", m)
+		server := NewSmtpServer(dsn, daChan)
+		server.ListenAndServe()
+		INFO.Println("Done.")
+	}
+	syscall.Setuid(501)
+	TRACE.Println(syscall.Getgid(), syscall.Getuid())
 	<-stayinAlive
 	/*for {
 		fromSmtpChan = <-smtpChan
