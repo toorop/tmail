@@ -1,6 +1,7 @@
 package main
 
 import (
+	//"errors"
 	"fmt"
 	"net"
 	"net/mail"
@@ -56,6 +57,21 @@ func (s *smtpServerSession) log(msg string) {
 func (s *smtpServerSession) strayNewline() {
 	s.log("LF not preceded by CR")
 	s.out("451 You send me LF not preceded by a CR. Are you drunk ? If not your SMTP client is broken.")
+}
+
+// Purge connexion buffer
+func (s *smtpServerSession) purgeConn() (err error) {
+	ch := make([]byte, 1)
+	for {
+		_, err = s.conn.Read(ch)
+		if err != nil {
+			return
+		}
+		if ch[0] == 10 {
+			break
+		}
+	}
+	return
 }
 
 // Greeting
@@ -157,10 +173,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 		s.out("501 5.5.4 Syntax: RCPT TO:<address>")
 		return
 	}
-	TRACE.Println(rcptto)
-
 	rcptto = removeBrackets(rcptto)
-	TRACE.Println(rcptto)
 
 	// TODO : only local part
 
@@ -172,7 +185,10 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 		return
 	}
 
-	s.rcptTo = append(s.rcptTo, rcptto)
+	// Check if there is already this recipient
+	if !isStringInSlice(rcptto, s.rcptTo) {
+		s.rcptTo = append(s.rcptTo, rcptto)
+	}
 	s.out("250 ok")
 }
 
@@ -199,8 +215,9 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	var rawMail []byte
 	ch := make([]byte, 1)
 	//state := 0
-	pos := 0  // position in current line
-	hops := 0 // nb of relay
+	pos := 0       // position in current line
+	hops := 0      // nb of relay
+	dataBytes := 0 // nb of bytes (size of message)
 	flagInHeader := true
 	flagLineMightMatchReceived := true
 	flagLineMightMatchDelivered := true
@@ -214,7 +231,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 			break
 		}
 		_, err := s.conn.Read(ch)
-		TRACE.Println(ch)
+		//TRACE.Println(ch)
 		if err != nil {
 			break
 		}
@@ -322,6 +339,27 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 			}
 		}
 		rawMail = append(rawMail, ch[0])
+		dataBytes++
+		//TRACE.Println(dataBytes)
+
+		// Max hops reached ?
+		if hops > Config.IntDefault("smtp.in.maxhops", 50) {
+			s.log(fmt.Sprintf("Message is looping. Hops : %d", hops))
+			s.out("554 too many hops, this message is looping (#5.4.6)")
+			s.purgeConn()
+			s.reset()
+			return err
+		}
+
+		// Max databytes reached ?
+		if dataBytes > Config.IntDefault("smtp.in.maxDataBytes", 50000000) {
+			s.log(fmt.Sprintf("552 Message size (%d) exceeds config.smtp.in.maxDataBytes (%d).", dataBytes, Config.IntDefault("smtp.in.maxDataBytes", 10)))
+			s.out("552 sorry, that message size exceeds my databytes limit (#5.3.4)")
+			s.purgeConn()
+			s.reset()
+			return err
+		}
+
 	}
 	TRACE.Println(string(rawMail))
 
@@ -352,8 +390,6 @@ func (s *smtpServerSession) handle() {
 			break
 		}
 		_, error := s.conn.Read(buffer)
-		TRACE.Println("On recoit du master")
-
 		if error != nil {
 			if error.Error() == "EOF" {
 				INFO.Println(s.conn.RemoteAddr().String(), "- Client send EOF")
@@ -398,7 +434,9 @@ func (s *smtpServerSession) handle() {
 			case "data":
 				err := s.smtpData(splittedMsg)
 				if err != nil {
-					ERROR.Println(s.conn.RemoteAddr().String(), err)
+					if err.Error() != "skip" {
+						ERROR.Println(s.conn.RemoteAddr().String(), err)
+					}
 					closeCon = true
 				}
 

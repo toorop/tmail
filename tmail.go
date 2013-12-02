@@ -9,8 +9,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"syscall"
-	//"strings"
 )
 
 const (
@@ -144,8 +142,6 @@ func init() {
 
 // MAIN
 func main() {
-	TRACE.Println(syscall.Getgid(), syscall.Getuid())
-
 	// If channel stayinAlive recieve value tmail will stop
 	stayinAlive := make(chan bool) // Ah, ha, ha, ha,
 
@@ -164,8 +160,6 @@ func main() {
 		server.ListenAndServe()
 		INFO.Println("Done.")
 	}
-	syscall.Setuid(501)
-	TRACE.Println(syscall.Getgid(), syscall.Getuid())
 	<-stayinAlive
 	/*for {
 		fromSmtpChan = <-smtpChan

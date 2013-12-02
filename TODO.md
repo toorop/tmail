@@ -1,7 +1,4 @@
 TODO
 =====
-- [ ] dsn RAW to struct
-- [x] Faire un log level
-- [ ] RFC 8281 
-- [x] logger
-- [x] config
+- [ ] Dans smtpRcptTo definir un domaine par defaut si il y a seulement la partie locale
+- [ ] Dans smtpData : mise en queue

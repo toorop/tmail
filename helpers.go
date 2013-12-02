@@ -52,3 +52,15 @@ func removeBrackets(s string) string {
 	}
 	return s
 }
+
+// Check if a string is in a Slice of string
+func isStringInSlice(str string, s []string) (found bool) {
+	found = false
+	for _, t := range s {
+		if t == str {
+			found = true
+			break
+		}
+	}
+	return
+}
