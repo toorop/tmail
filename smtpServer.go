@@ -12,8 +12,8 @@ type dsn struct {
 
 // SMTP Server
 type SmtpServer struct {
-	dsn    dsn
-	daChan chan string // common Channel
+	dsn        dsn
+	hypervisor chan string // common Channel
 }
 
 // Factory

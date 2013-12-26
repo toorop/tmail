@@ -97,7 +97,7 @@ func (s *smtpServerSession) smtpEhlo(msg []string) {
 // MAIL FROM
 func (s *smtpServerSession) smtpMailFrom(msg []string) {
 	// Si on a déja un mailFrom les RFC ne précise rien de particulier
-	// -> On accepte te on reinitialise
+	// -> On accepte et on reinitialise
 	// Reset
 	s.reset()
 
@@ -188,11 +188,17 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 	// Check if there is already this recipient
 	if !isStringInSlice(rcptto, s.rcptTo) {
 		s.rcptTo = append(s.rcptTo, rcptto)
+		s.log(fmt.Sprintf("rcpt to: %s", rcptto))
 	}
 	s.out("250 ok")
 }
 
 // DATA
+// TODO : plutot que de stocker en RAM on pourrait envoyer directement les danat
+// dans un fichier ne queue
+// C'est je crois ce que fait qmail
+// Si il y a une erreur on supprime le fichier
+// Voir un truc comme DATA -> temp file -> mv queue file
 func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	if !s.seenMail {
 		s.log("503 DATA before MAIL FROM")
@@ -363,6 +369,10 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	}
 	TRACE.Println(string(rawMail))
 
+	// Put in queue
+
+	// Send event
+
 	s.out(fmt.Sprintf("250 2.0.0 Ok: queued as 1B39026A"))
 	return
 }
@@ -426,7 +436,8 @@ func (s *smtpServerSession) handle() {
 			case "helo":
 				s.smtpHelo(splittedMsg)
 			case "ehlo":
-				s.smtpEhlo(splittedMsg)
+				//s.smtpEhlo(splittedMsg)
+				s.smtpHelo(splittedMsg)
 			case "mail":
 				s.smtpMailFrom(splittedMsg)
 			case "rcpt":
