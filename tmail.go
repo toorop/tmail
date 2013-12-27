@@ -30,6 +30,9 @@ var (
 
 	// SMTP server DSNs
 	smtpDsn []dsn
+
+	// Queue
+	queue *Queue
 )
 
 // (from revel Thanks @robfig)
@@ -81,6 +84,10 @@ func newLogger(wr io.Writer) *log.Logger {
 // INIT
 func init() {
 	var err error
+
+	/*uuid, _ := newUUID()
+	fmt.Println(uuid)
+	os.Exit(0)*/
 
 	log.SetFlags(ERROR.Flags()) // default
 
@@ -135,6 +142,16 @@ func init() {
 
 	//TRACE.Println("DSN:", smtpDsn)
 	// Load plugins smtpIn_helo_01_monplugin*/
+
+	//
+	// Init queue
+	queuePath, found := Config.String("queue.basePath")
+	if !found {
+		queuePath = path.Join(distPath, "queue")
+	}
+	if queue, err = NewQueue(queuePath); err != nil {
+		ERROR.Fatalln(err)
+	}
 
 	INFO.Println("Init sequence done")
 
