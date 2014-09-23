@@ -17,7 +17,7 @@ func getDsnsFromString(dsnsStr string) (dsns []dsn) {
 	// clean
 	dsnsStr = strings.ToLower(dsnsStr)
 
-	// IP:PORT:TLS
+	// IP:PORT:ENCRYPTION
 	for _, dsnStr := range strings.Split(dsnsStr, ",") {
 		if strings.Count(dsnStr, ":") != 2 {
 			ERROR.Fatalln("Bad dsn", dsnStr, " found in config", dsnsStr)
@@ -30,17 +30,11 @@ func getDsnsFromString(dsnsStr string) (dsns []dsn) {
 			ERROR.Fatalln("Bad IP:Port found in dsn", dsnStr, "from config dsn", dsnsStr)
 			return
 		}
-		// tls
-		var tls bool
-		if t[2] == "0" {
-			tls = false
-		} else if t[2] == "1" {
-			tls = true
-		} else {
-			ERROR.Fatalln("Bad TLS option found in dsn", dsnStr, "from config dsn", dsnsStr, "Option must be 0 -> no TLS or 1 -> TLS")
+		// Encryption
+		if t[2] != "none" && t[2] != "ssl" && t[2] != "tls" {
+			ERROR.Fatalln("Bad encryption option found in dsn", dsnStr, "from config dsn", dsnsStr, "Option must be none, ssl or tls.")
 		}
-		dsns = append(dsns, dsn{*tcpAddr, tls})
-		//TRACE.Println(dsns)
+		dsns = append(dsns, dsn{*tcpAddr, t[2]})
 	}
 	return
 }

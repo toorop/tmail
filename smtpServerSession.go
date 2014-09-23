@@ -1,11 +1,15 @@
 package main
 
 import (
-	//"errors"
+	"crypto/rand"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/mail"
+	"os/exec"
+	"path"
 	"strings"
+	"time"
 )
 
 const (
@@ -19,18 +23,20 @@ type smtpServerSession struct {
 	conn net.Conn
 
 	//initiationDone bool
-
+	secured  bool
 	seenMail bool
+	helo     string
 	mailFrom string
 	rcptTo   []string
 	message  string
 }
 
 // Factory
-func NewSmtpServerSession(conn net.Conn) (sss *smtpServerSession) {
+func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession) {
 	sss = new(smtpServerSession)
-	sss.uuid = "1126546546578" // todo  new uuid+me
+	sss.uuid = "1126546546578" // todo new uuid+me
 	sss.conn = conn
+	sss.secured = secured
 	sss.reset()
 	return
 }
@@ -44,8 +50,7 @@ func (s *smtpServerSession) reset() {
 
 // Out : to client
 func (s *smtpServerSession) out(msg string) {
-	msg = fmt.Sprintf("%s %s\r\n", msg, s.uuid)
-	s.conn.Write([]byte(msg))
+	s.conn.Write([]byte(msg + "\r\n"))
 }
 
 // Log helper
@@ -76,22 +81,33 @@ func (s *smtpServerSession) purgeConn() (err error) {
 
 // Greeting
 func (s *smtpServerSession) smtpGreeting() {
-	// Todo AS verifier si il y a des data dans le buffer
+	// Todo AS: verifier si il y a des data dans le buffer
 	// Todo desactiver server signature en option
 	// dans le cas ou l'on refuse la transaction on doit répondre par un 554 et attendre le quit
-	s.out(fmt.Sprintf("220 tmail V%s ESMTP", TMAIL_VERSION))
+	s.out(fmt.Sprintf("220 %s  tmail V%s ESMTP %s", me, TMAIL_VERSION, s.uuid))
+	//fmt.Println(s.conn.clientProtocol)
 }
 
 // HELO
 func (s *smtpServerSession) smtpHelo(msg []string) {
 	// Todo Verifier si il y a des data dans le buffer
+	s.helo = strings.Join(msg, " ")
 	s.out(fmt.Sprintf("250 %s", me))
 }
 
 // EHLO
 func (s *smtpServerSession) smtpEhlo(msg []string) {
 	// verifier le buffer
-	// envoyer les extension
+	s.helo = strings.Join(msg, " ")
+	s.out(fmt.Sprintf("250-%s", me))
+
+	// extensions
+	// Size
+	s.out(fmt.Sprintf("250-SIZE %d", Config.IntDefault("smtp.in.maxDataBytes", 50000000)))
+
+	// STARTTLS
+	s.out("250 STARTTLS")
+
 }
 
 // MAIL FROM
@@ -156,7 +172,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 		s.out("503 MAIL first (#5.5.1)")
 	}
 
-	if !strings.HasPrefix(msg[1], "to:") {
+	if len(msg) == 1 || !strings.HasPrefix(msg[1], "to:") {
 		s.log(fmt.Sprintf("RCPT TO - Bad syntax : %s ", strings.Join(msg, " ")))
 		s.out("501 5.5.4 Syntax: RCPT TO:<address>")
 		return
@@ -369,8 +385,84 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	}
 	TRACE.Println(string(rawMail))
 
-	// Put in queue
+	// Add recieved header
+	// Received: from 4.mxout.protecmail.com (91.121.228.128)
+	// by mail.protecmail.com with ESMTPS (RC4-SHA encrypted); 18 Sep 2014 05:50:17 -0000
+	ts := strings.Split(s.conn.RemoteAddr().String(), ":")
+	remoteIp := ts[0]
+	remoteHost := "no reverse"
+	remoteHosts, err := net.LookupAddr(remoteIp)
+	if err == nil {
+		remoteHost = remoteHosts[0]
+	}
+	ts = strings.Split(s.conn.LocalAddr().String(), ":")
+	INFO.Println(ts)
+	localIp := ts[0]
+	localHost := "no reverse"
+	localHosts, err := net.LookupAddr(localIp)
+	if err == nil {
+		localHost = localHosts[0]
+	}
 
+	recieved := fmt.Sprintf("Received: from %s(%s)", remoteIp, remoteHost)
+
+	// helo
+	if len(s.helo) != 0 {
+		recieved += fmt.Sprintf(" (%s)", s.helo)
+	}
+
+	// local
+	recieved += fmt.Sprintf("\n  by %s(%s)", localIp, localHost)
+
+	// Proto
+	if s.secured {
+		recieved += " with ESMTPS; "
+	} else {
+		recieved += " whith SMTP; "
+	}
+
+	// timestamp
+	recieved += time.Now().Format(time.RFC822)
+
+	// tmail
+	recieved += fmt.Sprintf("; tmail %s", TMAIL_VERSION)
+
+	// CRLF
+	recieved += "\r\n"
+
+	// Put in queue
+	qqueue := exec.Command("/var/qmail/bin/qmail-inject", "-a", fmt.Sprintf("-f%s", s.mailFrom), strings.Join(s.rcptTo, " "))
+	qqIn, err := qqueue.StdinPipe()
+	if err != nil {
+		ERROR.Fatal(err)
+	}
+
+	if err := qqueue.Start(); err != nil {
+		ERROR.Fatal(err)
+	}
+
+	if _, err = qqIn.Write([]byte(recieved)); err != nil {
+		ERROR.Fatal(err)
+	}
+
+	// mail - data
+	if _, err = qqIn.Write(rawMail); err != nil {
+		ERROR.Fatal(err)
+	}
+
+	err = qqIn.Close()
+	if err != nil {
+		ERROR.Fatal(err)
+	}
+
+	TRACE.Println("Writed to qmail")
+
+	if err := qqueue.Wait(); err != nil {
+		ERROR.Fatal(err)
+	}
+
+	// Pour eviter de se retapper le mail de test
+	TRACE.Fatal("OK mail parti")
 	// Send event
 
 	s.out(fmt.Sprintf("250 2.0.0 Ok: queued as 1B39026A"))
@@ -382,12 +474,44 @@ func (s *smtpServerSession) smtpQuit() {
 	s.out(fmt.Sprintf("221 2.0.0 Bye"))
 }
 
+// Starttls
+func (s *smtpServerSession) smtpStartTls() {
+	if s.secured {
+		s.out("454 - transaction is already secured via SSL")
+		return
+	}
+	TRACE.Println("STARTTL demandée")
+	s.out("220 Ready to start TLS")
+	cert, err := tls.LoadX509KeyPair(path.Join(confPath, "ssl/mycert1.cer"), path.Join(confPath, "ssl/mycert1.key"))
+	if err != nil {
+		TRACE.Fatalln("Unable to loadkeys: %s", err)
+	}
+	tlsConfig := tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
+	}
+	tlsConfig.Rand = rand.Reader
+
+	var tlsConn *tls.Conn
+	//tlsConn = tls.Server(client.socket, TLSconfig)
+	tlsConn = tls.Server(s.conn, &tlsConfig)
+	// run a handshake
+	tlsConn.Handshake()
+	// Here is the trick. Since I do not need to access
+	// any of the TLS functions anymore,
+	// I can convert tlsConn back in to a net.Conn type
+	s.conn = net.Conn(tlsConn)
+	s.secured = true
+}
+
 // Handle SMTP session
 func (s *smtpServerSession) handle() {
 	// Todo implementer le timleout
+
+	// Init some var
 	var msg []byte
 	var closeCon bool = false
-	//closeCon = false
+	//s.helo = ""
 
 	buffer := make([]byte, 1)
 
@@ -418,14 +542,13 @@ func (s *smtpServerSession) handle() {
 
 		if buffer[0] == 10 {
 			var rmsg string
-			//TRACE.Println(msg)
+			TRACE.Println(msg)
 			strMsg := strings.ToLower(strings.TrimSpace(string(msg)))
 			TRACE.Println(s.conn.RemoteAddr().String(), ">", strMsg)
 			splittedMsg := strings.Split(strMsg, " ")
 			//TRACE.Println(splittedMsg)
 			// get command, first word
 			verb := splittedMsg[0]
-
 			switch verb {
 
 			default:
@@ -437,7 +560,7 @@ func (s *smtpServerSession) handle() {
 				s.smtpHelo(splittedMsg)
 			case "ehlo":
 				//s.smtpEhlo(splittedMsg)
-				s.smtpHelo(splittedMsg)
+				s.smtpEhlo(splittedMsg)
 			case "mail":
 				s.smtpMailFrom(splittedMsg)
 			case "rcpt":
@@ -450,6 +573,9 @@ func (s *smtpServerSession) handle() {
 					}
 					closeCon = true
 				}
+			case "starttls":
+				s.smtpStartTls()
+				//s.purgeConn()
 
 			case "quit":
 				s.smtpQuit()

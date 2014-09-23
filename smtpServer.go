@@ -1,13 +1,16 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/tls"
 	"net"
+	"path"
 )
 
-// DSN IP port and TLS (bool)
+// DSN IP port and secured (none, tls, ssl)
 type dsn struct {
 	tcpAddr net.TCPAddr
-	tls     bool
+	secured string
 }
 
 // SMTP Server
@@ -25,9 +28,27 @@ func NewSmtpServer(d dsn, c chan string) (server *SmtpServer) {
 // Listen and serve
 func (s *SmtpServer) ListenAndServe() {
 	go func() {
-		netListen, error := net.Listen(s.dsn.tcpAddr.Network(), s.dsn.tcpAddr.String())
-		if error != nil {
-			TRACE.Fatalln("Erreur", error)
+		var netListen net.Listener
+		var err error
+		// SSL ?
+		if s.dsn.secured == "ssl" {
+			cert, err := tls.LoadX509KeyPair(path.Join(confPath, "ssl/mycert1.cer"), path.Join(confPath, "ssl/mycert1.key"))
+			if err != nil {
+				TRACE.Fatalln("Unable to loadkeys: %s", err)
+			}
+			tlsConfig := tls.Config{
+				Certificates:       []tls.Certificate{cert},
+				InsecureSkipVerify: true,
+			}
+			tlsConfig.Rand = rand.Reader
+			netListen, err = tls.Listen(s.dsn.tcpAddr.Network(), s.dsn.tcpAddr.String(), &tlsConfig)
+			TRACE.Println("server SSL OK")
+		} else {
+			netListen, err = net.Listen(s.dsn.tcpAddr.Network(), s.dsn.tcpAddr.String())
+		}
+
+		if err != nil {
+			TRACE.Fatalln("Erreur", err)
 		} else {
 			defer netListen.Close()
 			//TRACE.Println("Server started, waiting for client")
@@ -36,11 +57,15 @@ func (s *SmtpServer) ListenAndServe() {
 				if error != nil {
 					TRACE.Println("Client error: ", error)
 				} else {
-					s := NewSmtpServerSession(conn)
-					go s.handle()
+					secured := false
+					if s.dsn.secured == "ssl" {
+						secured = true
+					}
+					var sss *smtpServerSession
+					sss = NewSmtpServerSession(conn, secured)
+					go sss.handle()
 				}
 			}
 		}
-
 	}()
 }

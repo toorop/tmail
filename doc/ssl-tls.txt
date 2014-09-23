@@ -1,0 +1,5 @@
+Pour switcher en TLS : http://stackoverflow.com/questions/13110713/upgrade-a-connection-to-tls-in-go
+
+openssl s_client -starttls smtp -crlf -connect  toorop.fr:2525
+
+tcpdump -v -A port 2525

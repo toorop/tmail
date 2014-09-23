@@ -26,7 +26,7 @@ var (
 	TRACE = log.New(ioutil.Discard, "TRACE -", log.Ldate|log.Ltime|log.Lshortfile)
 	INFO  = log.New(ioutil.Discard, "INFO  -", log.Ldate|log.Ltime)
 	WARN  = log.New(ioutil.Discard, "WARN  -", log.Ldate|log.Ltime)
-	ERROR = log.New(os.Stderr, "ERROR -", log.Ldate|log.Ltime)
+	ERROR = log.New(os.Stderr, "ERROR -", log.Ldate|log.Ltime|log.Lshortfile)
 
 	// SMTP server DSNs
 	smtpDsn []dsn
@@ -134,8 +134,8 @@ func init() {
 	strSmtpDsn, found := Config.String("smtp.dsn")
 
 	if !found {
-		INFO.Println("No smtp.dsn found in config file (tmail.conf). Listening on 0.0.0.0:25 with no TLS")
-		strSmtpDsn = "0.0.0.0:25:0"
+		INFO.Println("No smtp.dsn found in config file (tmail.conf). Listening on 0.0.0.0:25 with no SSL nor TLS extension")
+		strSmtpDsn = "0.0.0.0:25:none"
 	}
 	// Are dsn OK ? We just validate entry, no check on IP/Port, they will be done with listen & serve
 	smtpDsn = getDsnsFromString(strSmtpDsn)
@@ -146,7 +146,7 @@ func init() {
 	//
 	// Init queue
 	queuePath, found := Config.String("queue.basePath")
-	if !found {
+	if !found || queuePath == "" {
 		queuePath = path.Join(distPath, "queue")
 	}
 	if queue, err = NewQueue(queuePath); err != nil {
@@ -166,11 +166,11 @@ func main() {
 	daChan := make(chan string)
 
 	for _, dsn := range smtpDsn {
-		m := fmt.Sprintf("Launching SMTP server on %s:%d:", dsn.tcpAddr.IP, dsn.tcpAddr.Port)
-		if dsn.tls {
-			m = fmt.Sprintf("%sTLS", m)
-		} else {
-			m = fmt.Sprintf("%snoTLS]", m)
+		m := fmt.Sprintf("Launching SMTP server on %s:%d", dsn.tcpAddr.IP, dsn.tcpAddr.Port)
+		if dsn.secured == "ssl" {
+			m = fmt.Sprintf("%s SSL", m)
+		} else if dsn.secured == "tls" {
+			m = fmt.Sprintf("%s TLS", m)
 		}
 		INFO.Printf("%s...", m)
 		server := NewSmtpServer(dsn, daChan)
