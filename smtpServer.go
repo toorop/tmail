@@ -62,8 +62,12 @@ func (s *SmtpServer) ListenAndServe() {
 						secured = true
 					}
 					var sss *smtpServerSession
-					sss = NewSmtpServerSession(conn, secured)
-					go sss.handle()
+					sss, err = NewSmtpServerSession(conn, secured)
+					if err != nil {
+						ERROR.Println("ERROR - Unable to get new SmtpServerSession")
+					} else {
+						go sss.handle()
+					}
 				}
 			}
 		}

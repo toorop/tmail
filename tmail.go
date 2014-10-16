@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/Toorop/config"
+	"gopkg.in/mgo.v2"
+	//"gopkg.in/mgo.v2/bson"
 	"io"
 	"io/ioutil"
 	"log"
@@ -31,8 +33,11 @@ var (
 	// SMTP server DSNs
 	smtpDsn []dsn
 
-	// Queue
-	queue *Queue
+	// mgo session
+	mgoSession *mgo.Session
+
+	// Global countDeliveries
+	countDeliveries int // number of deliveries in progress
 )
 
 // (from revel Thanks @robfig)
@@ -92,7 +97,7 @@ func init() {
 	log.SetFlags(ERROR.Flags()) // default
 
 	// Dist path
-	distPath, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	distPath, err = filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
 		log.Fatalln("Enable to get dist path")
 	}
@@ -143,16 +148,15 @@ func init() {
 	//TRACE.Println("DSN:", smtpDsn)
 	// Load plugins smtpIn_helo_01_monplugin*/
 
-	//
 	// Init queue
-	queuePath, found := Config.String("queue.basePath")
-	if !found || queuePath == "" {
-		queuePath = path.Join(distPath, "queue")
-	}
-	if queue, err = NewQueue(queuePath); err != nil {
-		ERROR.Fatalln(err)
+	if err = initQueue(); err != nil {
+		log.Fatalln("Unable to init queue -", err.Error())
 	}
 
+	// init some globals
+	countDeliveries = 0
+
+	// Done
 	INFO.Println("Init sequence done")
 
 }
@@ -177,6 +181,9 @@ func main() {
 		server.ListenAndServe()
 		INFO.Println("Done.")
 	}
+	// Process queue
+	go processQueue()
+
 	<-stayinAlive
 	/*for {
 		fromSmtpChan = <-smtpChan

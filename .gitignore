@@ -1,3 +1,7 @@
 /.idea/
 /archives/
 /dist/tmail
+
+/dist/tmail-linux32
+
+/dist/queue/

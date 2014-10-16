@@ -1,6 +1,5 @@
 TODO
-=====
-- [ ] TLS
+
 - [ ] Dans smtpRcptTo definir un domaine par defaut si il y a seulement la partie locale
 - [ ] Dans smtpData : mise en queue
-- [ ] Timeout sur les transations SMTP
+- [ ] gerer les demande de confirmation de prise en chare

@@ -3,11 +3,13 @@ package main
 import (
 	"crypto/rand"
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/mail"
-	"os/exec"
+	//"os/exec"
 	"path"
+	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -15,47 +17,78 @@ import (
 const (
 	CR = 13
 	LF = 10
+	//ZEROBYTE ="\\0"
 )
 
 // Session SMTP (server)
 type smtpServerSession struct {
-	uuid string
-	conn net.Conn
-
-	//initiationDone bool
+	uuid     string
+	conn     net.Conn
+	timer    *time.Timer // for timeout
 	secured  bool
+	smtpUser *smtpUser
 	seenMail bool
 	helo     string
-	mailFrom string
-	rcptTo   []string
-	message  string
+	envelope envelope
+	//message  string
 }
 
 // Factory
-func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession) {
+func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, err error) {
 	sss = new(smtpServerSession)
-	sss.uuid = "1126546546578" // todo new uuid+me
+	sss.uuid, err = newUUID()
+	if err != nil {
+		return
+	}
 	sss.conn = conn
 	sss.secured = secured
 	sss.reset()
+	// timeout
+	sss.timer = time.AfterFunc(time.Duration(Config.IntDefault("smtp.in.timeout", 60))*time.Second, sss.timeout)
 	return
+}
+
+// timeout
+func (s *smtpServerSession) timeout() {
+	s.log("client timeout")
+	s.out("451 Client timeout.")
+	//s.chanTimeout <- true
+	s.conn.Close()
 }
 
 // Reset session
 func (s *smtpServerSession) reset() {
-	s.mailFrom = ""
-	s.rcptTo = []string{}
-	s.message = ""
+	s.envelope.mailFrom = ""
+	s.envelope.rcptTo = []string{}
+	//s.message = ""
 }
 
 // Out : to client
 func (s *smtpServerSession) out(msg string) {
 	s.conn.Write([]byte(msg + "\r\n"))
+	TRACE.Println(s.conn.RemoteAddr().String(), ">", msg)
 }
 
 // Log helper
-func (s *smtpServerSession) log(msg string) {
-	INFO.Println(s.conn.RemoteAddr().String(), "-", msg, "-", s.uuid)
+func (s *smtpServerSession) log(msg ...string) {
+	var toLog string
+	if len(msg) > 1 {
+		toLog = strings.Join(msg, " ")
+	} else {
+		toLog = msg[0]
+	}
+	INFO.Println(s.conn.RemoteAddr().String(), "-", toLog, "-", s.uuid)
+}
+
+func (s *smtpServerSession) logError(msg ...string) {
+	var toLog string
+	if len(msg) > 1 {
+		toLog = strings.Join(msg, " ")
+	} else {
+		toLog = msg[0]
+	}
+	stack := debug.Stack()
+	ERROR.Println(s.conn.RemoteAddr().String(), "-", toLog, "-", s.uuid, "\n", fmt.Sprintf("%s", stack))
 }
 
 // LF withour CR
@@ -105,6 +138,9 @@ func (s *smtpServerSession) smtpEhlo(msg []string) {
 	// Size
 	s.out(fmt.Sprintf("250-SIZE %d", Config.IntDefault("smtp.in.maxDataBytes", 50000000)))
 
+	// Auth
+	s.out("250-AUTH PLAIN")
+
 	// STARTTLS
 	s.out("250 STARTTLS")
 
@@ -114,6 +150,10 @@ func (s *smtpServerSession) smtpEhlo(msg []string) {
 func (s *smtpServerSession) smtpMailFrom(msg []string) {
 	// Si on a déja un mailFrom les RFC ne précise rien de particulier
 	// -> On accepte et on reinitialise
+	//
+	// TODO prendre en compte le SIZE :
+	// MAIL FROM:<toorop@toorop.fr> SIZE=1671
+	//
 	// Reset
 	s.reset()
 
@@ -126,9 +166,9 @@ func (s *smtpServerSession) smtpMailFrom(msg []string) {
 	// mail from:<user>
 	if len(msg[1]) > 5 {
 		t := strings.Split(msg[1], ":")
-		s.mailFrom = t[1]
+		s.envelope.mailFrom = t[1]
 	} else if len(msg) >= 3 { // mail from: user
-		s.mailFrom = msg[2]
+		s.envelope.mailFrom = msg[2]
 	} else {
 		s.log(fmt.Sprintf("MAIL FROM - Bad syntax : %s ", strings.Join(msg, " ")))
 		s.out("501 5.5.4 Syntax: MAIL FROM:<address>")
@@ -142,34 +182,36 @@ func (s *smtpServerSession) smtpMailFrom(msg []string) {
 	}
 
 	// Clean <>
-	s.mailFrom = removeBrackets(s.mailFrom)
+	s.envelope.mailFrom = removeBrackets(s.envelope.mailFrom)
 
-	l := len(s.mailFrom)
+	l := len(s.envelope.mailFrom)
 	if l > 0 { // 0 -> null reverse path (bounce)
 
 		if l > 254 { // semi arbitrary (local part must/should be < 64 & domain < 255)
 			s.log(fmt.Sprintf("MAIL FROM - Reverse path too long : %s ", strings.Join(msg, " ")))
-			s.out(fmt.Sprintf("550 email %s must be less than 255 char", s.mailFrom))
+			s.out(fmt.Sprintf("550 email %s must be less than 255 char", s.envelope.mailFrom))
 			return
 		}
 
 		// If only local part add me
-		if strings.Count(s.mailFrom, "@") == 0 {
-			s.mailFrom = fmt.Sprintf("%s@%s", s.mailFrom, me)
+		if strings.Count(s.envelope.mailFrom, "@") == 0 {
+			s.envelope.mailFrom = fmt.Sprintf("%s@%s", s.envelope.mailFrom, me)
 		}
 	}
 	s.seenMail = true
-	s.log(fmt.Sprintf("New mail from %s", s.mailFrom))
+	s.log(fmt.Sprintf("new mail from %s", s.envelope.mailFrom))
 	s.out("250 ok")
 }
 
 // RCPT TO
 func (s *smtpServerSession) smtpRcptTo(msg []string) {
+	var err error
 	rcptto := ""
 
 	if !s.seenMail {
 		s.log("503 RCPT TO before MAIL FROM")
 		s.out("503 MAIL first (#5.5.1)")
+		return
 	}
 
 	if len(msg) == 1 || !strings.HasPrefix(msg[1], "to:") {
@@ -201,10 +243,55 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 		return
 	}
 
+	// On prend le mail en charge ?
+	relay := false
+	// Si c'est un domaine des destination que l'on gere oui
+	t := strings.Split(rcptto, "@")
+	if len(t) != 2 {
+		s.log(fmt.Sprintf("RCPT TO - Bad email syntax : %s - %s ", strings.Join(msg, " "), e))
+		s.out("501 5.5.4 Bad email format")
+		return
+	}
+	// remote host in rcpthosts list
+	relay, err = isInRcptHost(t[1])
+	if err != nil {
+		s.out("454 oops, problem with relay access (#4.3.0)")
+		s.log("ERROR relay access: " + err.Error())
+		return
+	}
+
+	// User autentified & access granted ?
+	if !relay && s.smtpUser != nil {
+		relay, err = s.smtpUser.canUseSmtp()
+		if err != nil {
+			s.out("454 oops, problem with relay access (#4.3.0)")
+			s.log("ERROR relay access: " + err.Error())
+			return
+		}
+	}
+
+	// Remote IP authorized
+	if !relay {
+		relay, err = remoteIpCanUseSmtp(s.conn.RemoteAddr())
+		if err != nil {
+			s.out("454 oops, problem with relay access (#4.3.0)")
+			s.log("ERROR relay access: " + err.Error())
+			return
+		}
+
+	}
+
+	// Relay denied
+	if !relay {
+		s.out(fmt.Sprintf("554 5.7.1 <%s>: Relay access denied.", rcptto))
+		s.log("Relay access denied - IP: " + s.conn.RemoteAddr().String() + " MAIL FROM: " + s.envelope.mailFrom + " RCPT TO: " + rcptto)
+		return
+	}
+
 	// Check if there is already this recipient
-	if !isStringInSlice(rcptto, s.rcptTo) {
-		s.rcptTo = append(s.rcptTo, rcptto)
-		s.log(fmt.Sprintf("rcpt to: %s", rcptto))
+	if !isStringInSlice(rcptto, s.envelope.rcptTo) {
+		s.envelope.rcptTo = append(s.envelope.rcptTo, rcptto)
+		s.log(fmt.Sprintf("rcpt to: %s", s.envelope.rcptTo))
 	}
 	s.out("250 ok")
 }
@@ -221,7 +308,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		s.out("503 MAIL first (#5.5.1)")
 		return
 	}
-	if len(s.rcptTo) == 0 {
+	if len(s.envelope.rcptTo) == 0 {
 		s.log("503 DATA before RCPT TO")
 		s.out("503 RCPT first (#5.5.1)")
 		return
@@ -234,7 +321,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	s.out("354 End data with <CR><LF>.<CR><LF>")
 
 	// Get RAW mail
-	var rawMail []byte
+	var rawMessage []byte
 	ch := make([]byte, 1)
 	//state := 0
 	pos := 0       // position in current line
@@ -252,8 +339,9 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		if !doLoop {
 			break
 		}
+		s.timer.Reset(time.Duration(Config.IntDefault("smtp.in.timeout", 60)) * time.Second)
 		_, err := s.conn.Read(ch)
-		//TRACE.Println(ch)
+		s.timer.Stop()
 		if err != nil {
 			break
 		}
@@ -340,8 +428,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 				doLoop = false
 				continue
 			}
-			rawMail = append(rawMail, 46)
-			rawMail = append(rawMail, 10)
+			rawMessage = append(rawMessage, 46)
+			rawMessage = append(rawMessage, 10)
 
 			if ch[0] == CR {
 				state = 4
@@ -356,11 +444,11 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 				break
 			}
 			if ch[0] != CR {
-				rawMail = append(rawMail, 10)
+				rawMessage = append(rawMessage, 10)
 				state = 0
 			}
 		}
-		rawMail = append(rawMail, ch[0])
+		rawMessage = append(rawMessage, ch[0])
 		dataBytes++
 		//TRACE.Println(dataBytes)
 
@@ -383,8 +471,23 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		}
 
 	}
-	TRACE.Println(string(rawMail))
+	//TRACE.Println(string(rawMessage))
 
+	// TODO
+	// Transformer le mail en objet
+	message, err := newMessage(rawMessage)
+	if err != nil {
+		return
+	}
+	//TRACE.Println(err, message)
+
+	// On ajoute le uuid
+	message.addHeader("x-pm-uuid", s.uuid)
+
+	// x-env-from
+	message.addHeader("x-env-from", s.envelope.mailFrom)
+
+	// recieved
 	// Add recieved header
 	// Received: from 4.mxout.protecmail.com (91.121.228.128)
 	// by mail.protecmail.com with ESMTPS (RC4-SHA encrypted); 18 Sep 2014 05:50:17 -0000
@@ -396,7 +499,6 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		remoteHost = remoteHosts[0]
 	}
 	ts = strings.Split(s.conn.LocalAddr().String(), ":")
-	INFO.Println(ts)
 	localIp := ts[0]
 	localHost := "no reverse"
 	localHosts, err := net.LookupAddr(localIp)
@@ -404,15 +506,20 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		localHost = localHosts[0]
 	}
 
-	recieved := fmt.Sprintf("Received: from %s(%s)", remoteIp, remoteHost)
+	recieved := fmt.Sprintf("from %s (%s)", remoteIp, remoteHost)
 
 	// helo
 	if len(s.helo) != 0 {
 		recieved += fmt.Sprintf(" (%s)", s.helo)
 	}
 
+	// Authentified
+	if s.smtpUser != nil {
+		recieved += fmt.Sprintf(" (authentificated as %s)", s.smtpUser.Login)
+	}
+
 	// local
-	recieved += fmt.Sprintf("\n  by %s(%s)", localIp, localHost)
+	recieved += fmt.Sprintf("\n  by %s (%s)", localIp, localHost)
 
 	// Proto
 	if s.secured {
@@ -427,11 +534,24 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	// tmail
 	recieved += fmt.Sprintf("; tmail %s", TMAIL_VERSION)
 
-	// CRLF
-	recieved += "\r\n"
+	message.addHeader("recieved", recieved)
+
+	// On recupere le mail en raw
+	rawMessage, err = message.getRaw()
+	if err != nil {
+		return
+	}
+	//TRACE.Println(err, string(rawMessage))
 
 	// Put in queue
-	qqueue := exec.Command("/var/qmail/bin/qmail-inject", "-a", fmt.Sprintf("-f%s", s.mailFrom), strings.Join(s.rcptTo, " "))
+	queueId, err := putInQueue(&rawMessage, s.envelope)
+	s.log("queued as ", queueId)
+	s.out(fmt.Sprintf("550 2.0.0 Ok: queued %s", queueId))
+	return
+
+	// TODO go processQueuedMessage(queueId)
+
+	/*qqueue := exec.Command("/var/qmail/bin/qmail-inject", "-a", fmt.Sprintf("-f%s", s.envelope.mailFrom), strings.Join(s.envelope.rcptTo, " "))
 	qqIn, err := qqueue.StdinPipe()
 	if err != nil {
 		ERROR.Fatal(err)
@@ -441,32 +561,31 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		ERROR.Fatal(err)
 	}
 
-	if _, err = qqIn.Write([]byte(recieved)); err != nil {
-		ERROR.Fatal(err)
-	}
-
 	// mail - data
-	if _, err = qqIn.Write(rawMail); err != nil {
+	if _, err = qqIn.Write(rawMessage); err != nil {
 		ERROR.Fatal(err)
 	}
 
 	err = qqIn.Close()
 	if err != nil {
+		// TODO
 		ERROR.Fatal(err)
 	}
 
 	TRACE.Println("Writed to qmail")
 
 	if err := qqueue.Wait(); err != nil {
+		// TODO
 		ERROR.Fatal(err)
 	}
 
 	// Pour eviter de se retapper le mail de test
-	TRACE.Fatal("OK mail parti")
+	//TRACE.Fatal("OK mail parti")
 	// Send event
 
-	s.out(fmt.Sprintf("250 2.0.0 Ok: queued as 1B39026A"))
-	return
+	s.log("queued")
+	s.out(fmt.Sprintf("250 2.0.0 Ok: queued %s", s.uuid))
+	return*/
 }
 
 // QUIT
@@ -480,7 +599,6 @@ func (s *smtpServerSession) smtpStartTls() {
 		s.out("454 - transaction is already secured via SSL")
 		return
 	}
-	TRACE.Println("STARTTL demandée")
 	s.out("220 Ready to start TLS")
 	cert, err := tls.LoadX509KeyPair(path.Join(confPath, "ssl/mycert1.cer"), path.Join(confPath, "ssl/mycert1.key"))
 	if err != nil {
@@ -504,9 +622,83 @@ func (s *smtpServerSession) smtpStartTls() {
 	s.secured = true
 }
 
+// SMTP AUTH
+// Return boolean closeCon
+// Pour le moment in va juste implémenter PLAIN
+func (s *smtpServerSession) smtpAuth(rawMsg string) bool {
+	// TODO si pas TLS
+	//var authType, user, passwd string
+	// TODO si pas plain
+
+	//
+	splitted := strings.Split(rawMsg, " ")
+	if len(splitted) != 3 {
+		s.out("501 malformed auth input (#5.5.4)")
+		s.log("malformed auth input: " + rawMsg)
+		return true
+	}
+	// decode  "authorize-id\0userid\0passwd\0"
+	authData, err := base64.StdEncoding.DecodeString(splitted[2])
+	if err != nil {
+		s.out("501 malformed auth input (#5.5.4)")
+		s.log("malformed auth input: " + rawMsg + " err:" + err.Error())
+		return true
+	}
+
+	// split
+	t := make([][]byte, 3)
+	i := 0
+	for _, b := range authData {
+		if b == 0 {
+			i++
+			continue
+		}
+		t[i] = append(t[i], b)
+	}
+	//authId := string(t[0])
+	authLogin := string(t[1])
+	authPasswd := string(t[2])
+
+	s.smtpUser, err = NewSmtpUser(authLogin, authPasswd)
+
+	if err != nil {
+		if err.Error() == "not found" {
+			s.out("535 authentication failed - No such user (#5.7.1)")
+			s.log("auth failed: " + rawMsg + " err:" + err.Error())
+			return true
+		}
+		if err.Error() == "crypto/bcrypt: hashedPassword is not the hash of the given password" {
+			s.out("535 authentication failed (#5.7.1)")
+			s.log("auth failed: " + rawMsg + " err:" + err.Error())
+			return true
+		}
+		s.out("454 oops, problem with auth (#4.3.0)")
+		s.log("ERROR auth " + rawMsg + " err:" + err.Error())
+		return true
+	}
+
+	s.log("auth succeed for user " + s.smtpUser.Login)
+	s.out("235 ok, go ahead (#2.0.0)")
+
+	return false
+}
+
+// RELAY AUTH
+
 // Handle SMTP session
 func (s *smtpServerSession) handle() {
-	// Todo implementer le timleout
+
+	// Recover on panic
+
+	defer func() {
+		if err := recover(); err != nil {
+			s.logError("PANIC")
+			/*stack := debug.Stack()
+			f := "PANIC: %s\n%s"
+			ERROR.Printf(f, err, stack)*/
+			s.conn.Close()
+		}
+	}()
 
 	// Init some var
 	var msg []byte
@@ -518,16 +710,28 @@ func (s *smtpServerSession) handle() {
 	// welcome (
 	s.smtpGreeting()
 
+	/*go func() {
+		for {
+			select {
+			case <-s.chanTimeout:
+				TRACE.Println("chantimeout")
+				closeCon = true
+			}
+		}
+	}()*/
+
 	for {
 		if closeCon {
 			s.conn.Close()
 			break
 		}
+		// reset timeout
+		s.timer.Reset(time.Duration(Config.IntDefault("smtp.in.timeout", 60)) * time.Second)
 		_, error := s.conn.Read(buffer)
 		if error != nil {
 			if error.Error() == "EOF" {
-				INFO.Println(s.conn.RemoteAddr().String(), "- Client send EOF")
-			} else {
+				s.log(s.conn.RemoteAddr().String(), "- Client send EOF")
+			} else if !strings.Contains(error.Error(), "use of closed network connection") { // timeout
 				ERROR.Println(s.conn.RemoteAddr().String(), "- Client s.connection error: ", error)
 			}
 			s.conn.Close()
@@ -541,11 +745,12 @@ func (s *smtpServerSession) handle() {
 		}
 
 		if buffer[0] == 10 {
+			s.timer.Stop()
 			var rmsg string
-			TRACE.Println(msg)
-			strMsg := strings.ToLower(strings.TrimSpace(string(msg)))
-			TRACE.Println(s.conn.RemoteAddr().String(), ">", strMsg)
-			splittedMsg := strings.Split(strMsg, " ")
+			//TRACE.Println(msg)
+			strMsg := strings.TrimSpace(string(msg))
+			TRACE.Println(s.conn.RemoteAddr().String(), "<", strMsg)
+			splittedMsg := strings.Split(strings.ToLower(strMsg), " ")
 			//TRACE.Println(splittedMsg)
 			// get command, first word
 			verb := splittedMsg[0]
@@ -553,10 +758,10 @@ func (s *smtpServerSession) handle() {
 
 			default:
 				rmsg = "502 unimplemented (#5.5.1)"
-				// TODO: refactor
 				TRACE.Println(s.conn.RemoteAddr().String(), "< ", rmsg)
 				s.out(rmsg)
 			case "helo":
+				TRACE.Println("UUID", s.uuid)
 				s.smtpHelo(splittedMsg)
 			case "ehlo":
 				//s.smtpEhlo(splittedMsg)
@@ -568,15 +773,22 @@ func (s *smtpServerSession) handle() {
 			case "data":
 				err := s.smtpData(splittedMsg)
 				if err != nil {
-					if err.Error() != "skip" {
+					/*if err.Error() != "skip" {
 						ERROR.Println(s.conn.RemoteAddr().String(), err)
+					}*/
+					if err == ErrNonAsciiCharDetected {
+						s.logError(ErrNonAsciiCharDetected.Error())
+						s.out(fmt.Sprintf("554 %s - %s", ErrNonAsciiCharDetected.Error(), s.uuid))
+					} else {
+						s.logError(err.Error())
+						s.out(fmt.Sprintf("554 oops something wrong hapenned - %s", s.uuid))
 					}
 					closeCon = true
 				}
 			case "starttls":
 				s.smtpStartTls()
-				//s.purgeConn()
-
+			case "auth":
+				closeCon = s.smtpAuth(strMsg)
 			case "quit":
 				s.smtpQuit()
 				closeCon = true

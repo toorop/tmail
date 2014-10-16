@@ -1,0 +1,10 @@
+Start mongodb:     mongod --config /usr/local/etc/mongod.conf
+
+doyoureallythinkyoucouldgetavalidpassworddoingthat?
+
+db.smtpusers.update({ "login" : "toorop"}, {"login" : "toorop", "passwd" : "$2a$10$M3jm9UBNp2zTNgu4dg4pQ.5jzIWKg7sKErRWt9PA8kzssL6IWgChC"})
+
+
+db.smtpusers.update({"login" : "toorop", "passwd" : "$2a$10$M3jm9UBNp2zTNgu4dg4pQ.5jzIWKg7sKErRWt9PA8kzssL6IWgChC"})
+
+db.rcpthosts.insert({"domain": "toorop.fr"})
