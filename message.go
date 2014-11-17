@@ -101,9 +101,6 @@ func (m *message) getRaw() (rawMessage []byte, err error) {
 
 	// Body
 	b, err := ioutil.ReadAll(m.Body)
-	if err != nil {
-		return
-	}
 	rawMessage = append(rawMessage, b...)
 	return
 }

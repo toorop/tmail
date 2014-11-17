@@ -1,11 +1,20 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/Toorop/config"
+	"github.com/Toorop/tmail/deliverd"
+	"github.com/Toorop/tmail/scope"
+	"github.com/Toorop/tmail/store"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/gorm"
+	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 	"gopkg.in/mgo.v2"
-	//"gopkg.in/mgo.v2/bson"
-	"io"
+	"os/signal"
+	"syscall"
+
 	"io/ioutil"
 	"log"
 	"os"
@@ -18,13 +27,13 @@ const (
 )
 
 var (
-	me       string // my hostname
-	distPath string // Path where the dist is
-	confPath string // Path where are loacted config files
+	me string // my hostname
+	//distPath string // Path where the dist is
+	confPath string // Path where are located config files
 
 	Config *MergedConfig
 
-	// defaults Loggers
+	// defaults Loggers - TODO usefull ?
 	TRACE = log.New(ioutil.Discard, "TRACE -", log.Ldate|log.Ltime|log.Lshortfile)
 	INFO  = log.New(ioutil.Discard, "INFO  -", log.Ldate|log.Ltime)
 	WARN  = log.New(ioutil.Discard, "WARN  -", log.Ldate|log.Ltime)
@@ -36,55 +45,18 @@ var (
 	// mgo session
 	mgoSession *mgo.Session
 
+	// database
+	db gorm.DB
+
+	//  store
+	queueStore store.Storer
+
+	// Queue
+	queue *mailsQueue
+
 	// Global countDeliveries
 	countDeliveries int // number of deliveries in progress
 )
-
-// (from revel Thanks @robfig)
-// Create a logger using log.* directives in app.conf plus the current settings
-// on the default logger.
-func getLogger(name string) *log.Logger {
-	var logger *log.Logger
-
-	// Create a logger with the requested output. (default to stderr)
-	output := Config.StringDefault("log."+name+".output", "stderr")
-
-	switch output {
-	case "stdout":
-		logger = newLogger(os.Stdout)
-	case "stderr":
-		logger = newLogger(os.Stderr)
-	default:
-		if output == "off" {
-			output = os.DevNull
-		}
-		file, err := os.OpenFile(output, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-		if err != nil {
-			log.Fatalln("Failed to open log file", output, ":", err)
-		}
-		logger = newLogger(file)
-	}
-
-	// Set the prefix / flags.
-	flags, found := Config.Int("log." + name + ".flags")
-	if found {
-		logger.SetFlags(flags)
-	} else if name == "trace" {
-		logger.SetFlags(TRACE.Flags())
-	}
-
-	prefix, found := Config.String("log." + name + ".prefix")
-	if found {
-		logger.SetPrefix(prefix)
-	} else if name == "trace" {
-		logger.SetPrefix(TRACE.Prefix())
-	}
-
-	return logger
-}
-func newLogger(wr io.Writer) *log.Logger {
-	return log.New(wr, "", INFO.Flags())
-}
 
 // INIT
 func init() {
@@ -97,9 +69,9 @@ func init() {
 	log.SetFlags(ERROR.Flags()) // default
 
 	// Dist path
-	distPath, err = filepath.Abs(filepath.Dir(os.Args[0]))
+	distPath, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
-		log.Fatalln("Enable to get dist path")
+		log.Fatalln("Enable to get distribution path")
 	}
 	// ConfPath
 	confPath = path.Join(distPath, "conf")
@@ -134,24 +106,78 @@ func init() {
 	WARN = getLogger("warn")
 	ERROR = getLogger("error")
 
+	// Initialize Database
+	dbDriver, found := Config.String("db.driver")
+	if !found {
+		ERROR.Fatalln("No db.driver found in your config file")
+	}
+	dbDsn, found := Config.String("db.dsn")
+	if !found {
+		ERROR.Fatalln("No db.dsn found in your config file")
+	}
+	db, err = gorm.Open(dbDriver, dbDsn)
+	if err != nil {
+		ERROR.Fatalln("Database initialisation failed", err)
+	}
+	db.LogMode(Config.BoolDefault("db.debug", false))
+	err = db.DB().Ping()
+	if err != nil {
+		ERROR.Fatalln(fmt.Sprintf("I could not access to database 'driver: %s, dns: %s - '", dbDriver, dbDsn), err)
+	}
+	if !dbIsOk() {
+		var r []byte
+		for {
+			fmt.Print(fmt.Sprintf("Database 'driver: %s, dns: %s' misses some tables.\r\nShould i create them ? (y/n):", dbDriver, dbDsn))
+			r, _, _ = bufio.NewReader(os.Stdin).ReadLine()
+			if r[0] == 110 || r[0] == 121 {
+				break
+			}
+		}
+		if r[0] == 121 {
+			if err = initDB(); err != nil {
+				ERROR.Fatalln(err)
+			}
+		} else {
+			INFO.Fatalln("See you soon...")
+		}
+	}
+
+	// Synch tables to structs
+	if err = autoMigrateDB(); err != nil {
+		ERROR.Fatalln(err)
+	}
+
 	// DSN for SMTP server
 	//var found bool
 	strSmtpDsn, found := Config.String("smtp.dsn")
-
 	if !found {
 		INFO.Println("No smtp.dsn found in config file (tmail.conf). Listening on 0.0.0.0:25 with no SSL nor TLS extension")
 		strSmtpDsn = "0.0.0.0:25:none"
 	}
 	// Are dsn OK ? We just validate entry, no check on IP/Port, they will be done with listen & serve
-	smtpDsn = getDsnsFromString(strSmtpDsn)
+	smtpDsn, err = getDsnsFromString(strSmtpDsn)
+	if err != nil {
+		ERROR.Fatalln(err)
+	}
 
-	//TRACE.Println("DSN:", smtpDsn)
 	// Load plugins smtpIn_helo_01_monplugin*/
 
-	// Init queue
-	if err = initQueue(); err != nil {
-		log.Fatalln("Unable to init queue -", err.Error())
+	// Init stores
+	// queueStore
+	switch Config.StringDefault("queue.strore.type", "disk") {
+	case "disk":
+		queuePath, found := Config.String("queue.store.diskpath")
+		if !found {
+			queuePath = path.Join(distPath, "queue")
+		}
+		queueStore, err = store.NewDiskStore(queuePath)
+		if err != nil {
+			ERROR.Fatalln("Unable to get queueStore -", err)
+		}
 	}
+
+	// Queue
+	queue = &mailsQueue{}
 
 	// init some globals
 	countDeliveries = 0
@@ -164,11 +190,16 @@ func init() {
 // MAIN
 func main() {
 	// If channel stayinAlive recieve value tmail will stop
-	stayinAlive := make(chan bool) // Ah, ha, ha, ha,
+	//stayinAlive := make(chan bool) // Ah, ha, ha, ha,
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	// Chanel to comunicate between all element
+	// Chanel to comunicate between all elements
 	daChan := make(chan string)
 
+	// scope
+	scope, _ := scope.New(TRACE, INFO, ERROR, db)
+	// smtpd
 	for _, dsn := range smtpDsn {
 		m := fmt.Sprintf("Launching SMTP server on %s:%d", dsn.tcpAddr.IP, dsn.tcpAddr.Port)
 		if dsn.secured == "ssl" {
@@ -182,9 +213,12 @@ func main() {
 		INFO.Println("Done.")
 	}
 	// Process queue
-	go processQueue()
 
-	<-stayinAlive
+	// deliverd
+
+	go deliverd.New(scope).Run()
+
+	<-sigChan
 	/*for {
 		fromSmtpChan = <-smtpChan
 		TRACE.Println(fromSmtpChan)

@@ -3,14 +3,44 @@ package main
 import (
 	"crypto/rand"
 	"crypto/tls"
+	"errors"
 	"net"
 	"path"
+	"strings"
 )
 
 // DSN IP port and secured (none, tls, ssl)
 type dsn struct {
 	tcpAddr net.TCPAddr
 	secured string
+}
+
+//getDsnsFromString Get dsn string from config and returns slice of dsn struct
+func getDsnsFromString(dsnsStr string) (dsns []dsn, err error) {
+	if len(dsnsStr) == 0 {
+		return
+	}
+	// clean
+	dsnsStr = strings.ToLower(dsnsStr)
+
+	// IP,PORT,ENCRYPTION
+	for _, dsnStr := range strings.Split(dsnsStr, ",") {
+		if strings.Count(dsnStr, ":") != 2 {
+			return dsns, errors.New("Bad dsn " + dsnStr + " found in config" + dsnsStr)
+		}
+		t := strings.Split(dsnStr, ":")
+		// ip & port valid ?
+		tcpAddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(t[0], t[1]))
+		if err != nil {
+			return dsns, errors.New("Bad IP:Port found in dsn" + dsnStr + "from config dsn" + dsnsStr)
+		}
+		// Encryption
+		if t[2] != "none" && t[2] != "ssl" && t[2] != "tls" {
+			return dsns, errors.New("Bad encryption option found in dsn " + dsnStr + "from config dsn " + dsnsStr + ".Option must be none, ssl or tls.")
+		}
+		dsns = append(dsns, dsn{*tcpAddr, t[2]})
+	}
+	return
 }
 
 // SMTP Server
@@ -20,9 +50,8 @@ type SmtpServer struct {
 }
 
 // Factory
-func NewSmtpServer(d dsn, c chan string) (server *SmtpServer) {
-	server = &SmtpServer{d, c}
-	return
+func NewSmtpServer(d dsn, c chan string) *SmtpServer {
+	return &SmtpServer{d, c}
 }
 
 // Listen and serve
@@ -30,11 +59,12 @@ func (s *SmtpServer) ListenAndServe() {
 	go func() {
 		var netListen net.Listener
 		var err error
+		secured := false
 		// SSL ?
 		if s.dsn.secured == "ssl" {
 			cert, err := tls.LoadX509KeyPair(path.Join(confPath, "ssl/mycert1.cer"), path.Join(confPath, "ssl/mycert1.key"))
 			if err != nil {
-				TRACE.Fatalln("Unable to loadkeys: %s", err)
+				ERROR.Fatalln("Unable to load SSL keys: %s", err)
 			}
 			tlsConfig := tls.Config{
 				Certificates:       []tls.Certificate{cert},
@@ -42,32 +72,29 @@ func (s *SmtpServer) ListenAndServe() {
 			}
 			tlsConfig.Rand = rand.Reader
 			netListen, err = tls.Listen(s.dsn.tcpAddr.Network(), s.dsn.tcpAddr.String(), &tlsConfig)
-			TRACE.Println("server SSL OK")
+			secured = true
+			//TRACE.Println("server SSL OK")
 		} else {
 			netListen, err = net.Listen(s.dsn.tcpAddr.Network(), s.dsn.tcpAddr.String())
 		}
-
 		if err != nil {
-			TRACE.Fatalln("Erreur", err)
+			ERROR.Fatalln(err)
 		} else {
 			defer netListen.Close()
-			//TRACE.Println("Server started, waiting for client")
 			for {
 				conn, error := netListen.Accept()
 				if error != nil {
-					TRACE.Println("Client error: ", error)
+					INFO.Println("Client error: ", error)
 				} else {
-					secured := false
-					if s.dsn.secured == "ssl" {
-						secured = true
-					}
-					var sss *smtpServerSession
-					sss, err = NewSmtpServerSession(conn, secured)
-					if err != nil {
-						ERROR.Println("ERROR - Unable to get new SmtpServerSession")
-					} else {
-						go sss.handle()
-					}
+					go func(conn net.Conn) {
+						sss, err := NewSmtpServerSession(conn, secured)
+						if err != nil {
+							ERROR.Println("Unable to get new SmtpServerSession")
+						} else {
+							sss.handle()
+						}
+					}(conn)
+
 				}
 			}
 		}

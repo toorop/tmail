@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/mail"
 	//"os/exec"
+	"github.com/jinzhu/gorm"
 	"path"
 	"runtime/debug"
 	"strings"
@@ -25,11 +26,13 @@ type smtpServerSession struct {
 	uuid     string
 	conn     net.Conn
 	timer    *time.Timer // for timeout
+	timeout  time.Duration
 	secured  bool
 	smtpUser *smtpUser
 	seenMail bool
 	helo     string
 	envelope envelope
+	exitasap chan int
 	//message  string
 }
 
@@ -42,34 +45,48 @@ func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, 
 	}
 	sss.conn = conn
 	sss.secured = secured
-	sss.reset()
 	// timeout
-	sss.timer = time.AfterFunc(time.Duration(Config.IntDefault("smtp.in.timeout", 60))*time.Second, sss.timeout)
+	sss.exitasap = make(chan int, 1)
+	sss.timeout = time.Duration(Config.IntDefault("smtp.in.timeout", 60)) * time.Second
+	sss.timer = time.AfterFunc(sss.timeout, sss.raiseTimeout)
+	sss.reset()
 	return
 }
 
 // timeout
-func (s *smtpServerSession) timeout() {
+func (s *smtpServerSession) raiseTimeout() {
 	s.log("client timeout")
 	s.out("451 Client timeout.")
-	//s.chanTimeout <- true
-	s.conn.Close()
+	s.exitAsap()
+}
+
+// exit asap
+func (s *smtpServerSession) exitAsap() {
+	s.timer.Stop()
+
+	s.exitasap <- 1
+}
+
+// resetTimeout reset timeout
+func (s *smtpServerSession) resetTimeout() {
+	s.timer.Reset(s.timeout)
 }
 
 // Reset session
 func (s *smtpServerSession) reset() {
 	s.envelope.mailFrom = ""
 	s.envelope.rcptTo = []string{}
-	//s.message = ""
+	s.resetTimeout()
 }
 
 // Out : to client
 func (s *smtpServerSession) out(msg string) {
 	s.conn.Write([]byte(msg + "\r\n"))
 	TRACE.Println(s.conn.RemoteAddr().String(), ">", msg)
+	s.resetTimeout()
 }
 
-// Log helper
+// Log helper for INFO log
 func (s *smtpServerSession) log(msg ...string) {
 	var toLog string
 	if len(msg) > 1 {
@@ -80,6 +97,7 @@ func (s *smtpServerSession) log(msg ...string) {
 	INFO.Println(s.conn.RemoteAddr().String(), "-", toLog, "-", s.uuid)
 }
 
+// logError is a log helper for error logs
 func (s *smtpServerSession) logError(msg ...string) {
 	var toLog string
 	if len(msg) > 1 {
@@ -97,7 +115,7 @@ func (s *smtpServerSession) strayNewline() {
 	s.out("451 You send me LF not preceded by a CR. Are you drunk ? If not your SMTP client is broken.")
 }
 
-// Purge connexion buffer
+// purgeConn Purge connexion buffer
 func (s *smtpServerSession) purgeConn() (err error) {
 	ch := make([]byte, 1)
 	for {
@@ -112,7 +130,7 @@ func (s *smtpServerSession) purgeConn() (err error) {
 	return
 }
 
-// Greeting
+// smtpGreeting Greeting
 func (s *smtpServerSession) smtpGreeting() {
 	// Todo AS: verifier si il y a des data dans le buffer
 	// Todo desactiver server signature en option
@@ -134,7 +152,7 @@ func (s *smtpServerSession) smtpEhlo(msg []string) {
 	s.helo = strings.Join(msg, " ")
 	s.out(fmt.Sprintf("250-%s", me))
 
-	// extensions
+	// Extensions
 	// Size
 	s.out(fmt.Sprintf("250-SIZE %d", Config.IntDefault("smtp.in.maxDataBytes", 50000000)))
 
@@ -252,17 +270,20 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 		s.out("501 5.5.4 Bad email format")
 		return
 	}
-	// remote host in rcpthosts list
-	relay, err = isInRcptHost(t[1])
-	if err != nil {
-		s.out("454 oops, problem with relay access (#4.3.0)")
-		s.log("ERROR relay access: " + err.Error())
-		return
-	}
 
 	// User autentified & access granted ?
 	if !relay && s.smtpUser != nil {
 		relay, err = s.smtpUser.canUseSmtp()
+		if err != nil {
+			s.out("454 oops, problem with relay access (#4.3.0)")
+			s.log("ERROR relay access: " + err.Error())
+			return
+		}
+	}
+
+	// remote host in rcpthosts list
+	if !relay {
+		relay, err = isInRcptHost(t[1])
 		if err != nil {
 			s.out("454 oops, problem with relay access (#4.3.0)")
 			s.log("ERROR relay access: " + err.Error())
@@ -285,6 +306,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 	if !relay {
 		s.out(fmt.Sprintf("554 5.7.1 <%s>: Relay access denied.", rcptto))
 		s.log("Relay access denied - IP: " + s.conn.RemoteAddr().String() + " MAIL FROM: " + s.envelope.mailFrom + " RCPT TO: " + rcptto)
+		s.exitAsap()
 		return
 	}
 
@@ -473,7 +495,6 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	}
 	//TRACE.Println(string(rawMessage))
 
-	// TODO
 	// Transformer le mail en objet
 	message, err := newMessage(rawMessage)
 	if err != nil {
@@ -491,21 +512,18 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	// Add recieved header
 	// Received: from 4.mxout.protecmail.com (91.121.228.128)
 	// by mail.protecmail.com with ESMTPS (RC4-SHA encrypted); 18 Sep 2014 05:50:17 -0000
-	ts := strings.Split(s.conn.RemoteAddr().String(), ":")
-	remoteIp := ts[0]
+	remoteIp := strings.Split(s.conn.RemoteAddr().String(), ":")[0]
 	remoteHost := "no reverse"
 	remoteHosts, err := net.LookupAddr(remoteIp)
 	if err == nil {
 		remoteHost = remoteHosts[0]
 	}
-	ts = strings.Split(s.conn.LocalAddr().String(), ":")
-	localIp := ts[0]
+	localIp := strings.Split(s.conn.LocalAddr().String(), ":")[0]
 	localHost := "no reverse"
 	localHosts, err := net.LookupAddr(localIp)
 	if err == nil {
 		localHost = localHosts[0]
 	}
-
 	recieved := fmt.Sprintf("from %s (%s)", remoteIp, remoteHost)
 
 	// helo
@@ -537,16 +555,14 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	message.addHeader("recieved", recieved)
 
 	// On recupere le mail en raw
-	rawMessage, err = message.getRaw()
+	/*rawMessage, err = message.getRaw()
 	if err != nil {
 		return
-	}
-	//TRACE.Println(err, string(rawMessage))
-
+	}*/
 	// Put in queue
-	queueId, err := putInQueue(&rawMessage, s.envelope)
-	s.log("queued as ", queueId)
-	s.out(fmt.Sprintf("550 2.0.0 Ok: queued %s", queueId))
+	id, err := queue.add(message, s.envelope)
+	s.log("queued as ", id)
+	s.out(fmt.Sprintf("550 2.0.0 Ok: queued %s", id))
 	return
 
 	// TODO go processQueuedMessage(queueId)
@@ -591,6 +607,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 // QUIT
 func (s *smtpServerSession) smtpQuit() {
 	s.out(fmt.Sprintf("221 2.0.0 Bye"))
+	s.exitAsap()
 }
 
 // Starttls
@@ -625,7 +642,7 @@ func (s *smtpServerSession) smtpStartTls() {
 // SMTP AUTH
 // Return boolean closeCon
 // Pour le moment in va juste implémenter PLAIN
-func (s *smtpServerSession) smtpAuth(rawMsg string) bool {
+func (s *smtpServerSession) smtpAuth(rawMsg string) {
 	// TODO si pas TLS
 	//var authType, user, passwd string
 	// TODO si pas plain
@@ -635,14 +652,16 @@ func (s *smtpServerSession) smtpAuth(rawMsg string) bool {
 	if len(splitted) != 3 {
 		s.out("501 malformed auth input (#5.5.4)")
 		s.log("malformed auth input: " + rawMsg)
-		return true
+		s.exitAsap()
+		return
 	}
 	// decode  "authorize-id\0userid\0passwd\0"
 	authData, err := base64.StdEncoding.DecodeString(splitted[2])
 	if err != nil {
 		s.out("501 malformed auth input (#5.5.4)")
 		s.log("malformed auth input: " + rawMsg + " err:" + err.Error())
-		return true
+		s.exitAsap()
+		return
 	}
 
 	// split
@@ -662,25 +681,26 @@ func (s *smtpServerSession) smtpAuth(rawMsg string) bool {
 	s.smtpUser, err = NewSmtpUser(authLogin, authPasswd)
 
 	if err != nil {
-		if err.Error() == "not found" {
+		if err == gorm.RecordNotFound {
 			s.out("535 authentication failed - No such user (#5.7.1)")
 			s.log("auth failed: " + rawMsg + " err:" + err.Error())
-			return true
+			s.exitAsap()
+			return
 		}
 		if err.Error() == "crypto/bcrypt: hashedPassword is not the hash of the given password" {
 			s.out("535 authentication failed (#5.7.1)")
 			s.log("auth failed: " + rawMsg + " err:" + err.Error())
-			return true
+			s.exitAsap()
+			return
 		}
 		s.out("454 oops, problem with auth (#4.3.0)")
 		s.log("ERROR auth " + rawMsg + " err:" + err.Error())
-		return true
+		s.exitAsap()
+		return
 	}
 
 	s.log("auth succeed for user " + s.smtpUser.Login)
 	s.out("235 ok, go ahead (#2.0.0)")
-
-	return false
 }
 
 // RELAY AUTH
@@ -702,7 +722,7 @@ func (s *smtpServerSession) handle() {
 
 	// Init some var
 	var msg []byte
-	var closeCon bool = false
+	//var closeCon bool = false
 	//s.helo = ""
 
 	buffer := make([]byte, 1)
@@ -710,93 +730,82 @@ func (s *smtpServerSession) handle() {
 	// welcome (
 	s.smtpGreeting()
 
-	/*go func() {
+	go func() {
 		for {
-			select {
-			case <-s.chanTimeout:
-				TRACE.Println("chantimeout")
-				closeCon = true
-			}
-		}
-	}()*/
-
-	for {
-		if closeCon {
-			s.conn.Close()
-			break
-		}
-		// reset timeout
-		s.timer.Reset(time.Duration(Config.IntDefault("smtp.in.timeout", 60)) * time.Second)
-		_, error := s.conn.Read(buffer)
-		if error != nil {
-			if error.Error() == "EOF" {
-				s.log(s.conn.RemoteAddr().String(), "- Client send EOF")
-			} else if !strings.Contains(error.Error(), "use of closed network connection") { // timeout
-				ERROR.Println(s.conn.RemoteAddr().String(), "- Client s.connection error: ", error)
-			}
-			s.conn.Close()
-			break
-		}
-
-		//TRACE.Println(buffer[0])
-		//if buffer[0] == 13 || buffer[0] == 0x00 {
-		if buffer[0] == 0x00 {
-			continue
-		}
-
-		if buffer[0] == 10 {
-			s.timer.Stop()
-			var rmsg string
-			//TRACE.Println(msg)
-			strMsg := strings.TrimSpace(string(msg))
-			TRACE.Println(s.conn.RemoteAddr().String(), "<", strMsg)
-			splittedMsg := strings.Split(strings.ToLower(strMsg), " ")
-			//TRACE.Println(splittedMsg)
-			// get command, first word
-			verb := splittedMsg[0]
-			switch verb {
-
-			default:
-				rmsg = "502 unimplemented (#5.5.1)"
-				TRACE.Println(s.conn.RemoteAddr().String(), "< ", rmsg)
-				s.out(rmsg)
-			case "helo":
-				TRACE.Println("UUID", s.uuid)
-				s.smtpHelo(splittedMsg)
-			case "ehlo":
-				//s.smtpEhlo(splittedMsg)
-				s.smtpEhlo(splittedMsg)
-			case "mail":
-				s.smtpMailFrom(splittedMsg)
-			case "rcpt":
-				s.smtpRcptTo(splittedMsg)
-			case "data":
-				err := s.smtpData(splittedMsg)
-				if err != nil {
-					/*if err.Error() != "skip" {
-						ERROR.Println(s.conn.RemoteAddr().String(), err)
-					}*/
-					if err == ErrNonAsciiCharDetected {
-						s.logError(ErrNonAsciiCharDetected.Error())
-						s.out(fmt.Sprintf("554 %s - %s", ErrNonAsciiCharDetected.Error(), s.uuid))
-					} else {
-						s.logError(err.Error())
-						s.out(fmt.Sprintf("554 oops something wrong hapenned - %s", s.uuid))
-					}
-					closeCon = true
+			_, error := s.conn.Read(buffer)
+			if error != nil {
+				if error.Error() == "EOF" {
+					s.log(s.conn.RemoteAddr().String(), "- Client send EOF")
+				} else if !strings.Contains(error.Error(), "use of closed network connection") { // timeout
+					ERROR.Println(s.conn.RemoteAddr().String(), "- Client s.connection error: ", error)
 				}
-			case "starttls":
-				s.smtpStartTls()
-			case "auth":
-				closeCon = s.smtpAuth(strMsg)
-			case "quit":
-				s.smtpQuit()
-				closeCon = true
+				s.conn.Close()
+				break
 			}
-			msg = []byte{}
-		} else {
-			msg = append(msg, buffer[0])
-		}
-	}
 
+			//TRACE.Println(buffer[0])
+			//if buffer[0] == 13 || buffer[0] == 0x00 {
+			if buffer[0] == 0x00 {
+				continue
+			}
+
+			if buffer[0] == 10 {
+				s.timer.Stop()
+				var rmsg string
+				//TRACE.Println(msg)
+				strMsg := strings.TrimSpace(string(msg))
+				TRACE.Println(s.conn.RemoteAddr().String(), "<", strMsg)
+				splittedMsg := strings.Split(strings.ToLower(strMsg), " ")
+				//TRACE.Println(splittedMsg)
+				// get command, first word
+				verb := splittedMsg[0]
+				switch verb {
+
+				default:
+					rmsg = "502 unimplemented (#5.5.1)"
+					TRACE.Println(s.conn.RemoteAddr().String(), "< ", rmsg)
+					s.out(rmsg)
+				case "helo":
+					TRACE.Println("UUID", s.uuid)
+					s.smtpHelo(splittedMsg)
+				case "ehlo":
+					//s.smtpEhlo(splittedMsg)
+					s.smtpEhlo(splittedMsg)
+				case "mail":
+					s.smtpMailFrom(splittedMsg)
+				case "rcpt":
+					s.smtpRcptTo(splittedMsg)
+				case "data":
+					err := s.smtpData(splittedMsg)
+					if err != nil {
+						/*if err.Error() != "skip" {
+							ERROR.Println(s.conn.RemoteAddr().String(), err)
+						}*/
+						if err == ErrNonAsciiCharDetected {
+							s.logError(ErrNonAsciiCharDetected.Error())
+							s.out(fmt.Sprintf("554 %s - %s", ErrNonAsciiCharDetected.Error(), s.uuid))
+						} else {
+							s.logError(err.Error())
+							s.out(fmt.Sprintf("554 oops something wrong hapenned - %s", s.uuid))
+						}
+						s.exitAsap()
+					}
+				case "starttls":
+					s.smtpStartTls()
+				case "auth":
+					s.smtpAuth(strMsg)
+				case "quit":
+					s.smtpQuit()
+				}
+				//s.resetTimeout()
+				msg = []byte{}
+			} else {
+				msg = append(msg, buffer[0])
+			}
+		}
+	}()
+	<-s.exitasap
+	s.conn.Close()
+	s.log("EOT")
+	return
 }

@@ -1,10 +1,10 @@
 #!/bin/sh
 
 # Linux 32
-GOOS=linux GOARCH=386 CGO_ENABLED=0 go build -o  dist/tmail-linux32
+#GOOS=linux GOARCH=386 CGO_ENABLED=0 go build -o  dist/tmail-linux32
 
 # Sync
-rsync -vvv dist/tmail-linux32 root@toorop.fr:/home/tmail/dist/tmail-linux32
+#rsync -vvv dist/tmail-linux32 root@toorop.fr:/home/tmail/dist/tmail-linux32
 
 # Mac
-#go build -o dist/tmail 
+go build -o dist/tmail 

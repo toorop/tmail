@@ -115,14 +115,3 @@ func (c *MergedConfig) Options(prefix string) []string {
 }
 
 // Helpers
-
-func stripQuotes(s string) string {
-	if s == "" {
-		return s
-	}
-
-	if s[0] == '"' && s[len(s)-1] == '"' {
-		return s[1 : len(s)-1]
-	}
-	return s
-}
