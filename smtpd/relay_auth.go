@@ -1,4 +1,4 @@
-package main
+package smtpd
 
 import (
 	"github.com/jinzhu/gorm"
@@ -7,13 +7,13 @@ import (
 )
 
 // Valid host
-type rcpthost struct {
+type RcptHost struct {
 	Domain string
 }
 
-// isInRcptHost checks if domain is in the rcpthost list (-> relay authorozed)
+// isInRcptHost checks if domain is in the RcptHost list (-> relay authorozed)
 func isInRcptHost(domain string) (bool, error) {
-	err := db.Where("domain = ?", domain).First(&rcpthost{}).Error
+	err := DB.Where("domain = ?", domain).First(&RcptHost{}).Error
 	if err == nil {
 		return true, nil
 	}
@@ -24,13 +24,13 @@ func isInRcptHost(domain string) (bool, error) {
 }
 
 // relayOkIp represents an IP that can use SMTP for relaying
-type relayOkIp struct {
+type RelayIpOk struct {
 	Addr string
 }
 
 // remoteIpCanUseSmtp checks if an IP can relay
 func remoteIpCanUseSmtp(ip net.Addr) (bool, error) {
-	err := db.Where("addr = ?", ip.String()[:strings.Index(ip.String(), ":")]).First(&relayOkIp{}).Error
+	err := DB.Where("addr = ?", ip.String()[:strings.Index(ip.String(), ":")]).First(&RelayIpOk{}).Error
 	if err == nil {
 		return true, nil
 	}

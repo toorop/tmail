@@ -1,23 +1,30 @@
 package deliverd
 
 import (
-	"github.com/Toorop/tmail/scope"
-	"github.com/bitly/go-nsq"
-	"os"
-	"os/signal"
-	"syscall"
+	"github.com/Toorop/tmail/config"
+	//"github.com/bitly/go-nsq"
+	//"os"
+	//"os/signal"
+	//"syscall"
 )
 
 type deliverd struct {
-	scope *scope.Scope
+	Config struct {
+		DbDriver string `name:"db_driver" default:"sqlite"`
+		Toto     int    `name:"toto" default:"1"`
+		DbDebug  bool   `name:"db_debug" default:"false"`
+	}
 }
 
-func New(scope *scope.Scope) *deliverd {
-	return &deliverd{scope}
+func New() (*deliverd, error) {
+	d := &deliverd{}
+	err := config.LoadFromEnv("tmail", &d.Config)
+	return d, err
 }
 
 func (d *deliverd) Run() {
-	sigChan := make(chan os.Signal, 1)
+
+	/*sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	cfg := nsq.NewConfig()
@@ -32,10 +39,10 @@ func (d *deliverd) Run() {
 
 	consumer.AddHandler(&remoteHandler{d.scope})
 
-	/*err = consumer.ConnectToNSQDs(nsqdTCPAddrs)
-	if err != nil {
-		log.Fatal(err)
-	}*/
+	//err = consumer.ConnectToNSQDs(nsqdTCPAddrs)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 
 	err = consumer.ConnectToNSQLookupds([]string{"127.0.0.1:4161"})
 	if err != nil {
@@ -49,5 +56,5 @@ func (d *deliverd) Run() {
 		case <-sigChan:
 			consumer.Stop()
 		}
-	}
+	}*/
 }

@@ -1,17 +1,17 @@
-package main
+package queue
 
 import (
 	"bytes"
 	"crypto/sha1"
-	"encoding/json"
+	//"encoding/json"
 	"fmt"
-	"github.com/bitly/go-nsq"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/Toorop/tmail/message"
+	//"github.com/bitly/go-nsq"
 	"io"
 	"time"
 )
 
-type queuedMessage struct {
+type QMessage struct {
 	Key                 string // identifier  -> store.Get(key)
 	MailFrom            string
 	RcptTo              string
@@ -22,12 +22,9 @@ type queuedMessage struct {
 	DeliveryFailedCount uint32
 }
 
-// queue represents tmail queue
-type mailsQueue struct{}
-
-// add add a new mail in queue
-func (q *mailsQueue) add(message *message, envelope envelope) (key string, err error) {
-	rawMess, err := message.getRaw()
+// Add add a new mail in queue
+func Add(message *message.Message, envelope message.Envelope) (key string, err error) {
+	rawMess, err := message.GetRaw()
 	if err != nil {
 		return
 	}
@@ -38,7 +35,9 @@ func (q *mailsQueue) add(message *message, envelope envelope) (key string, err e
 	}
 	key = fmt.Sprintf("%x", hasher.Sum(nil))
 
-	err = queueStore.Put(key, bytes.NewReader(rawMess))
+	return "TODO", nil
+
+	/*err = queueStore.Put(key, bytes.NewReader(rawMess))
 	if err != nil {
 		return
 	}
@@ -98,6 +97,7 @@ func (q *mailsQueue) add(message *message, envelope envelope) (key string, err e
 		cloop++
 	}
 	return
+	*/
 }
 
 // Queue processing
@@ -109,9 +109,10 @@ func (q *mailsQueue) add(message *message, envelope envelope) (key string, err e
 //
 // TODO
 // - implementer le max concurrent proccess
+/*
 func processQueue() {
 	return
-	/*
+
 		cCountDeliveries := make(chan int)
 
 		go func() {
@@ -181,7 +182,7 @@ func processQueue() {
 			// Deliver
 			go deliver(&delivery, &cCountDeliveries)
 		}
-	*/
+
 }
 
 // delivery
@@ -261,3 +262,4 @@ func getQmessageWithSameIdHost(messageId, host string, maxReturn int) (msgs []qu
 func cleanQueue() error {
 	return nil
 }
+*/

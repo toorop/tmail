@@ -1,4 +1,4 @@
-package main
+package smtpd
 
 import (
 	"crypto/rand"
@@ -8,7 +8,11 @@ import (
 	"net"
 	"net/mail"
 	//"os/exec"
+	"github.com/Toorop/tmail/message"
+	"github.com/Toorop/tmail/queue"
+	"github.com/Toorop/tmail/util"
 	"github.com/jinzhu/gorm"
+	"log"
 	"path"
 	"runtime/debug"
 	"strings"
@@ -28,10 +32,10 @@ type smtpServerSession struct {
 	timer    *time.Timer // for timeout
 	timeout  time.Duration
 	secured  bool
-	smtpUser *smtpUser
+	smtpUser *SmtpUser
 	seenMail bool
 	helo     string
-	envelope envelope
+	envelope message.Envelope
 	exitasap chan int
 	//message  string
 }
@@ -39,7 +43,7 @@ type smtpServerSession struct {
 // Factory
 func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, err error) {
 	sss = new(smtpServerSession)
-	sss.uuid, err = newUUID()
+	sss.uuid, err = util.NewUUID()
 	if err != nil {
 		return
 	}
@@ -47,7 +51,7 @@ func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, 
 	sss.secured = secured
 	// timeout
 	sss.exitasap = make(chan int, 1)
-	sss.timeout = time.Duration(Config.IntDefault("smtp.in.timeout", 60)) * time.Second
+	sss.timeout = time.Duration(cfg.GetSmtpdTransactionTimeout()) * time.Second
 	sss.timer = time.AfterFunc(sss.timeout, sss.raiseTimeout)
 	sss.reset()
 	return
@@ -74,15 +78,15 @@ func (s *smtpServerSession) resetTimeout() {
 
 // Reset session
 func (s *smtpServerSession) reset() {
-	s.envelope.mailFrom = ""
-	s.envelope.rcptTo = []string{}
+	s.envelope.MailFrom = ""
+	s.envelope.RcptTo = []string{}
 	s.resetTimeout()
 }
 
 // Out : to client
 func (s *smtpServerSession) out(msg string) {
 	s.conn.Write([]byte(msg + "\r\n"))
-	TRACE.Println(s.conn.RemoteAddr().String(), ">", msg)
+	s.logDebug(">", msg)
 	s.resetTimeout()
 }
 
@@ -94,7 +98,7 @@ func (s *smtpServerSession) log(msg ...string) {
 	} else {
 		toLog = msg[0]
 	}
-	INFO.Println(s.conn.RemoteAddr().String(), "-", toLog, "-", s.uuid)
+	log.Println(s.conn.RemoteAddr().String(), "- INFO:", toLog, "-", s.uuid)
 }
 
 // logError is a log helper for error logs
@@ -106,7 +110,21 @@ func (s *smtpServerSession) logError(msg ...string) {
 		toLog = msg[0]
 	}
 	stack := debug.Stack()
-	ERROR.Println(s.conn.RemoteAddr().String(), "-", toLog, "-", s.uuid, "\n", fmt.Sprintf("%s", stack))
+	log.Println(s.conn.RemoteAddr().String(), "- ERROR:", toLog, "-", s.uuid, "\n", fmt.Sprintf("%s", stack))
+}
+
+// logError is a log helper for error logs
+func (s *smtpServerSession) logDebug(msg ...string) {
+	if !cfg.GetDebugEnabled() {
+		return
+	}
+	var toLog string
+	if len(msg) > 1 {
+		toLog = strings.Join(msg, " ")
+	} else {
+		toLog = msg[0]
+	}
+	log.Println(s.conn.RemoteAddr().String(), "- DEBUG:", toLog, "-", s.uuid)
 }
 
 // LF withour CR
@@ -135,7 +153,7 @@ func (s *smtpServerSession) smtpGreeting() {
 	// Todo AS: verifier si il y a des data dans le buffer
 	// Todo desactiver server signature en option
 	// dans le cas ou l'on refuse la transaction on doit répondre par un 554 et attendre le quit
-	s.out(fmt.Sprintf("220 %s  tmail V%s ESMTP %s", me, TMAIL_VERSION, s.uuid))
+	s.out(fmt.Sprintf("220 %s  tmail ESMTP %s", cfg.GetMe(), s.uuid))
 	//fmt.Println(s.conn.clientProtocol)
 }
 
@@ -143,18 +161,18 @@ func (s *smtpServerSession) smtpGreeting() {
 func (s *smtpServerSession) smtpHelo(msg []string) {
 	// Todo Verifier si il y a des data dans le buffer
 	s.helo = strings.Join(msg, " ")
-	s.out(fmt.Sprintf("250 %s", me))
+	s.out(fmt.Sprintf("250 %s", cfg.GetMe()))
 }
 
 // EHLO
 func (s *smtpServerSession) smtpEhlo(msg []string) {
 	// verifier le buffer
 	s.helo = strings.Join(msg, " ")
-	s.out(fmt.Sprintf("250-%s", me))
+	s.out(fmt.Sprintf("250-%s", cfg.GetMe()))
 
 	// Extensions
 	// Size
-	s.out(fmt.Sprintf("250-SIZE %d", Config.IntDefault("smtp.in.maxDataBytes", 50000000)))
+	s.out(fmt.Sprintf("250-SIZE %d", cfg.GetSmtpdMaxDataBytes()))
 
 	// Auth
 	s.out("250-AUTH PLAIN")
@@ -184,9 +202,9 @@ func (s *smtpServerSession) smtpMailFrom(msg []string) {
 	// mail from:<user>
 	if len(msg[1]) > 5 {
 		t := strings.Split(msg[1], ":")
-		s.envelope.mailFrom = t[1]
+		s.envelope.MailFrom = t[1]
 	} else if len(msg) >= 3 { // mail from: user
-		s.envelope.mailFrom = msg[2]
+		s.envelope.MailFrom = msg[2]
 	} else {
 		s.log(fmt.Sprintf("MAIL FROM - Bad syntax : %s ", strings.Join(msg, " ")))
 		s.out("501 5.5.4 Syntax: MAIL FROM:<address>")
@@ -200,24 +218,24 @@ func (s *smtpServerSession) smtpMailFrom(msg []string) {
 	}
 
 	// Clean <>
-	s.envelope.mailFrom = removeBrackets(s.envelope.mailFrom)
+	s.envelope.MailFrom = util.RemoveBrackets(s.envelope.MailFrom)
 
-	l := len(s.envelope.mailFrom)
+	l := len(s.envelope.MailFrom)
 	if l > 0 { // 0 -> null reverse path (bounce)
 
 		if l > 254 { // semi arbitrary (local part must/should be < 64 & domain < 255)
 			s.log(fmt.Sprintf("MAIL FROM - Reverse path too long : %s ", strings.Join(msg, " ")))
-			s.out(fmt.Sprintf("550 email %s must be less than 255 char", s.envelope.mailFrom))
+			s.out(fmt.Sprintf("550 email %s must be less than 255 char", s.envelope.MailFrom))
 			return
 		}
 
 		// If only local part add me
-		if strings.Count(s.envelope.mailFrom, "@") == 0 {
-			s.envelope.mailFrom = fmt.Sprintf("%s@%s", s.envelope.mailFrom, me)
+		if strings.Count(s.envelope.MailFrom, "@") == 0 {
+			s.envelope.MailFrom = fmt.Sprintf("%s@%s", s.envelope.MailFrom, cfg.GetMe())
 		}
 	}
 	s.seenMail = true
-	s.log(fmt.Sprintf("new mail from %s", s.envelope.mailFrom))
+	s.log(fmt.Sprintf("new mail from %s", s.envelope.MailFrom))
 	s.out("250 ok")
 }
 
@@ -249,7 +267,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 		s.out("501 5.5.4 Syntax: RCPT TO:<address>")
 		return
 	}
-	rcptto = removeBrackets(rcptto)
+	rcptto = util.RemoveBrackets(rcptto)
 
 	// TODO : only local part
 
@@ -305,15 +323,15 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 	// Relay denied
 	if !relay {
 		s.out(fmt.Sprintf("554 5.7.1 <%s>: Relay access denied.", rcptto))
-		s.log("Relay access denied - IP: " + s.conn.RemoteAddr().String() + " MAIL FROM: " + s.envelope.mailFrom + " RCPT TO: " + rcptto)
+		s.log("Relay access denied - IP: " + s.conn.RemoteAddr().String() + " MAIL FROM: " + s.envelope.MailFrom + " RCPT TO: " + rcptto)
 		s.exitAsap()
 		return
 	}
 
 	// Check if there is already this recipient
-	if !isStringInSlice(rcptto, s.envelope.rcptTo) {
-		s.envelope.rcptTo = append(s.envelope.rcptTo, rcptto)
-		s.log(fmt.Sprintf("rcpt to: %s", s.envelope.rcptTo))
+	if !util.IsStringInSlice(rcptto, s.envelope.RcptTo) {
+		s.envelope.RcptTo = append(s.envelope.RcptTo, rcptto)
+		s.log(fmt.Sprintf("rcpt to: %s", s.envelope.RcptTo))
 	}
 	s.out("250 ok")
 }
@@ -330,7 +348,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		s.out("503 MAIL first (#5.5.1)")
 		return
 	}
-	if len(s.envelope.rcptTo) == 0 {
+	if len(s.envelope.RcptTo) == 0 {
 		s.log("503 DATA before RCPT TO")
 		s.out("503 RCPT first (#5.5.1)")
 		return
@@ -361,7 +379,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		if !doLoop {
 			break
 		}
-		s.timer.Reset(time.Duration(Config.IntDefault("smtp.in.timeout", 60)) * time.Second)
+		s.timer.Reset(time.Duration(cfg.GetSmtpdTransactionTimeout()) * time.Second)
 		_, err := s.conn.Read(ch)
 		s.timer.Stop()
 		if err != nil {
@@ -475,7 +493,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		//TRACE.Println(dataBytes)
 
 		// Max hops reached ?
-		if hops > Config.IntDefault("smtp.in.maxhops", 50) {
+		if hops > cfg.GetSmtpdMaxHops() {
 			s.log(fmt.Sprintf("Message is looping. Hops : %d", hops))
 			s.out("554 too many hops, this message is looping (#5.4.6)")
 			s.purgeConn()
@@ -484,8 +502,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		}
 
 		// Max databytes reached ?
-		if dataBytes > Config.IntDefault("smtp.in.maxDataBytes", 50000000) {
-			s.log(fmt.Sprintf("552 Message size (%d) exceeds config.smtp.in.maxDataBytes (%d).", dataBytes, Config.IntDefault("smtp.in.maxDataBytes", 10)))
+		if dataBytes > cfg.GetSmtpdMaxDataBytes() {
+			s.log(fmt.Sprintf("552 Message size (%d) exceeds config.smtp.in.maxDataBytes (%d).", dataBytes, cfg.GetSmtpdMaxDataBytes()))
 			s.out("552 sorry, that message size exceeds my databytes limit (#5.3.4)")
 			s.purgeConn()
 			s.reset()
@@ -496,17 +514,17 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	//TRACE.Println(string(rawMessage))
 
 	// Transformer le mail en objet
-	message, err := newMessage(rawMessage)
+	message, err := message.New(rawMessage)
 	if err != nil {
 		return
 	}
 	//TRACE.Println(err, message)
 
 	// On ajoute le uuid
-	message.addHeader("x-pm-uuid", s.uuid)
+	message.AddHeader("x-pm-uuid", s.uuid)
 
 	// x-env-from
-	message.addHeader("x-env-from", s.envelope.mailFrom)
+	message.AddHeader("x-env-from", s.envelope.MailFrom)
 
 	// recieved
 	// Add recieved header
@@ -550,9 +568,9 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	recieved += time.Now().Format(time.RFC822)
 
 	// tmail
-	recieved += fmt.Sprintf("; tmail %s", TMAIL_VERSION)
+	recieved += fmt.Sprintf("; tmail")
 
-	message.addHeader("recieved", recieved)
+	message.AddHeader("recieved", recieved)
 
 	// On recupere le mail en raw
 	/*rawMessage, err = message.getRaw()
@@ -560,7 +578,12 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		return
 	}*/
 	// Put in queue
-	id, err := queue.add(message, s.envelope)
+	//
+	//
+	//  HERE HERE HERE
+	//
+	//
+	id, err := queue.Add(message, s.envelope)
 	s.log("queued as ", id)
 	s.out(fmt.Sprintf("550 2.0.0 Ok: queued %s", id))
 	return
@@ -617,10 +640,14 @@ func (s *smtpServerSession) smtpStartTls() {
 		return
 	}
 	s.out("220 Ready to start TLS")
-	cert, err := tls.LoadX509KeyPair(path.Join(confPath, "ssl/mycert1.cer"), path.Join(confPath, "ssl/mycert1.key"))
+	cert, err := tls.LoadX509KeyPair(path.Join(util.GetBasePath(), "conf/ssl/mycert1.cer"), path.Join(util.GetBasePath(), "conf/ssl/mycert1.key"))
 	if err != nil {
-		TRACE.Fatalln("Unable to loadkeys: %s", err)
+		s.logError("Unable to load SSL keys:", err.Error())
+		s.out("451 Unable to load SSL keys (#4.5.1)")
+		s.exitAsap()
+		return
 	}
+
 	tlsConfig := tls.Config{
 		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
@@ -737,7 +764,7 @@ func (s *smtpServerSession) handle() {
 				if error.Error() == "EOF" {
 					s.log(s.conn.RemoteAddr().String(), "- Client send EOF")
 				} else if !strings.Contains(error.Error(), "use of closed network connection") { // timeout
-					ERROR.Println(s.conn.RemoteAddr().String(), "- Client s.connection error: ", error)
+					s.logError("Client s.connection error: ", error.Error())
 				}
 				s.conn.Close()
 				break
@@ -754,7 +781,7 @@ func (s *smtpServerSession) handle() {
 				var rmsg string
 				//TRACE.Println(msg)
 				strMsg := strings.TrimSpace(string(msg))
-				TRACE.Println(s.conn.RemoteAddr().String(), "<", strMsg)
+				s.logDebug("<", strMsg)
 				splittedMsg := strings.Split(strings.ToLower(strMsg), " ")
 				//TRACE.Println(splittedMsg)
 				// get command, first word
@@ -763,10 +790,9 @@ func (s *smtpServerSession) handle() {
 
 				default:
 					rmsg = "502 unimplemented (#5.5.1)"
-					TRACE.Println(s.conn.RemoteAddr().String(), "< ", rmsg)
+					s.logError("Unimplemented command from client:", rmsg)
 					s.out(rmsg)
 				case "helo":
-					TRACE.Println("UUID", s.uuid)
 					s.smtpHelo(splittedMsg)
 				case "ehlo":
 					//s.smtpEhlo(splittedMsg)
@@ -778,9 +804,6 @@ func (s *smtpServerSession) handle() {
 				case "data":
 					err := s.smtpData(splittedMsg)
 					if err != nil {
-						/*if err.Error() != "skip" {
-							ERROR.Println(s.conn.RemoteAddr().String(), err)
-						}*/
 						if err == ErrNonAsciiCharDetected {
 							s.logError(ErrNonAsciiCharDetected.Error())
 							s.out(fmt.Sprintf("554 %s - %s", ErrNonAsciiCharDetected.Error(), s.uuid))

@@ -1,4 +1,4 @@
-package main
+package message
 
 import (
 	"bytes"
@@ -10,12 +10,12 @@ import (
 )
 
 // message represents an email message
-type message struct {
+type Message struct {
 	mail.Message
 }
 
-func newMessage(rawmail []byte) (m *message, err error) {
-	m = &message{}
+func New(rawmail []byte) (m *Message, err error) {
+	m = &Message{}
 	reader := bytes.NewReader(rawmail)
 	// TODO: refarctor
 	t, err := mail.ReadMessage(reader)
@@ -28,9 +28,8 @@ func newMessage(rawmail []byte) (m *message, err error) {
 }
 
 // heaveHeader check the existence of header header
-func (m *message) haveHeader(key string) bool {
+func (m *Message) HaveHeader(key string) bool {
 	key = textproto.CanonicalMIMEHeaderKey(key)
-	TRACE.Println(m.Header.Get(key))
 	if len(m.Header.Get(key)) == 0 {
 		return false
 	}
@@ -38,7 +37,7 @@ func (m *message) haveHeader(key string) bool {
 }
 
 // addheader add an header
-func (m *message) addHeader(key, value string) {
+func (m *Message) AddHeader(key, value string) {
 	key = textproto.CanonicalMIMEHeaderKey(key)
 	m.Header[key] = append(m.Header[key], value)
 	return
@@ -47,29 +46,29 @@ func (m *message) addHeader(key, value string) {
 // Set sets the header entries associated with key to
 // the single element value.  It replaces any existing
 // values associated with key.
-func (m *message) setHeader(key, value string) {
+func (m *Message) SetHeader(key, value string) {
 	m.Header[textproto.CanonicalMIMEHeaderKey(key)] = []string{value}
 }
 
 // delHeader deletes the values associated with key.
-func (m *message) delHeader(key string) {
+func (m *Message) DelHeader(key string) {
 	delete(m.Header, textproto.CanonicalMIMEHeaderKey(key))
 }
 
 // getHeader get one header, or the first occurence if there is multipke headers with this key
-func (m *message) getHeader(key string) string {
+func (m *Message) GetHeader(key string) string {
 	return m.Header.Get(key)
 }
 
 // getHeaders returns all the headers corresponding to the key key
-func (m *message) getHeaders(key string) []string {
+func (m *Message) GetHeaders(key string) []string {
 	return m.Header[textproto.CanonicalMIMEHeaderKey(key)]
 }
 
 // getRaw returns raw message
 // some cleanup are made
 // wrap headers line to 999 char max
-func (m *message) getRaw() (rawMessage []byte, err error) {
+func (m *Message) GetRaw() (rawMessage []byte, err error) {
 	rawStr := ""
 	// Header
 	for key, hs := range m.Header {

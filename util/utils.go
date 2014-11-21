@@ -1,11 +1,19 @@
-package main
+package util
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 )
 
+// GetDistPath returns basePath (where tmail binaries is)
+func GetBasePath() string {
+	p, _ := filepath.Abs(filepath.Dir(os.Args[0]))
+	return p
+}
+
 // Remove trailing and ending brackets (<string> -> string)
-func removeBrackets(s string) string {
+func RemoveBrackets(s string) string {
 	if strings.HasPrefix(s, "<") {
 		s = s[1:]
 	}
@@ -17,7 +25,7 @@ func removeBrackets(s string) string {
 
 // TODO: replace by sort package
 // Check if a string is in a Slice of string
-func isStringInSlice(str string, s []string) (found bool) {
+func IsStringInSlice(str string, s []string) (found bool) {
 	found = false
 	for _, t := range s {
 		if t == str {
@@ -29,7 +37,7 @@ func isStringInSlice(str string, s []string) (found bool) {
 }
 
 // stripQuotes remove trailing and ending "
-func stripQuotes(s string) string {
+func StripQuotes(s string) string {
 	if s == "" {
 		return s
 	}

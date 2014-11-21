@@ -1,4 +1,4 @@
 #!/bin/sh
 
 # Mac
-go build -o dist/tmail && dist/tmail
+go build -o dist/tmail && source dist/tmail.cfg && dist/tmail;

@@ -2,35 +2,38 @@ package main
 
 import (
 	"bufio"
-	"fmt"
-	"github.com/Toorop/config"
-	"github.com/Toorop/tmail/deliverd"
-	"github.com/Toorop/tmail/scope"
-	"github.com/Toorop/tmail/store"
+	"github.com/Toorop/tmail/config"
+	//"github.com/Toorop/tmail/deliverd"
+
+	//"github.com/Toorop/tmail/scope"
+	"github.com/Toorop/tmail/smtpd"
+	//"github.com/Toorop/tmail/store"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
-	"gopkg.in/mgo.v2"
+	//"gopkg.in/mgo.v2"
+	"fmt"
 	"os/signal"
 	"syscall"
-
-	"io/ioutil"
+	//"io/ioutil"
 	"log"
 	"os"
-	"path"
-	"path/filepath"
+	//"path"
+	//"path/filepath"
 )
 
 const (
+	// TMAIL_VERSION version of tmail
 	TMAIL_VERSION = "0.0.1"
 )
 
-var (
+/*var (
 	me string // my hostname
 	//distPath string // Path where the dist is
 	confPath string // Path where are located config files
 
+	// Config store config
 	Config *MergedConfig
 
 	// defaults Loggers - TODO usefull ?
@@ -56,15 +59,11 @@ var (
 
 	// Global countDeliveries
 	countDeliveries int // number of deliveries in progress
-)
+)*/
 
 // INIT
-func init() {
+/*func init() {
 	var err error
-
-	/*uuid, _ := newUUID()
-	fmt.Println(uuid)
-	os.Exit(0)*/
 
 	log.SetFlags(ERROR.Flags()) // default
 
@@ -160,11 +159,11 @@ func init() {
 		ERROR.Fatalln(err)
 	}
 
-	// Load plugins smtpIn_helo_01_monplugin*/
+	// Load plugins smtpIn_helo_01_monplugin
 
 	// Init stores
 	// queueStore
-	switch Config.StringDefault("queue.strore.type", "disk") {
+	switch Config.StringDefault("queue.store.type", "disk") {
 	case "disk":
 		queuePath, found := Config.String("queue.store.diskpath")
 		if !found {
@@ -186,39 +185,105 @@ func init() {
 	INFO.Println("Init sequence done")
 
 }
+*/
+
+var (
+	cfg *config.Config
+	/*cfg struct {
+		ClusterModeEnabled bool `name:"cluster_mode_enabled" default:"false"`
+		DebugEnabled       bool `name:"debug_enabled" default:"false"`
+
+		DbDriver string `name:"db_driver"`
+		DbSource string `name:"db_source"`
+
+		LaunchSmtpd    bool   `name:"smtpd_launch" default:"false"`
+		SmtpdDsns      string `name:"smtpd_dsns" default:""`
+		LaunchDeliverd bool   `name:"deliverd_launch" default:"false"`
+	}*/
+)
+
+func init() {
+	var err error
+	cfg, err = config.Init("tmail")
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
 
 // MAIN
 func main() {
-	// If channel stayinAlive recieve value tmail will stop
-	//stayinAlive := make(chan bool) // Ah, ha, ha, ha,
+	// if there nothing to do do nothing
+	if !cfg.GetLaunchDeliverd() && !cfg.GetLaunchSmtpd() {
+		log.Fatalln("I have nothing to do, so i do nothing. Bye.")
+	}
+
+	// Check DB
+	DB, err := gorm.Open(cfg.GetDbDriver(), cfg.GetDbSource())
+	if err != nil {
+		log.Fatalln("Database initialisation failed", err)
+	}
+	DB.LogMode(cfg.GetDebugEnabled())
+	// ping
+	if DB.DB().Ping() != nil {
+		log.Fatalln("I could not access to database", cfg.GetDbDriver(), cfg.GetDbSource(), err)
+	}
+	if !dbIsOk(DB) {
+		var r []byte
+		for {
+			fmt.Print(fmt.Sprintf("Database 'driver: %s, source: %s' misses some tables.\r\nShould i create them ? (y/n):", cfg.GetDbDriver(), cfg.GetDbSource()))
+			r, _, _ = bufio.NewReader(os.Stdin).ReadLine()
+			if r[0] == 110 || r[0] == 121 {
+				break
+			}
+		}
+		if r[0] == 121 {
+			if err = initDB(DB); err != nil {
+				log.Fatalln(err)
+			}
+		} else {
+			log.Fatalln("See you soon...")
+		}
+	}
+
+	// Synch tables to structs
+	if err = autoMigrateDB(DB); err != nil {
+		log.Fatalln(err)
+	}
+
+	// Loop
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	// Chanel to comunicate between all elements
-	daChan := make(chan string)
+	//daChan := make(chan string)
 
-	// scope
-	scope, _ := scope.New(TRACE, INFO, ERROR, db)
 	// smtpd
-	for _, dsn := range smtpDsn {
-		m := fmt.Sprintf("Launching SMTP server on %s:%d", dsn.tcpAddr.IP, dsn.tcpAddr.Port)
-		if dsn.secured == "ssl" {
-			m = fmt.Sprintf("%s SSL", m)
-		} else if dsn.secured == "tls" {
-			m = fmt.Sprintf("%s TLS", m)
+
+	if cfg.GetLaunchSmtpd() {
+		smtpdDsns, err := smtpd.GetDsnsFromString(cfg.GetSmtpdDsns())
+		if err != nil {
+			log.Fatalln("unable to parse smtpd dsn -", err)
 		}
-		INFO.Printf("%s...", m)
-		server := NewSmtpServer(dsn, daChan)
-		server.ListenAndServe()
-		INFO.Println("Done.")
+		for _, dsn := range smtpdDsns {
+			s, err := smtpd.New(cfg, dsn)
+			if err != nil {
+				log.Fatalln("unable to launch smtpd - ", dsn, err)
+			}
+			go s.ListenAndServe()
+		}
+		log.Println("smtpd lanched.")
 	}
-	// Process queue
 
 	// deliverd
-
-	go deliverd.New(scope).Run()
+	/*d, err := deliverd.New()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(d.Config)
+	//go d.Run()*/
 
 	<-sigChan
+	log.Println("Exiting...")
 	/*for {
 		fromSmtpChan = <-smtpChan
 		TRACE.Println(fromSmtpChan)

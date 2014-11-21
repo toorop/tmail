@@ -2,72 +2,75 @@ package main
 
 import (
 	"errors"
+	"github.com/Toorop/tmail/queue"
+	"github.com/Toorop/tmail/smtpd"
+	"github.com/jinzhu/gorm"
 )
 
 // dbIsOk checks if database is ok
-func dbIsOk() bool {
+func dbIsOk(DB gorm.DB) bool {
 	// Check if all tables exists
 	// smtp_users
-	if !db.HasTable(&smtpUser{}) {
+	if !DB.HasTable(&smtpd.SmtpUser{}) {
 		return false
 	}
-	if !db.HasTable(&rcpthost{}) {
+	if !DB.HasTable(&smtpd.RcptHost{}) {
 		return false
 	}
-	if !db.HasTable(&relayOkIp{}) {
+	if !DB.HasTable(&smtpd.RelayIpOk{}) {
 		return false
 	}
-	if !db.HasTable(&queuedMessage{}) {
+	if !DB.HasTable(&queue.QMessage{}) {
 		return false
 	}
 	return true
 }
 
 // initDB create tables if needed and initialize them
-func initDB() error {
+func initDB(DB gorm.DB) error {
 	var err error
 	//smtp_users table
-	if !db.HasTable(&smtpUser{}) {
-		if err = db.CreateTable(&smtpUser{}).Error; err != nil {
+	if !DB.HasTable(&smtpd.SmtpUser{}) {
+		if err = DB.CreateTable(&smtpd.SmtpUser{}).Error; err != nil {
 			return errors.New("Unable to create smtp_users - " + err.Error())
 		}
 		// Index
-		if err = db.Model(&smtpUser{}).AddIndex("idx_smtpusers_login", "login").Error; err != nil {
+		if err = DB.Model(&smtpd.SmtpUser{}).AddIndex("idx_smtpusers_login", "login").Error; err != nil {
 			return errors.New("Unable to add index idx_smtpusers_login on table smtp_users - " + err.Error())
 		}
 	}
 	//rcpthosts table
-	if !db.HasTable(&rcpthost{}) {
-		if err = db.CreateTable(&rcpthost{}).Error; err != nil {
-			return errors.New("Unable to create rcpthost - " + err.Error())
+	if !DB.HasTable(&smtpd.RcptHost{}) {
+		if err = DB.CreateTable(&smtpd.RcptHost{}).Error; err != nil {
+			return errors.New("Unable to create RcptHost - " + err.Error())
 		}
 		// Index
-		if err = db.Model(&rcpthost{}).AddIndex("idx_rcpthots_domain", "domain").Error; err != nil {
-			return errors.New("Unable to add index idx_rcpthots_domain on table rcpthost - " + err.Error())
+		if err = DB.Model(&smtpd.RcptHost{}).AddIndex("idx_rcpthots_domain", "domain").Error; err != nil {
+			return errors.New("Unable to add index idx_rcpthots_domain on table RcptHost - " + err.Error())
 		}
 	}
 	//relay_ip_oks table
-	if !db.HasTable(&relayOkIp{}) {
-		if err = db.CreateTable(&relayOkIp{}).Error; err != nil {
+	if !DB.HasTable(&smtpd.RelayIpOk{}) {
+		if err = DB.CreateTable(&smtpd.RelayIpOk{}).Error; err != nil {
 			return errors.New("Unable to create relay_ok_ips - " + err.Error())
 		}
 		// Index
-		if err = db.Model(&relayOkIp{}).AddIndex("idx_relay_ok_ips_addr", "addr").Error; err != nil {
+		if err = DB.Model(&smtpd.RelayIpOk{}).AddIndex("idx_relay_ok_ips_addr", "addr").Error; err != nil {
 			return errors.New("Unable to add index idx_rcpthots_domain on table relay_ok_ips - " + err.Error())
 		}
 	}
 
 	//queued_messages table
-	if !db.HasTable(&queuedMessage{}) {
-		if err = db.CreateTable(&queuedMessage{}).Error; err != nil {
+	if !DB.HasTable(&queue.QMessage{}) {
+		if err = DB.CreateTable(&queue.QMessage{}).Error; err != nil {
 			return errors.New("Unable to create table queued_messages - " + err.Error())
 		}
 		// Index
-		if err = db.Model(&queuedMessage{}).AddIndex("idx_queued_messages_deliveryinprogress_nextdeliveryat", "delivery_in_progress", "next_delivery_at").Error; err != nil {
+		if err = DB.Model(&queue.QMessage{}).AddIndex("idx_queued_messages_deliveryinprogress_nextdeliveryat", "delivery_in_progress", "next_delivery_at").Error; err != nil {
 			return errors.New("Unable to add index idx_rcpthots_domain on table queued_messages - " + err.Error())
 		}
 
-		if err = db.Model(&queuedMessage{}).AddUniqueIndex("uidx_key", "key").Error; err != nil {
+		if err = DB.Model(&queue.QMessage{}).AddUniqueIndex("uidx_key", "key").Error; err != nil {
 			return errors.New("Unable to add unique index uidx_key on table queued_messages - " + err.Error())
 		}
 	}
@@ -75,9 +78,9 @@ func initDB() error {
 }
 
 // autoMigrateDB will keep tables reflecting structs
-func autoMigrateDB() error {
+func autoMigrateDB(DB gorm.DB) error {
 	// if tables exists check if they reflects struts
-	if err := db.AutoMigrate(&smtpUser{}, &rcpthost{}, &relayOkIp{}).Error; err != nil {
+	if err := DB.AutoMigrate(&smtpd.SmtpUser{}, &smtpd.RcptHost{}, &smtpd.RelayIpOk{}, &queue.QMessage{}).Error; err != nil {
 		return errors.New("Unable autoMigrateDB - " + err.Error())
 	}
 	return nil

@@ -1,11 +1,6 @@
-package main
+package smtpd
 
-import (
-	"fmt"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
-	"net"
-)
+import ()
 
 type routemap struct {
 	Host  string
@@ -18,6 +13,7 @@ type smtproute struct {
 	remoteAddrs string
 }
 
+/*
 // getRouteToHost return a smtproute to relay mail to host host
 // routes are stored in routemap collection
 func getRouteToHost(host string) (route smtproute, err error) {
@@ -31,30 +27,30 @@ func getRouteToHost(host string) (route smtproute, err error) {
 	if err != nil {
 		if err != mgo.ErrNotFound {
 			return
-		} else {
-			// on va utiliser les MX
-			var mxs []*net.MX
-			route.Name = "mx"
-			route.LocalAddrs = "default"
-			mxs, err = net.LookupMX(host)
-			// TODO handle err
-			if err != nil {
-				TRACE.Fatalln(err)
-			}
-
-			// TODO if no MX test A record
-
-			for _, mx := range mxs {
-				route.remoteAddrs += fmt.Sprintf("%s&", mx.Host[:len(mx.Host)-1])
-			}
-			// remove trailing &
-			route.remoteAddrs = route.remoteAddrs[:len(route.remoteAddrs)-1]
-
-			TRACE.Println(route, err)
-
 		}
+		// on va utiliser les MX
+		var mxs []*net.MX
+		route.Name = "mx"
+		route.LocalAddrs = "default"
+		mxs, err = net.LookupMX(host)
+		// TODO handle err
+		if err != nil {
+			TRACE.Fatalln(err)
+		}
+
+		// TODO if no MX test A record
+
+		for _, mx := range mxs {
+			route.remoteAddrs += fmt.Sprintf("%s&", mx.Host[:len(mx.Host)-1])
+		}
+		// remove trailing &
+		route.remoteAddrs = route.remoteAddrs[:len(route.remoteAddrs)-1]
+
+		TRACE.Println(route, err)
+
 	}
 	TRACE.Println(err)
 
 	return
 }
+*/
