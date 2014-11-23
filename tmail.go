@@ -6,6 +6,7 @@ import (
 	//"github.com/Toorop/tmail/deliverd"
 
 	//"github.com/Toorop/tmail/scope"
+	"github.com/Toorop/tmail/logger"
 	"github.com/Toorop/tmail/smtpd"
 	//"github.com/Toorop/tmail/store"
 	_ "github.com/go-sql-driver/mysql"
@@ -212,6 +213,7 @@ func init() {
 
 // MAIN
 func main() {
+	l := logger.New(cfg.GetDebugEnabled())
 	// if there nothing to do do nothing
 	if !cfg.GetLaunchDeliverd() && !cfg.GetLaunchSmtpd() {
 		log.Fatalln("I have nothing to do, so i do nothing. Bye.")
@@ -271,6 +273,7 @@ func main() {
 			}
 			go s.ListenAndServe()
 		}
+		l.Debug("ceci est un debug", err)
 		log.Println("smtpd lanched.")
 	}
 

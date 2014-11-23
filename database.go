@@ -35,7 +35,7 @@ func initDB(DB gorm.DB) error {
 			return errors.New("Unable to create smtp_users - " + err.Error())
 		}
 		// Index
-		if err = DB.Model(&smtpd.SmtpUser{}).AddIndex("idx_smtpusers_login", "login").Error; err != nil {
+		if err = DB.Model(&smtpd.SmtpUser{}).AddUniqueIndex("idx_smtpusers_login", "login").Error; err != nil {
 			return errors.New("Unable to add index idx_smtpusers_login on table smtp_users - " + err.Error())
 		}
 	}

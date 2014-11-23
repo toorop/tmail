@@ -24,7 +24,7 @@ type Config struct {
 		DbSource string `name:"db_source"`
 
 		StoreDriver  string `name:"store_driver"`
-		StroreSource string `name:"store°source"`
+		StroreSource string `name:"store_source"`
 
 		LaunchSmtpd             bool   `name:"smtpd_launch" default:"false"`
 		SmtpdDsns               string `name:"smtpd_dsns" default:""`
