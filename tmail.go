@@ -190,17 +190,6 @@ const (
 
 var (
 	cfg *config.Config
-	/*cfg struct {
-		ClusterModeEnabled bool `name:"cluster_mode_enabled" default:"false"`
-		DebugEnabled       bool `name:"debug_enabled" default:"false"`
-
-		DbDriver string `name:"db_driver"`
-		DbSource string `name:"db_source"`
-
-		LaunchSmtpd    bool   `name:"smtpd_launch" default:"false"`
-		SmtpdDsns      string `name:"smtpd_dsns" default:""`
-		LaunchDeliverd bool   `name:"deliverd_launch" default:"false"`
-	}*/
 )
 
 func init() {
