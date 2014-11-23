@@ -8,8 +8,8 @@ import (
 	"net"
 	"net/mail"
 	//"os/exec"
+	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/message"
-	"github.com/Toorop/tmail/queue"
 	"github.com/Toorop/tmail/util"
 	"github.com/jinzhu/gorm"
 	"log"
@@ -574,7 +574,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 
 	// On recupere le mail en raw
 	/*rawMessage, err = message.getRaw()
-	if err != nil {
+	if err != nil
 		return
 	}*/
 	// Put in queue
@@ -583,7 +583,14 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	//  HERE HERE HERE
 	//
 	//
-	id, err := queue.Add(message, s.envelope)
+	q, err := mailqueue.New(cfg)
+	if err != nil {
+		log.Fatalln("impossible de créer la queue", err)
+	}
+	id, err := q.Add(message, s.envelope)
+	if err != nil {
+		log.Fatalln("impossible d'ajouter le message en queu")
+	}
 	s.log("queued as ", id)
 	s.out(fmt.Sprintf("550 2.0.0 Ok: queued %s", id))
 	return
