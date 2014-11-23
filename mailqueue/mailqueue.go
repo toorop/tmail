@@ -1,14 +1,23 @@
-package queue
+package mailqueue
 
 import (
 	"bytes"
 	"crypto/sha1"
 	//"encoding/json"
 	"fmt"
+	"github.com/Toorop/tmail/config"
 	"github.com/Toorop/tmail/message"
+	"github.com/Toorop/tmail/store"
+	"github.com/jinzhu/gorm"
 	//"github.com/bitly/go-nsq"
 	"io"
 	"time"
+)
+
+var (
+	cfg    *config.Config
+	DB     gorm.DB
+	qStore store.Storer
 )
 
 type QMessage struct {
@@ -22,8 +31,27 @@ type QMessage struct {
 	DeliveryFailedCount uint32
 }
 
+type MailQueue struct {
+}
+
+func New(c *config.Config) (*MailQueue, error) {
+	var err error
+	cfg = c
+	// init DB
+	DB, err = gorm.Open(cfg.GetDbDriver(), cfg.GetDbSource())
+	if err != nil {
+		return nil, err
+	}
+	// init store
+	qStore, err = store.New(cfg.GetStoreDriver(), cfg.GetStoreSource())
+	if err != nil {
+		return nil, err
+	}
+	return &MailQueue{}, nil
+}
+
 // Add add a new mail in queue
-func Add(message *message.Message, envelope message.Envelope) (key string, err error) {
+func (m *MailQueue) Add(message *message.Message, envelope message.Envelope) (key string, err error) {
 	rawMess, err := message.GetRaw()
 	if err != nil {
 		return

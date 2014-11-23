@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"github.com/Toorop/tmail/queue"
+	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/smtpd"
 	"github.com/jinzhu/gorm"
 )
@@ -20,7 +20,7 @@ func dbIsOk(DB gorm.DB) bool {
 	if !DB.HasTable(&smtpd.RelayIpOk{}) {
 		return false
 	}
-	if !DB.HasTable(&queue.QMessage{}) {
+	if !DB.HasTable(&mailqueue.QMessage{}) {
 		return false
 	}
 	return true
@@ -61,16 +61,16 @@ func initDB(DB gorm.DB) error {
 	}
 
 	//queued_messages table
-	if !DB.HasTable(&queue.QMessage{}) {
-		if err = DB.CreateTable(&queue.QMessage{}).Error; err != nil {
+	if !DB.HasTable(&mailqueue.QMessage{}) {
+		if err = DB.CreateTable(&mailqueue.QMessage{}).Error; err != nil {
 			return errors.New("Unable to create table queued_messages - " + err.Error())
 		}
 		// Index
-		if err = DB.Model(&queue.QMessage{}).AddIndex("idx_queued_messages_deliveryinprogress_nextdeliveryat", "delivery_in_progress", "next_delivery_at").Error; err != nil {
+		if err = DB.Model(&mailqueue.QMessage{}).AddIndex("idx_queued_messages_deliveryinprogress_nextdeliveryat", "delivery_in_progress", "next_delivery_at").Error; err != nil {
 			return errors.New("Unable to add index idx_rcpthots_domain on table queued_messages - " + err.Error())
 		}
 
-		if err = DB.Model(&queue.QMessage{}).AddUniqueIndex("uidx_key", "key").Error; err != nil {
+		if err = DB.Model(&mailqueue.QMessage{}).AddUniqueIndex("uidx_key", "key").Error; err != nil {
 			return errors.New("Unable to add unique index uidx_key on table queued_messages - " + err.Error())
 		}
 	}
@@ -80,7 +80,7 @@ func initDB(DB gorm.DB) error {
 // autoMigrateDB will keep tables reflecting structs
 func autoMigrateDB(DB gorm.DB) error {
 	// if tables exists check if they reflects struts
-	if err := DB.AutoMigrate(&smtpd.SmtpUser{}, &smtpd.RcptHost{}, &smtpd.RelayIpOk{}, &queue.QMessage{}).Error; err != nil {
+	if err := DB.AutoMigrate(&smtpd.SmtpUser{}, &smtpd.RcptHost{}, &smtpd.RelayIpOk{}, &mailqueue.QMessage{}).Error; err != nil {
 		return errors.New("Unable autoMigrateDB - " + err.Error())
 	}
 	return nil
