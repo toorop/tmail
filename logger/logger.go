@@ -4,31 +4,30 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 )
 
 // Simple logger package to log to stdout
-var (
-	debug, info, err *log.Logger
-	debugEnabled     bool
-)
 
-type logger struct {
+type Logger struct {
 	debugEnabled bool
 	debug        *log.Logger
 	info         *log.Logger
 	err          *log.Logger
+	trace        *log.Logger
 }
 
-func New(debugEnabled bool) *logger {
-	return &logger{
+func New(debugEnabled bool) *Logger {
+	return &Logger{
 		debugEnabled: debugEnabled,
-		debug:        log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile),
+		debug:        log.New(os.Stdout, "", log.Ldate|log.Ltime),
 		info:         log.New(os.Stdout, "", log.Ldate|log.Ltime),
-		err:          log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile),
+		err:          log.New(os.Stdout, "", log.Ldate|log.Ltime),
+		trace:        log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile),
 	}
 }
 
-func (l *logger) Debug(v ...interface{}) {
+func (l *Logger) Debug(v ...interface{}) {
 	if !l.debugEnabled {
 		return
 	}
@@ -39,18 +38,28 @@ func (l *logger) Debug(v ...interface{}) {
 	l.debug.Println(msg)
 }
 
-func (l *logger) Info(v ...interface{}) {
-	msg := "Info -"
+func (l *Logger) Info(v ...interface{}) {
+	msg := "INFO -"
 	for i := range v {
 		msg = fmt.Sprintf("%s %v", msg, v[i])
 	}
 	l.info.Println(msg)
 }
 
-func (l *logger) Error(v ...interface{}) {
+func (l *Logger) Error(v ...interface{}) {
 	msg := "ERROR -"
 	for i := range v {
 		msg = fmt.Sprintf("%s %v", msg, v[i])
 	}
 	l.err.Println(msg)
+}
+
+func (l *Logger) Trace(v ...interface{}) {
+	stack := debug.Stack()
+	msg := "TRACE -"
+	for i := range v {
+		msg = fmt.Sprintf("%s %v", msg, v[i])
+	}
+	msg += "\r\nStack: \r\n" + fmt.Sprintf("%s", stack)
+	l.trace.Println(msg)
 }

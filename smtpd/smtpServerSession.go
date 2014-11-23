@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/mail"
 	//"os/exec"
+	"github.com/Toorop/tmail/logger"
 	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/message"
 	"github.com/Toorop/tmail/util"
@@ -29,6 +30,7 @@ const (
 type smtpServerSession struct {
 	uuid     string
 	conn     net.Conn
+	logger   *logger.Logger
 	timer    *time.Timer // for timeout
 	timeout  time.Duration
 	secured  bool
@@ -48,6 +50,7 @@ func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, 
 		return
 	}
 	sss.conn = conn
+	sss.logger = logger.New(cfg.GetDebugEnabled())
 	sss.secured = secured
 	// timeout
 	sss.exitasap = make(chan int, 1)
@@ -98,7 +101,8 @@ func (s *smtpServerSession) log(msg ...string) {
 	} else {
 		toLog = msg[0]
 	}
-	log.Println(s.conn.RemoteAddr().String(), "- INFO:", toLog, "-", s.uuid)
+	//log.Println(s.conn.RemoteAddr().String(), "- INFO:", toLog, "-", s.uuid)
+	s.logger.Info(s.conn.RemoteAddr().String(), "-", toLog, "-", s.uuid)
 }
 
 // logError is a log helper for error logs
@@ -111,6 +115,7 @@ func (s *smtpServerSession) logError(msg ...string) {
 	}
 	stack := debug.Stack()
 	log.Println(s.conn.RemoteAddr().String(), "- ERROR:", toLog, "-", s.uuid, "\n", fmt.Sprintf("%s", stack))
+
 }
 
 // logError is a log helper for error logs
@@ -124,7 +129,8 @@ func (s *smtpServerSession) logDebug(msg ...string) {
 	} else {
 		toLog = msg[0]
 	}
-	log.Println(s.conn.RemoteAddr().String(), "- DEBUG:", toLog, "-", s.uuid)
+	//log.Println(s.conn.RemoteAddr().String(), "- DEBUG:", toLog, "-", s.uuid)
+	s.logger.Debug(s.conn.RemoteAddr().String(), "-", toLog, "-", s.uuid)
 }
 
 // LF withour CR

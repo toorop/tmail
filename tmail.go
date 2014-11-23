@@ -262,8 +262,8 @@ func main() {
 			}
 			go s.ListenAndServe()
 		}
-		l.Debug("ceci est un debug", err)
-		log.Println("smtpd lanched.")
+		l.Info("smtpd lanched.")
+		l.Trace("Voila de la trace")
 	}
 
 	// deliverd
@@ -275,7 +275,7 @@ func main() {
 	//go d.Run()*/
 
 	<-sigChan
-	log.Println("Exiting...")
+	l.Info("Exiting...")
 	/*for {
 		fromSmtpChan = <-smtpChan
 		TRACE.Println(fromSmtpChan)
