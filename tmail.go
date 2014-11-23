@@ -263,7 +263,6 @@ func main() {
 			go s.ListenAndServe()
 		}
 		l.Info("smtpd lanched.")
-		l.Trace("Voila de la trace")
 	}
 
 	// deliverd

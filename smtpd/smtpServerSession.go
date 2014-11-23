@@ -95,26 +95,13 @@ func (s *smtpServerSession) out(msg string) {
 
 // Log helper for INFO log
 func (s *smtpServerSession) log(msg ...string) {
-	var toLog string
-	if len(msg) > 1 {
-		toLog = strings.Join(msg, " ")
-	} else {
-		toLog = msg[0]
-	}
-	//log.Println(s.conn.RemoteAddr().String(), "- INFO:", toLog, "-", s.uuid)
-	s.logger.Info(s.conn.RemoteAddr().String(), "-", toLog, "-", s.uuid)
+	s.logger.Info(s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "), "-", s.uuid)
 }
 
-// logError is a log helper for error logs
+// logError is a log helper for ERROR logs
 func (s *smtpServerSession) logError(msg ...string) {
-	var toLog string
-	if len(msg) > 1 {
-		toLog = strings.Join(msg, " ")
-	} else {
-		toLog = msg[0]
-	}
 	stack := debug.Stack()
-	log.Println(s.conn.RemoteAddr().String(), "- ERROR:", toLog, "-", s.uuid, "\n", fmt.Sprintf("%s", stack))
+	log.Println(s.conn.RemoteAddr().String(), "- ERROR:", strings.Join(msg, " "), "-", s.uuid, "\n", fmt.Sprintf("%s", stack))
 
 }
 
@@ -123,14 +110,7 @@ func (s *smtpServerSession) logDebug(msg ...string) {
 	if !cfg.GetDebugEnabled() {
 		return
 	}
-	var toLog string
-	if len(msg) > 1 {
-		toLog = strings.Join(msg, " ")
-	} else {
-		toLog = msg[0]
-	}
-	//log.Println(s.conn.RemoteAddr().String(), "- DEBUG:", toLog, "-", s.uuid)
-	s.logger.Debug(s.conn.RemoteAddr().String(), "-", toLog, "-", s.uuid)
+	s.logger.Debug(s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "), "-", s.uuid)
 }
 
 // LF withour CR
@@ -792,8 +772,8 @@ func (s *smtpServerSession) handle() {
 			if buffer[0] == 10 {
 				s.timer.Stop()
 				var rmsg string
-				//TRACE.Println(msg)
 				strMsg := strings.TrimSpace(string(msg))
+				s.logDebug("un")
 				s.logDebug("<", strMsg)
 				splittedMsg := strings.Split(strings.ToLower(strMsg), " ")
 				//TRACE.Println(splittedMsg)
