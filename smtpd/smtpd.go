@@ -3,10 +3,11 @@ package smtpd
 import (
 	"crypto/rand"
 	"crypto/tls"
-	"github.com/Toorop/tmail/config"
+	//"github.com/Toorop/tmail/config"
+	s "github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/util"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/jinzhu/gorm"
+	//"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
@@ -15,8 +16,7 @@ import (
 )
 
 var (
-	cfg *config.Config
-	DB  gorm.DB
+	scope *s.Scope
 )
 
 // SmtpServer SMTP Server
@@ -25,11 +25,9 @@ type Smtpd struct {
 }
 
 // New returns a new SmtpServer
-func New(c *config.Config, d dsn) (*Smtpd, error) {
-	var err error
-	cfg = c
-	DB, err = gorm.Open(cfg.GetDbDriver(), cfg.GetDbSource())
-	return &Smtpd{d}, err
+func New(s *s.Scope, d dsn) *Smtpd {
+	scope = s
+	return &Smtpd{d}
 }
 
 // ListenAndServe launch server

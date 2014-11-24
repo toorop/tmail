@@ -50,11 +50,11 @@ func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, 
 		return
 	}
 	sss.conn = conn
-	sss.logger = logger.New(cfg.GetDebugEnabled())
+	sss.logger = logger.New(scope.Cfg.GetDebugEnabled())
 	sss.secured = secured
 	// timeout
 	sss.exitasap = make(chan int, 1)
-	sss.timeout = time.Duration(cfg.GetSmtpdTransactionTimeout()) * time.Second
+	sss.timeout = time.Duration(scope.Cfg.GetSmtpdTransactionTimeout()) * time.Second
 	sss.timer = time.AfterFunc(sss.timeout, sss.raiseTimeout)
 	sss.reset()
 	return
@@ -107,7 +107,7 @@ func (s *smtpServerSession) logError(msg ...string) {
 
 // logError is a log helper for error logs
 func (s *smtpServerSession) logDebug(msg ...string) {
-	if !cfg.GetDebugEnabled() {
+	if !scope.Cfg.GetDebugEnabled() {
 		return
 	}
 	s.logger.Debug(s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "), "-", s.uuid)
@@ -139,7 +139,7 @@ func (s *smtpServerSession) smtpGreeting() {
 	// Todo AS: verifier si il y a des data dans le buffer
 	// Todo desactiver server signature en option
 	// dans le cas ou l'on refuse la transaction on doit répondre par un 554 et attendre le quit
-	s.out(fmt.Sprintf("220 %s  tmail ESMTP %s", cfg.GetMe(), s.uuid))
+	s.out(fmt.Sprintf("220 %s  tmail ESMTP %s", scope.Cfg.GetMe(), s.uuid))
 	//fmt.Println(s.conn.clientProtocol)
 }
 
@@ -147,18 +147,18 @@ func (s *smtpServerSession) smtpGreeting() {
 func (s *smtpServerSession) smtpHelo(msg []string) {
 	// Todo Verifier si il y a des data dans le buffer
 	s.helo = strings.Join(msg, " ")
-	s.out(fmt.Sprintf("250 %s", cfg.GetMe()))
+	s.out(fmt.Sprintf("250 %s", scope.Cfg.GetMe()))
 }
 
 // EHLO
 func (s *smtpServerSession) smtpEhlo(msg []string) {
 	// verifier le buffer
 	s.helo = strings.Join(msg, " ")
-	s.out(fmt.Sprintf("250-%s", cfg.GetMe()))
+	s.out(fmt.Sprintf("250-%s", scope.Cfg.GetMe()))
 
 	// Extensions
 	// Size
-	s.out(fmt.Sprintf("250-SIZE %d", cfg.GetSmtpdMaxDataBytes()))
+	s.out(fmt.Sprintf("250-SIZE %d", scope.Cfg.GetSmtpdMaxDataBytes()))
 
 	// Auth
 	s.out("250-AUTH PLAIN")
@@ -217,7 +217,7 @@ func (s *smtpServerSession) smtpMailFrom(msg []string) {
 
 		// If only local part add me
 		if strings.Count(s.envelope.MailFrom, "@") == 0 {
-			s.envelope.MailFrom = fmt.Sprintf("%s@%s", s.envelope.MailFrom, cfg.GetMe())
+			s.envelope.MailFrom = fmt.Sprintf("%s@%s", s.envelope.MailFrom, scope.Cfg.GetMe())
 		}
 	}
 	s.seenMail = true
@@ -303,7 +303,6 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 			s.log("ERROR relay access: " + err.Error())
 			return
 		}
-
 	}
 
 	// Relay denied
@@ -365,7 +364,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		if !doLoop {
 			break
 		}
-		s.timer.Reset(time.Duration(cfg.GetSmtpdTransactionTimeout()) * time.Second)
+		s.timer.Reset(time.Duration(scope.Cfg.GetSmtpdTransactionTimeout()) * time.Second)
 		_, err := s.conn.Read(ch)
 		s.timer.Stop()
 		if err != nil {
@@ -479,7 +478,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		//TRACE.Println(dataBytes)
 
 		// Max hops reached ?
-		if hops > cfg.GetSmtpdMaxHops() {
+		if hops > scope.Cfg.GetSmtpdMaxHops() {
 			s.log(fmt.Sprintf("Message is looping. Hops : %d", hops))
 			s.out("554 too many hops, this message is looping (#5.4.6)")
 			s.purgeConn()
@@ -488,8 +487,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		}
 
 		// Max databytes reached ?
-		if dataBytes > cfg.GetSmtpdMaxDataBytes() {
-			s.log(fmt.Sprintf("552 Message size (%d) exceeds config.smtp.in.maxDataBytes (%d).", dataBytes, cfg.GetSmtpdMaxDataBytes()))
+		if dataBytes > scope.Cfg.GetSmtpdMaxDataBytes() {
+			s.log(fmt.Sprintf("552 Message size (%d) exceeds config.smtp.in.maxDataBytes (%d).", dataBytes, scope.Cfg.GetSmtpdMaxDataBytes()))
 			s.out("552 sorry, that message size exceeds my databytes limit (#5.3.4)")
 			s.purgeConn()
 			s.reset()
@@ -565,11 +564,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	}*/
 	// Put in queue
 	//
-	//
-	//  HERE HERE HERE
-	//
-	//
-	q, err := mailqueue.New(cfg)
+	q, err := mailqueue.New(scope.Cfg)
 	if err != nil {
 		log.Fatalln("impossible de créer la queue", err)
 	}

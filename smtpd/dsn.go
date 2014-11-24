@@ -13,6 +13,15 @@ type dsn struct {
 	ssl     bool
 }
 
+// String return string representation of a dsn
+func (d *dsn) String() string {
+	s := ""
+	if d.ssl {
+		s = " SSL"
+	}
+	return d.tcpAddr.String() + s
+}
+
 //getDsnsFromString Get dsn string from config and returns slice of dsn struct
 func GetDsnsFromString(dsnsStr string) (dsns []dsn, err error) {
 	if len(dsnsStr) == 0 {

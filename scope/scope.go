@@ -1,17 +1,17 @@
 package scope
 
 import (
+	"github.com/Toorop/tmail/config"
 	"github.com/jinzhu/gorm"
-	"log"
 )
 
 type Scope struct {
-	TRACE *log.Logger
-	INFO  *log.Logger
-	ERROR *log.Logger
-	db    gorm.DB
+	Cfg *config.Config
+	DB  gorm.DB
 }
 
-func New(t, i, r *log.Logger, db gorm.DB) (*Scope, error) {
-	return &Scope{t, i, r, db}, nil
+// New return pointer to a scope struct
+// Helper
+func New(cfg *config.Config, db gorm.DB) *Scope {
+	return &Scope{cfg, db}
 }

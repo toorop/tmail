@@ -5,29 +5,118 @@ import (
 	"github.com/Toorop/tmail/config"
 	//"github.com/Toorop/tmail/deliverd"
 
-	//"github.com/Toorop/tmail/scope"
+	"fmt"
 	"github.com/Toorop/tmail/logger"
+	s "github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/smtpd"
-	//"github.com/Toorop/tmail/store"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
-	//"gopkg.in/mgo.v2"
-	"fmt"
-	"os/signal"
-	"syscall"
-	//"io/ioutil"
 	"log"
 	"os"
-	//"path"
-	//"path/filepath"
+	"os/signal"
+	"syscall"
 )
 
 const (
 	// TMAIL_VERSION version of tmail
 	TMAIL_VERSION = "0.0.1"
 )
+
+var (
+	cfg   *config.Config
+	scope *s.Scope
+)
+
+func init() {
+	var err error
+	// Init config
+	cfg, err = config.Init("tmail")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// Init DB
+	DB, err := gorm.Open(cfg.GetDbDriver(), cfg.GetDbSource())
+	if err != nil {
+		log.Fatalln("Database initialisation failed", err)
+	}
+	DB.LogMode(cfg.GetDebugEnabled())
+
+	// ping
+	if DB.DB().Ping() != nil {
+		log.Fatalln("I could not access to database", cfg.GetDbDriver(), cfg.GetDbSource(), err)
+	}
+	if !dbIsOk(DB) {
+		var r []byte
+		for {
+			fmt.Print(fmt.Sprintf("Database 'driver: %s, source: %s' misses some tables.\r\nShould i create them ? (y/n):", cfg.GetDbDriver(), cfg.GetDbSource()))
+			r, _, _ = bufio.NewReader(os.Stdin).ReadLine()
+			if r[0] == 110 || r[0] == 121 {
+				break
+			}
+		}
+		if r[0] == 121 {
+			if err = initDB(DB); err != nil {
+				log.Fatalln(err)
+			}
+		} else {
+			log.Fatalln("See you soon...")
+		}
+	}
+
+	// Init scope
+	scope = s.New(cfg, DB)
+}
+
+// MAIN
+func main() {
+	l := logger.New(cfg.GetDebugEnabled())
+	// if there nothing to do do nothing
+	if !cfg.GetLaunchDeliverd() && !cfg.GetLaunchSmtpd() {
+		log.Fatalln("I have nothing to do, so i do nothing. Bye.")
+	}
+
+	// Synch tables to structs
+	if err := autoMigrateDB(scope.DB); err != nil {
+		log.Fatalln(err)
+	}
+
+	// Loop
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Chanel to comunicate between all elements
+	//daChan := make(chan string)
+
+	// smtpd
+	if cfg.GetLaunchSmtpd() {
+		smtpdDsns, err := smtpd.GetDsnsFromString(cfg.GetSmtpdDsns())
+		if err != nil {
+			log.Fatalln("unable to parse smtpd dsn -", err)
+		}
+		for _, dsn := range smtpdDsns {
+			go smtpd.New(scope, dsn).ListenAndServe()
+			l.Info("smtpd " + dsn.String() + " launched.")
+		}
+	}
+
+	// deliverd
+	/*d, err := deliverd.New()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(d.Config)
+	//go d.Run()*/
+
+	<-sigChan
+	l.Info("Exiting...")
+	/*for {
+		fromSmtpChan = <-smtpChan
+		TRACE.Println(fromSmtpChan)
+	}*/
+}
 
 /*var (
 	me string // my hostname
@@ -187,96 +276,3 @@ const (
 
 }
 */
-
-var (
-	cfg *config.Config
-)
-
-func init() {
-	var err error
-	cfg, err = config.Init("tmail")
-	if err != nil {
-		log.Fatalln(err)
-	}
-}
-
-// MAIN
-func main() {
-	l := logger.New(cfg.GetDebugEnabled())
-	// if there nothing to do do nothing
-	if !cfg.GetLaunchDeliverd() && !cfg.GetLaunchSmtpd() {
-		log.Fatalln("I have nothing to do, so i do nothing. Bye.")
-	}
-
-	// Check DB
-	DB, err := gorm.Open(cfg.GetDbDriver(), cfg.GetDbSource())
-	if err != nil {
-		log.Fatalln("Database initialisation failed", err)
-	}
-	DB.LogMode(cfg.GetDebugEnabled())
-	// ping
-	if DB.DB().Ping() != nil {
-		log.Fatalln("I could not access to database", cfg.GetDbDriver(), cfg.GetDbSource(), err)
-	}
-	if !dbIsOk(DB) {
-		var r []byte
-		for {
-			fmt.Print(fmt.Sprintf("Database 'driver: %s, source: %s' misses some tables.\r\nShould i create them ? (y/n):", cfg.GetDbDriver(), cfg.GetDbSource()))
-			r, _, _ = bufio.NewReader(os.Stdin).ReadLine()
-			if r[0] == 110 || r[0] == 121 {
-				break
-			}
-		}
-		if r[0] == 121 {
-			if err = initDB(DB); err != nil {
-				log.Fatalln(err)
-			}
-		} else {
-			log.Fatalln("See you soon...")
-		}
-	}
-
-	// Synch tables to structs
-	if err = autoMigrateDB(DB); err != nil {
-		log.Fatalln(err)
-	}
-
-	// Loop
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	// Chanel to comunicate between all elements
-	//daChan := make(chan string)
-
-	// smtpd
-
-	if cfg.GetLaunchSmtpd() {
-		smtpdDsns, err := smtpd.GetDsnsFromString(cfg.GetSmtpdDsns())
-		if err != nil {
-			log.Fatalln("unable to parse smtpd dsn -", err)
-		}
-		for _, dsn := range smtpdDsns {
-			s, err := smtpd.New(cfg, dsn)
-			if err != nil {
-				log.Fatalln("unable to launch smtpd - ", dsn, err)
-			}
-			go s.ListenAndServe()
-		}
-		l.Info("smtpd lanched.")
-	}
-
-	// deliverd
-	/*d, err := deliverd.New()
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(d.Config)
-	//go d.Run()*/
-
-	<-sigChan
-	l.Info("Exiting...")
-	/*for {
-		fromSmtpChan = <-smtpChan
-		TRACE.Println(fromSmtpChan)
-	}*/
-}

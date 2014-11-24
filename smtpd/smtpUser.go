@@ -23,7 +23,7 @@ func NewSmtpUser(login, passwd string) (user *SmtpUser, err error) {
 	/*hashed, err := bcrypt.GenerateFromPassword([]byte(passwd), 10)
 	TRACE.Println(string(hashed), err)*/
 
-	err = DB.Where("login = ?", login).First(user).Error
+	err = scope.DB.Where("login = ?", login).First(user).Error
 	if err != nil {
 		return nil, err
 	}

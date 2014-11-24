@@ -13,7 +13,7 @@ type RcptHost struct {
 
 // isInRcptHost checks if domain is in the RcptHost list (-> relay authorozed)
 func isInRcptHost(domain string) (bool, error) {
-	err := DB.Where("domain = ?", domain).First(&RcptHost{}).Error
+	err := scope.DB.Where("domain = ?", domain).First(&RcptHost{}).Error
 	if err == nil {
 		return true, nil
 	}
@@ -30,7 +30,7 @@ type RelayIpOk struct {
 
 // remoteIpCanUseSmtp checks if an IP can relay
 func remoteIpCanUseSmtp(ip net.Addr) (bool, error) {
-	err := DB.Where("addr = ?", ip.String()[:strings.Index(ip.String(), ":")]).First(&RelayIpOk{}).Error
+	err := scope.DB.Where("addr = ?", ip.String()[:strings.Index(ip.String(), ":")]).First(&RelayIpOk{}).Error
 	if err == nil {
 		return true, nil
 	}
