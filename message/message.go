@@ -108,7 +108,7 @@ func (m *Message) GetRaw() (rawMessage []byte, err error) {
 
 // getHostFromAddress returns host part from an email address
 // Warning this check assume to get a valid email address
-func getHostFromAddress(address string) string {
+func GetHostFromAddress(address string) string {
 	address = strings.ToLower(address)
 	return address[strings.Index(address, "@")+1:]
 }

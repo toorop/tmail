@@ -13,9 +13,7 @@ import (
 	"github.com/Toorop/tmail/message"
 	"github.com/Toorop/tmail/util"
 	"github.com/jinzhu/gorm"
-	"log"
 	"path"
-	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -63,7 +61,7 @@ func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, 
 // timeout
 func (s *smtpServerSession) raiseTimeout() {
 	s.log("client timeout")
-	s.out("451 Client timeout.")
+	s.out("420 Client timeout.")
 	s.exitAsap()
 }
 
@@ -100,9 +98,7 @@ func (s *smtpServerSession) log(msg ...string) {
 
 // logError is a log helper for ERROR logs
 func (s *smtpServerSession) logError(msg ...string) {
-	stack := debug.Stack()
-	log.Println(s.conn.RemoteAddr().String(), "- ERROR:", strings.Join(msg, " "), "-", s.uuid, "\n", fmt.Sprintf("%s", stack))
-
+	s.logger.Error(s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "), "-", s.uuid)
 }
 
 // logError is a log helper for error logs
@@ -564,15 +560,19 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	}*/
 	// Put in queue
 	//
-	q, err := mailqueue.New(scope.Cfg)
+	q, err := mailqueue.New(scope)
 	if err != nil {
-		log.Fatalln("impossible de créer la queue", err)
+		s.logError("Unable to create a new queue -", err.Error())
+		s.out("451  temporary queue init error")
+		return
 	}
 	id, err := q.Add(message, s.envelope)
 	if err != nil {
-		log.Fatalln("impossible d'ajouter le message en queu")
+		s.logError("Unable to put message in queue -", err.Error())
+		s.out("451 temporary queue error")
+		return
 	}
-	s.log("queued as ", id)
+	s.log("message queued as ", id)
 	s.out(fmt.Sprintf("550 2.0.0 Ok: queued %s", id))
 	return
 
@@ -768,7 +768,6 @@ func (s *smtpServerSession) handle() {
 				s.timer.Stop()
 				var rmsg string
 				strMsg := strings.TrimSpace(string(msg))
-				s.logDebug("un")
 				s.logDebug("<", strMsg)
 				splittedMsg := strings.Split(strings.ToLower(strMsg), " ")
 				//TRACE.Println(splittedMsg)

@@ -3,20 +3,20 @@ package mailqueue
 import (
 	"bytes"
 	"crypto/sha1"
-	//"encoding/json"
+	"encoding/json"
 	"fmt"
-	"github.com/Toorop/tmail/config"
 	"github.com/Toorop/tmail/message"
+	"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/store"
-	"github.com/jinzhu/gorm"
-	//"github.com/bitly/go-nsq"
+	"github.com/bitly/go-nsq"
 	"io"
 	"time"
 )
 
 var (
-	cfg    *config.Config
-	DB     gorm.DB
+	s *scope.Scope
+	//cfg    *config.Config
+	//DB     gorm.DB
 	qStore store.Storer
 )
 
@@ -26,6 +26,7 @@ type QMessage struct {
 	RcptTo              string
 	Host                string
 	AddedAt             time.Time
+	DeliveryStartedAt   time.Time
 	NextDeliveryAt      time.Time
 	DeliveryInProgress  bool
 	DeliveryFailedCount uint32
@@ -34,25 +35,17 @@ type QMessage struct {
 type MailQueue struct {
 }
 
-func New(c *config.Config) (*MailQueue, error) {
+func New(scope *scope.Scope) (*MailQueue, error) {
 	var err error
-	cfg = c
-	// init DB
-	DB, err = gorm.Open(cfg.GetDbDriver(), cfg.GetDbSource())
-	if err != nil {
-		return nil, err
-	}
 	// init store
-	qStore, err = store.New(cfg.GetStoreDriver(), cfg.GetStoreSource())
-	if err != nil {
-		return nil, err
-	}
-	return &MailQueue{}, nil
+	s = scope
+	qStore, err = store.New(s.Cfg.GetStoreDriver(), s.Cfg.GetStoreSource())
+	return &MailQueue{}, err
 }
 
 // Add add a new mail in queue
-func (m *MailQueue) Add(message *message.Message, envelope message.Envelope) (key string, err error) {
-	rawMess, err := message.GetRaw()
+func (m *MailQueue) Add(msg *message.Message, envelope message.Envelope) (key string, err error) {
+	rawMess, err := msg.GetRaw()
 	if err != nil {
 		return
 	}
@@ -63,69 +56,72 @@ func (m *MailQueue) Add(message *message.Message, envelope message.Envelope) (ke
 	}
 	key = fmt.Sprintf("%x", hasher.Sum(nil))
 
-	return "TODO", nil
-
-	/*err = queueStore.Put(key, bytes.NewReader(rawMess))
+	err = qStore.Put(key, bytes.NewReader(rawMess))
 	if err != nil {
 		return
 	}
 
 	cloop := 0
-	for _, rcptTo := range envelope.rcptTo {
-		qm := queuedMessage{
+	for _, rcptTo := range envelope.RcptTo {
+		qm := QMessage{
 			Key:                 key,
-			MailFrom:            envelope.mailFrom,
+			MailFrom:            envelope.MailFrom,
 			RcptTo:              rcptTo,
-			Host:                getHostFromAddress(rcptTo),
+			Host:                message.GetHostFromAddress(rcptTo),
 			AddedAt:             time.Now(),
+			DeliveryStartedAt:   time.Now(),
 			NextDeliveryAt:      time.Now(),
-			DeliveryInProgress:  false,
+			DeliveryInProgress:  true,
 			DeliveryFailedCount: 0,
 		}
 
 		// create record in db
-		err = db.Create(&qm).Error
+		err = s.DB.Create(&qm).Error
 		if err != nil {
 			// Rollback on storage
 			if cloop == 0 {
-				queueStore.Del(key)
+				qStore.Del(key)
 			}
 			break
 		}
 
 		// Send message to smtpd.deliverd on localhost
-		cfg := nsq.NewConfig()
-		cfg.UserAgent = "tmail.smtpd"
-		producer, err := nsq.NewProducer("127.0.0.1:4150", cfg)
+		var producer *nsq.Producer
+		nsqCfg := nsq.NewConfig()
+		nsqCfg.UserAgent = "tmail.smtpd"
+
+		producer, err = nsq.NewProducer("127.0.0.1:4150", nsqCfg)
 		if err != nil {
 			if cloop == 0 {
-				queueStore.Del(key)
-				db.Delete(&qm)
+				qStore.Del(key)
+				s.DB.Delete(&qm)
 			}
 			break
 		}
+
 		// publish
-		msg, err := json.Marshal(qm)
+		var jMsg []byte
+		jMsg, err = json.Marshal(qm)
 		if err != nil {
 			if cloop == 0 {
-				queueStore.Del(key)
-				db.Delete(&qm)
+				qStore.Del(key)
+				s.DB.Delete(&qm)
 			}
 			break
 		}
-		err = producer.Publish("smtpd", msg)
+		err = producer.Publish("smtpd", jMsg)
+		fmt.Println("publish", err)
 		if err != nil {
 			if cloop == 0 {
-				queueStore.Del(key)
-				db.Delete(&qm)
+				qStore.Del(key)
+				s.DB.Delete(&qm)
 			}
 			break
 		}
-		TRACE.Println("job published")
 		cloop++
 	}
+	fmt.Println(err)
 	return
-	*/
 }
 
 // Queue processing
