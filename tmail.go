@@ -4,19 +4,21 @@ import (
 	"bufio"
 	"github.com/Toorop/tmail/config"
 	//"github.com/Toorop/tmail/deliverd"
-
 	"fmt"
 	"github.com/Toorop/tmail/logger"
 	s "github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/smtpd"
+	"github.com/bitly/nsq/nsqd"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
+	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 const (
@@ -72,6 +74,8 @@ func init() {
 
 // MAIN
 func main() {
+	rand.Seed(time.Now().UTC().UnixNano())
+
 	l := logger.New(cfg.GetDebugEnabled())
 	// if there nothing to do do nothing
 	if !cfg.GetLaunchDeliverd() && !cfg.GetLaunchSmtpd() {
@@ -89,6 +93,18 @@ func main() {
 
 	// Chanel to comunicate between all elements
 	//daChan := make(chan string)
+
+	// nsqd
+	opts := nsqd.NewNSQDOptions()
+	opts.Verbose = cfg.GetDebugEnabled()
+	nsqd := nsqd.NewNSQD(opts)
+
+	nsqd.LoadMetadata()
+	err := nsqd.PersistMetadata()
+	if err != nil {
+		log.Fatalf("ERROR: failed to persist metadata - %s", err.Error())
+	}
+	nsqd.Main()
 
 	// smtpd
 	if cfg.GetLaunchSmtpd() {
