@@ -31,7 +31,6 @@ export TMAIL_CLUSTER_MODE_ENABLED=false
 # "mysql" "user:password@/dbname"
 # "sqlite3" "/tmp/gorm.db"
 export TMAIL_DB_DRIVER="sqlite3"
-#export TMAIL_DB_SOURCE="/Users/toorop/Projects/go/src/github.com/Toorop/tmail/dist/db/tmail.db"
 export TMAIL_DB_SOURCE="/home/toorop/Projects/go/src/github.com/Toorop/tmail/dist/db/tmail.db"
 
 

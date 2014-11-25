@@ -42,7 +42,7 @@ func init() {
 	}
 
 	// Check base path structure
-	requiredPaths := []string{"db", "nsq"}
+	requiredPaths := []string{"db", "nsq", "ssl"}
 	for _, p := range requiredPaths {
 		if err = os.MkdirAll(path.Join(util.GetBasePath(), p), 0700); err != nil {
 			log.Fatalln("Unable to create path "+path.Join(util.GetBasePath(), p), " - ", err.Error())
