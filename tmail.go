@@ -8,6 +8,7 @@ import (
 	"github.com/Toorop/tmail/logger"
 	s "github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/smtpd"
+	"github.com/Toorop/tmail/util"
 	"github.com/bitly/nsq/nsqd"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
@@ -17,6 +18,7 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"path"
 	"syscall"
 	"time"
 )
@@ -38,6 +40,17 @@ func init() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	// Check base path structure
+	requiredPaths := []string{"db", "nsq"}
+	for _, p := range requiredPaths {
+		if err = os.MkdirAll(path.Join(util.GetBasePath(), p), 0700); err != nil {
+			log.Fatalln("Unable to create path "+path.Join(util.GetBasePath(), p), " - ", err.Error())
+		}
+	}
+
+	// if clusterMode check if nsqlookupd is available
+	// Todo
 
 	// Init DB
 	DB, err := gorm.Open(cfg.GetDbDriver(), cfg.GetDbSource())
@@ -96,7 +109,9 @@ func main() {
 
 	// nsqd
 	opts := nsqd.NewNSQDOptions()
-	opts.Verbose = cfg.GetDebugEnabled()
+	opts.Verbose = cfg.GetDebugEnabled() // verbosity
+	opts.DataPath = util.GetBasePath() + "/nsq"
+
 	nsqd := nsqd.NewNSQD(opts)
 
 	nsqd.LoadMetadata()
