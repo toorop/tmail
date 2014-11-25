@@ -111,9 +111,12 @@ func main() {
 	opts := nsqd.NewNSQDOptions()
 	opts.Verbose = cfg.GetDebugEnabled() // verbosity
 	opts.DataPath = util.GetBasePath() + "/nsq"
+	// if cluster get
+	if cfg.GetClusterModeEnabled() {
+		opts.NSQLookupdTCPAddresses = cfg.GetNSQLookupdTCPAddresses()
+	}
 
 	nsqd := nsqd.NewNSQD(opts)
-
 	nsqd.LoadMetadata()
 	err := nsqd.PersistMetadata()
 	if err != nil {

@@ -1,5 +1,9 @@
 package config
 
+/*
+	when default is set to _ that means that the defauly value is (type)null (eg "" for string)
+*/
+
 import (
 	"errors"
 	"fmt"
@@ -25,6 +29,8 @@ type Config struct {
 
 		StoreDriver  string `name:"store_driver"`
 		StroreSource string `name:"store_source"`
+
+		NSQLookupdTCPAddresses string `name:"nsq_lookupd_tcp_addresses" default:"_"`
 
 		LaunchSmtpd             bool   `name:"smtpd_launch" default:"false"`
 		SmtpdDsns               string `name:"smtpd_dsns" default:""`
@@ -220,4 +226,19 @@ func (c *Config) GetLaunchDeliverd() bool {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.LaunchDeliverd
+}
+
+// nsqd
+// GetNSQLookupdTCPAddresses return lookupd tcp adresses
+func (c *Config) GetNSQLookupdTCPAddresses() (addr []string) {
+	if c.cfg.NSQLookupdTCPAddresses == "_" {
+		return
+	}
+	c.Lock()
+	defer c.Unlock()
+	p := strings.Split(c.cfg.NSQLookupdTCPAddresses, ";")
+	for _, a := range p {
+		addr = append(addr, a)
+	}
+	return
 }

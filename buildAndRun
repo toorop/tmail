@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. dist/tmail.cfg
+. dist/conf/tmail.cfg
 
 # Build
 go build -o dist/tmail && dist/tmail;
