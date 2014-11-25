@@ -10,14 +10,18 @@ type remoteHandler struct {
 	scope *scope.Scope
 }
 
+func NewRemoteHandler(s *scope.Scope) *remoteHandler {
+	return &remoteHandler{s}
+}
+
 // HandleMessage implement interace
 func (h *remoteHandler) HandleMessage(m *nsq.Message) error {
-	// disable autoresponse atherwise no goroutines
+	// disable autoresponse otherwise no goroutines
 	m.DisableAutoResponse()
 	go func(m *nsq.Message) {
-		h.scope.INFO.Println("Processing qMessage: ", string(m.Body))
+		l.Info("deliverd: Processing message " + string(m.Body))
 		time.Sleep(1 * time.Second)
-		h.scope.INFO.Println("Job done")
+		l.Info("deliverd: Job Done")
 		//m.RequeueWithoutBackoff(5 * time.Second)
 		//m.Requeue(5 * time.Second)
 		m.Finish()

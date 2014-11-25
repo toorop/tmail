@@ -2,9 +2,9 @@ package main
 
 import (
 	"bufio"
-	"github.com/Toorop/tmail/config"
-	//"github.com/Toorop/tmail/deliverd"
 	"fmt"
+	"github.com/Toorop/tmail/config"
+	"github.com/Toorop/tmail/deliverd"
 	"github.com/Toorop/tmail/logger"
 	s "github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/smtpd"
@@ -156,12 +156,7 @@ func main() {
 	}
 
 	// deliverd
-	/*d, err := deliverd.New()
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(d.Config)
-	//go d.Run()*/
+	go deliverd.New(scope).Run()
 
 	<-sigChan
 	l.Info("Exiting...")

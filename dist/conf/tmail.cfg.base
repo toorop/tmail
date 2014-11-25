@@ -92,6 +92,13 @@ export TMAIL_SMTPD_MAX_DATABYTES=50000000
 export TMAIL_SMTPD_MAX_HOPS=50
 
 
+###
+# deliverd
+
+# maxInFlight: the number of conncurent deliverd process
+export TMAIL_DELIVERD_MAX_IN_FLIGHT=5
+
+
 
 
 

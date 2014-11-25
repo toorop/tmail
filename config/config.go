@@ -38,7 +38,8 @@ type Config struct {
 		SmtpdMaxDataBytes       int    `name:"smtpd_max_databytes" default:"60"`
 		SmtpdMaxHops            int    `name:"smtpd_max_hops" default:"10"`
 
-		LaunchDeliverd bool `name:"deliverd_launch" default:"false"`
+		LaunchDeliverd      bool `name:"deliverd_launch" default:"false"`
+		DeliverdMaxInFlight int  `name:"deliverd_max_in_flight" default:"5"`
 	}
 }
 
@@ -241,4 +242,13 @@ func (c *Config) GetNSQLookupdTCPAddresses() (addr []string) {
 		addr = append(addr, a)
 	}
 	return
+}
+
+// deliverd
+
+//  GetDeliverdMaxInFlight returns DeliverdMaxInFlight
+func (c *Config) GetDeliverdMaxInFlight() int {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.DeliverdMaxInFlight
 }

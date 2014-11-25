@@ -1,40 +1,39 @@
 package deliverd
 
 import (
-	"github.com/Toorop/tmail/config"
-	//"github.com/bitly/go-nsq"
-	//"os"
-	//"os/signal"
-	//"syscall"
+	"github.com/Toorop/tmail/logger"
+	"github.com/Toorop/tmail/scope"
+	"github.com/bitly/go-nsq"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+)
+
+var (
+	l *logger.Logger
 )
 
 type deliverd struct {
-	Config struct {
-		DbDriver string `name:"db_driver" default:"sqlite"`
-		Toto     int    `name:"toto" default:"1"`
-		DbDebug  bool   `name:"db_debug" default:"false"`
-	}
+	scope *scope.Scope
 }
 
-func New() (*deliverd, error) {
-	d := &deliverd{}
-	err := config.LoadFromEnv("tmail", &d.Config)
-	return d, err
+func New(s *scope.Scope) *deliverd {
+	l = logger.New(s.Cfg.GetDebugEnabled())
+	return &deliverd{s}
 }
 
 func (d *deliverd) Run() {
-
-	/*sigChan := make(chan os.Signal, 1)
+	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
 	cfg := nsq.NewConfig()
-	cfg.UserAgent = "tmail/deliverd"
 
-	cfg.MaxInFlight = 5
+	cfg.UserAgent = "tmail/deliverd"
+	cfg.MaxInFlight = d.scope.Cfg.GetDeliverdMaxInFlight()
 
 	consumer, err := nsq.NewConsumer("smtpd", "deliverd", cfg)
 	if err != nil {
-		d.scope.ERROR.Println(err)
+		log.Fatalln(err)
 	}
 
 	consumer.AddHandler(&remoteHandler{d.scope})
@@ -46,8 +45,10 @@ func (d *deliverd) Run() {
 
 	err = consumer.ConnectToNSQLookupds([]string{"127.0.0.1:4161"})
 	if err != nil {
-		d.scope.ERROR.Println(err)
+		log.Fatalln(err)
 	}
+
+	l.Info("deliverd launched")
 
 	for {
 		select {
@@ -56,5 +57,5 @@ func (d *deliverd) Run() {
 		case <-sigChan:
 			consumer.Stop()
 		}
-	}*/
+	}
 }

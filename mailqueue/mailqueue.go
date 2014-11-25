@@ -38,7 +38,6 @@ type MailQueue struct {
 
 func New(scope *scope.Scope) (*MailQueue, error) {
 	var err error
-	// init store
 	s = scope
 	qStore, err = store.New(s.Cfg.GetStoreDriver(), s.Cfg.GetStoreSource())
 	return &MailQueue{}, err
