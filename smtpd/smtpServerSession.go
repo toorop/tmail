@@ -91,7 +91,7 @@ func (s *smtpServerSession) out(msg string) {
 	s.resetTimeout()
 }
 
-// Log helper for INFO log
+// log helper for INFO log
 func (s *smtpServerSession) log(msg ...string) {
 	s.logger.Info(s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "), "-", s.uuid)
 }
