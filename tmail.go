@@ -111,10 +111,29 @@ func main() {
 	opts := nsqd.NewNSQDOptions()
 	opts.Verbose = cfg.GetDebugEnabled() // verbosity
 	opts.DataPath = util.GetBasePath() + "/nsq"
-	// if cluster get
+	// if cluster get lookupd addresses
 	if cfg.GetClusterModeEnabled() {
 		opts.NSQLookupdTCPAddresses = cfg.GetNSQLookupdTCPAddresses()
 	}
+
+	// deflate (compression)
+	opts.DeflateEnabled = true
+
+	// if a message timeout it returns to the queue: https://groups.google.com/d/msg/nsq-users/xBQF1q4srUM/kX22TIoIs-QJ
+	// msg timeout : base time to wait from consummer before requeuing a message
+	// note: deliverd consumer return immediatly (message is handled in a go routine)
+	opts.MsgTimeout = 60 * time.Second
+
+	// maximum duration before a message will timeout
+	opts.MaxMsgTimeout = 15 * time.Minute
+
+	// maximum requeuing timeout for a message
+	// je pense que si le client ne demande pas de requeue dans ce delais alors
+	// le message et considéré comme traité
+	opts.MaxReqTimeout = 1 * time.Hour
+
+	// Number of message in RAM before synching to disk
+	opts.MemQueueSize = 0
 
 	nsqd := nsqd.NewNSQD(opts)
 	nsqd.LoadMetadata()
@@ -146,6 +165,9 @@ func main() {
 
 	<-sigChan
 	l.Info("Exiting...")
+
+	// flush nsqd memory to disk
+	nsqd.Exit()
 	/*for {
 		fromSmtpChan = <-smtpChan
 		TRACE.Println(fromSmtpChan)

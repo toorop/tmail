@@ -563,14 +563,14 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	q, err := mailqueue.New(scope)
 	if err != nil {
 		s.logError("Unable to create a new queue -", err.Error())
-		s.out("451  temporary queue init error")
-		return
+		s.out("451 temporary queue init error")
+		return nil
 	}
 	id, err := q.Add(message, s.envelope)
 	if err != nil {
 		s.logError("Unable to put message in queue -", err.Error())
 		s.out("451 temporary queue error")
-		return
+		return nil
 	}
 	s.log("message queued as ", id)
 	s.out(fmt.Sprintf("550 2.0.0 Ok: queued %s", id))

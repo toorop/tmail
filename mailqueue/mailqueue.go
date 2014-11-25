@@ -21,6 +21,7 @@ var (
 )
 
 type QMessage struct {
+	Id                  int64
 	Key                 string // identifier  -> store.Get(key)
 	MailFrom            string
 	RcptTo              string
@@ -44,6 +45,7 @@ func New(scope *scope.Scope) (*MailQueue, error) {
 }
 
 // Add add a new mail in queue
+// TODO le s.DB.Delete(&qm) delete tout les éléments de la table
 func (m *MailQueue) Add(msg *message.Message, envelope message.Envelope) (key string, err error) {
 	rawMess, err := msg.GetRaw()
 	if err != nil {
@@ -82,7 +84,7 @@ func (m *MailQueue) Add(msg *message.Message, envelope message.Envelope) (key st
 			if cloop == 0 {
 				qStore.Del(key)
 			}
-			break
+			return
 		}
 
 		// Send message to smtpd.deliverd on localhost
@@ -94,9 +96,9 @@ func (m *MailQueue) Add(msg *message.Message, envelope message.Envelope) (key st
 		if err != nil {
 			if cloop == 0 {
 				qStore.Del(key)
-				s.DB.Delete(&qm)
 			}
-			break
+			s.DB.Delete(&qm)
+			return
 		}
 
 		// publish
@@ -105,22 +107,20 @@ func (m *MailQueue) Add(msg *message.Message, envelope message.Envelope) (key st
 		if err != nil {
 			if cloop == 0 {
 				qStore.Del(key)
-				s.DB.Delete(&qm)
 			}
-			break
+			s.DB.Delete(&qm)
+			return
 		}
 		err = producer.Publish("smtpd", jMsg)
-		fmt.Println("publish", err)
 		if err != nil {
 			if cloop == 0 {
 				qStore.Del(key)
-				s.DB.Delete(&qm)
 			}
-			break
+			s.DB.Delete(&qm)
+			return
 		}
 		cloop++
 	}
-	fmt.Println(err)
 	return
 }
 
