@@ -18,12 +18,14 @@ type Logger struct {
 }
 
 func New(debugEnabled bool) *Logger {
+	hostname, _ := os.Hostname()
+
 	return &Logger{
 		debugEnabled: debugEnabled,
-		debug:        log.New(os.Stdout, "", log.Ldate|log.Ltime),
-		info:         log.New(os.Stdout, "", log.Ldate|log.Ltime),
-		err:          log.New(os.Stdout, "", log.Ldate|log.Ltime),
-		trace:        log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile),
+		debug:        log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime),
+		info:         log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime),
+		err:          log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime),
+		trace:        log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lshortfile),
 	}
 }
 

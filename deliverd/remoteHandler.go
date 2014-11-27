@@ -10,10 +10,6 @@ type remoteHandler struct {
 	scope *scope.Scope
 }
 
-func NewRemoteHandler(s *scope.Scope) *remoteHandler {
-	return &remoteHandler{s}
-}
-
 // HandleMessage implement interace
 func (h *remoteHandler) HandleMessage(m *nsq.Message) error {
 	// disable autoresponse otherwise no goroutines

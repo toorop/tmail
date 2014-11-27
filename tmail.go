@@ -14,7 +14,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
-	"log"
+	stdLog "log"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -29,23 +29,26 @@ const (
 )
 
 var (
-	cfg   *config.Config
 	scope *s.Scope
 )
 
 func init() {
 	var err error
-	// Init config
-	cfg, err = config.Init("tmail")
+
+	// Load config
+	cfg, err := config.Init("tmail")
 	if err != nil {
-		log.Fatalln(err)
+		stdLog.Fatalln(err)
 	}
+
+	// TODO Init logger
+	log := logger.New(cfg.GetDebugEnabled())
 
 	// Check base path structure
 	requiredPaths := []string{"db", "nsq", "ssl"}
 	for _, p := range requiredPaths {
 		if err = os.MkdirAll(path.Join(util.GetBasePath(), p), 0700); err != nil {
-			log.Fatalln("Unable to create path "+path.Join(util.GetBasePath(), p), " - ", err.Error())
+			stdLog.Fatalln("Unable to create path "+path.Join(util.GetBasePath(), p), " - ", err.Error())
 		}
 	}
 
@@ -55,13 +58,13 @@ func init() {
 	// Init DB
 	DB, err := gorm.Open(cfg.GetDbDriver(), cfg.GetDbSource())
 	if err != nil {
-		log.Fatalln("Database initialisation failed", err)
+		stdLog.Fatalln("Database initialisation failed", err)
 	}
 	DB.LogMode(cfg.GetDebugEnabled())
 
 	// ping
 	if DB.DB().Ping() != nil {
-		log.Fatalln("I could not access to database", cfg.GetDbDriver(), cfg.GetDbSource(), err)
+		stdLog.Fatalln("I could not access to database", cfg.GetDbDriver(), cfg.GetDbSource(), err)
 	}
 	if !dbIsOk(DB) {
 		var r []byte
@@ -74,30 +77,29 @@ func init() {
 		}
 		if r[0] == 121 {
 			if err = initDB(DB); err != nil {
-				log.Fatalln(err)
+				stdLog.Fatalln(err)
 			}
 		} else {
-			log.Fatalln("See you soon...")
+			stdLog.Fatalln("See you soon...")
 		}
 	}
 
 	// Init scope
-	scope = s.New(cfg, DB)
+	scope = s.New(cfg, DB, log)
 }
 
 // MAIN
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	l := logger.New(cfg.GetDebugEnabled())
 	// if there nothing to do do nothing
-	if !cfg.GetLaunchDeliverd() && !cfg.GetLaunchSmtpd() {
-		log.Fatalln("I have nothing to do, so i do nothing. Bye.")
+	if !scope.Cfg.GetLaunchDeliverd() && !scope.Cfg.GetLaunchSmtpd() {
+		stdLog.Fatalln("I have nothing to do, so i do nothing. Bye.")
 	}
 
 	// Synch tables to structs
 	if err := autoMigrateDB(scope.DB); err != nil {
-		log.Fatalln(err)
+		stdLog.Fatalln(err)
 	}
 
 	// Loop
@@ -109,11 +111,11 @@ func main() {
 
 	// nsqd
 	opts := nsqd.NewNSQDOptions()
-	opts.Verbose = cfg.GetDebugEnabled() // verbosity
+	opts.Verbose = scope.Cfg.GetDebugEnabled() // verbosity
 	opts.DataPath = util.GetBasePath() + "/nsq"
 	// if cluster get lookupd addresses
-	if cfg.GetClusterModeEnabled() {
-		opts.NSQLookupdTCPAddresses = cfg.GetNSQLookupdTCPAddresses()
+	if scope.Cfg.GetClusterModeEnabled() {
+		opts.NSQLookupdTCPAddresses = scope.Cfg.GetNSQLookupdTCPAddresses()
 	}
 
 	// deflate (compression)
@@ -139,19 +141,19 @@ func main() {
 	nsqd.LoadMetadata()
 	err := nsqd.PersistMetadata()
 	if err != nil {
-		log.Fatalf("ERROR: failed to persist metadata - %s", err.Error())
+		stdLog.Fatalf("ERROR: failed to persist metadata - %s", err.Error())
 	}
 	nsqd.Main()
 
 	// smtpd
-	if cfg.GetLaunchSmtpd() {
-		smtpdDsns, err := smtpd.GetDsnsFromString(cfg.GetSmtpdDsns())
+	if scope.Cfg.GetLaunchSmtpd() {
+		smtpdDsns, err := smtpd.GetDsnsFromString(scope.Cfg.GetSmtpdDsns())
 		if err != nil {
-			log.Fatalln("unable to parse smtpd dsn -", err)
+			stdLog.Fatalln("unable to parse smtpd dsn -", err)
 		}
 		for _, dsn := range smtpdDsns {
 			go smtpd.New(scope, dsn).ListenAndServe()
-			l.Info("smtpd " + dsn.String() + " launched.")
+			scope.Log.Info("smtpd " + dsn.String() + " launched.")
 		}
 	}
 
@@ -159,7 +161,7 @@ func main() {
 	go deliverd.New(scope).Run()
 
 	<-sigChan
-	l.Info("Exiting...")
+	scope.Log.Info("Exiting...")
 
 	// flush nsqd memory to disk
 	nsqd.Exit()
