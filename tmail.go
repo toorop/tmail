@@ -115,7 +115,7 @@ func main() {
 	opts.DataPath = util.GetBasePath() + "/nsq"
 	// if cluster get lookupd addresses
 	if scope.Cfg.GetClusterModeEnabled() {
-		opts.NSQLookupdTCPAddresses = scope.Cfg.GetNSQLookupdTCPAddresses()
+		opts.NSQLookupdTCPAddresses = scope.Cfg.GetNSQLookupdTcpAddresses()
 	}
 
 	// deflate (compression)

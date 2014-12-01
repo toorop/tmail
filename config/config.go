@@ -30,7 +30,8 @@ type Config struct {
 		StoreDriver  string `name:"store_driver"`
 		StroreSource string `name:"store_source"`
 
-		NSQLookupdTCPAddresses string `name:"nsq_lookupd_tcp_addresses" default:"_"`
+		NSQLookupdTcpAddresses  string `name:"nsq_lookupd_tcp_addresses" default:"_"`
+		NSQLookupdHttpAddresses string `name:"nsq_lookupd_http_addresses" default:"_"`
 
 		LaunchSmtpd             bool   `name:"smtpd_launch" default:"false"`
 		SmtpdDsns               string `name:"smtpd_dsns" default:""`
@@ -231,13 +232,27 @@ func (c *Config) GetLaunchDeliverd() bool {
 
 // nsqd
 // GetNSQLookupdTCPAddresses return lookupd tcp adresses
-func (c *Config) GetNSQLookupdTCPAddresses() (addr []string) {
-	if c.cfg.NSQLookupdTCPAddresses == "_" {
+func (c *Config) GetNSQLookupdTcpAddresses() (addr []string) {
+	if c.cfg.NSQLookupdTcpAddresses == "_" {
 		return
 	}
 	c.Lock()
 	defer c.Unlock()
-	p := strings.Split(c.cfg.NSQLookupdTCPAddresses, ";")
+	p := strings.Split(c.cfg.NSQLookupdTcpAddresses, ";")
+	for _, a := range p {
+		addr = append(addr, a)
+	}
+	return
+}
+
+// GetNSQLookupdHttpAddresses returns lookupd HTTP adresses
+func (c *Config) GetNSQLookupdHttpAddresses() (addr []string) {
+	if c.cfg.NSQLookupdHttpAddresses == "_" {
+		return
+	}
+	c.Lock()
+	defer c.Unlock()
+	p := strings.Split(c.cfg.NSQLookupdHttpAddresses, ";")
 	for _, a := range p {
 		addr = append(addr, a)
 	}

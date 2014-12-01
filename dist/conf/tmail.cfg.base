@@ -22,6 +22,7 @@ export TMAIL_CLUSTER_MODE_ENABLED=false
 # lookupd-tcp-address
 # Format "IP1:PORT1;IP2:PORT2"
 export TMAIL_NSQ_LOOKUPD_TCP_ADDRESSES="127.0.0.1:4160"
+export TMAIL_NSQ_LOOKUPD_HTTP_ADDRESSES="127.0.0.1:4161"
 
 ###
 # Database

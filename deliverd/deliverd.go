@@ -31,19 +31,24 @@ func (d *deliverd) Run() {
 	cfg.UserAgent = "tmail/deliverd"
 	cfg.MaxInFlight = d.scope.Cfg.GetDeliverdMaxInFlight()
 
+	// create consummer
+	// TODO creation de plusieurs consumer: local, remote, ...
 	consumer, err := nsq.NewConsumer("smtpd", "deliverd", cfg)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
+	// Bind handler
 	consumer.AddHandler(&remoteHandler{d.scope})
 
-	//err = consumer.ConnectToNSQDs(nsqdTCPAddrs)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-
-	err = consumer.ConnectToNSQLookupds([]string{"127.0.0.1:4161"})
+	// connect
+	if d.scope.Cfg.GetClusterModeEnabled() {
+		log.Println("on est en cluster")
+		err = consumer.ConnectToNSQLookupds(d.scope.Cfg.GetNSQLookupdHttpAddresses())
+		//err = consumer.ConnectToNSQLookupds([]string{"127.0.0.1:4161"})
+	} else {
+		err = consumer.ConnectToNSQDs([]string{"127.0.0.1:4151"})
+	}
 	if err != nil {
 		log.Fatalln(err)
 	}
