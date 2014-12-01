@@ -33,7 +33,7 @@ func (d *deliverd) Run() {
 
 	// create consummer
 	// TODO creation de plusieurs consumer: local, remote, ...
-	consumer, err := nsq.NewConsumer("smtpd", "deliverd", cfg)
+	consumer, err := nsq.NewConsumer("queueRemote", "deliverd", cfg)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -45,7 +45,6 @@ func (d *deliverd) Run() {
 	if d.scope.Cfg.GetClusterModeEnabled() {
 		log.Println("on est en cluster")
 		err = consumer.ConnectToNSQLookupds(d.scope.Cfg.GetNSQLookupdHttpAddresses())
-		//err = consumer.ConnectToNSQLookupds([]string{"127.0.0.1:4161"})
 	} else {
 		err = consumer.ConnectToNSQDs([]string{"127.0.0.1:4151"})
 	}

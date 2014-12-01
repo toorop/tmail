@@ -37,7 +37,6 @@ type smtpServerSession struct {
 	helo     string
 	envelope message.Envelope
 	exitasap chan int
-	//message  string
 }
 
 // Factory
@@ -560,13 +559,13 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	}*/
 	// Put in queue
 	//
-	q, err := mailqueue.New(scope)
+	/*q, err := mailqueue.New(scope)
 	if err != nil {
 		s.logError("Unable to create a new queue -", err.Error())
 		s.out("451 temporary queue init error")
 		return nil
-	}
-	id, err := q.Add(message, s.envelope)
+	}*/
+	id, err := mailqueue.AddMessage(scope, message, s.envelope)
 	if err != nil {
 		s.logError("Unable to put message in queue -", err.Error())
 		s.out("451 temporary queue error")
