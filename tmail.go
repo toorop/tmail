@@ -42,7 +42,14 @@ func init() {
 		stdLog.Fatalln(err)
 	}
 
-	// TODO Init logger
+	// check config
+
+	// Check local ip
+	if _, err = cfg.GetLocalIps(); err != nil {
+		stdLog.Fatalln("bad config parameter TMAIL_DELIVERD_LOCAL_IPS", err.Error())
+	}
+
+	// Logger
 	log := logger.New(cfg.GetDebugEnabled())
 
 	// Check base path structure

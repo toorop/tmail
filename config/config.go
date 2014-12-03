@@ -5,7 +5,6 @@ package config
 */
 
 import (
-	"container/list"
 	"errors"
 	"fmt"
 	"net"
@@ -271,9 +270,8 @@ func (c *Config) GetDeliverdMaxInFlight() int {
 	return c.cfg.DeliverdMaxInFlight
 }
 
-// GetLocalIps returns ordered lits of local IP to use when sending mail
-func (c *Config) GetLocalIps() (*list.List, error) {
-	lIps := list.New()
+// GetLocalIps returns ordered lits of local IP (net.IP) to use when sending mail
+func (c *Config) GetLocalIps() (lIps []net.IP, err error) {
 	c.Lock()
 	localIps := c.cfg.LocalIps
 	c.Unlock()
@@ -300,14 +298,12 @@ func (c *Config) GetLocalIps() (*list.List, error) {
 		sIps = strings.Split(localIps, sep)
 	}
 
-	for _, ip := range sIps {
-		ip := net.ParseIP(ip)
+	for _, ipStr := range sIps {
+		ip := net.ParseIP(ipStr)
 		if ip == nil {
-			return nil, errors.New("invalid IP " + localIps + " found in config TMAIL_DELIVERD_LOCAL_IPS")
+			return nil, errors.New("invalid IP " + ipStr + " found in config TMAIL_DELIVERD_LOCAL_IPS")
 		}
-		lIps.PushBack(ip)
-		return lIps, nil
-		lIps.PushBack(ip)
+		lIps = append(lIps, ip)
 	}
 	return lIps, nil
 }

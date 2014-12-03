@@ -55,8 +55,10 @@ func processMsg(m *nsq.Message) {
 	// SMTP send message
 	// get route (MX)
 	// HERE
-	route, err := getRoute(qMessage.Host)
-	Scope.Log.Debug("deliverd-remote: ", route, err)
+	routes, err := getRoutes(qMessage.Host)
+	Scope.Log.Debug("deliverd-remote: ", routes, err)
+
+	// HERE
 
 	// Si il n'y a pas d'autre message en queue avec cette key alors on supprime
 	// le messag de la DB
