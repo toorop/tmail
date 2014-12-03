@@ -1,7 +1,6 @@
 package deliverd
 
 import (
-	"github.com/Toorop/tmail/logger"
 	"github.com/Toorop/tmail/scope"
 	"github.com/bitly/go-nsq"
 	"log"
@@ -11,25 +10,24 @@ import (
 )
 
 var (
-	l *logger.Logger
+	Scope *scope.Scope
 )
 
-type deliverd struct {
-	scope *scope.Scope
+/*type deliverd struct {
 }
 
-func New(s *scope.Scope) *deliverd {
-	l = logger.New(s.Cfg.GetDebugEnabled())
-	return &deliverd{s}
-}
+func New() *deliverd {
+	return &deliverd{}
+}*/
 
-func (d *deliverd) Run() {
+// Run
+func Run() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	cfg := nsq.NewConfig()
 
 	cfg.UserAgent = "tmail/deliverd"
-	cfg.MaxInFlight = d.scope.Cfg.GetDeliverdMaxInFlight()
+	cfg.MaxInFlight = Scope.Cfg.GetDeliverdMaxInFlight()
 
 	// create consummer
 	// TODO creation de plusieurs consumer: local, remote, ...
@@ -39,12 +37,11 @@ func (d *deliverd) Run() {
 	}
 
 	// Bind handler
-	consumer.AddHandler(&remoteHandler{d.scope})
+	consumer.AddHandler(&remoteHandler{})
 
 	// connect
-	if d.scope.Cfg.GetClusterModeEnabled() {
-		log.Println("on est en cluster")
-		err = consumer.ConnectToNSQLookupds(d.scope.Cfg.GetNSQLookupdHttpAddresses())
+	if Scope.Cfg.GetClusterModeEnabled() {
+		err = consumer.ConnectToNSQLookupds(Scope.Cfg.GetNSQLookupdHttpAddresses())
 	} else {
 		err = consumer.ConnectToNSQDs([]string{"127.0.0.1:4151"})
 	}
@@ -52,7 +49,7 @@ func (d *deliverd) Run() {
 		log.Fatalln(err)
 	}
 
-	l.Info("deliverd launched")
+	Scope.Log.Info("deliverd launched")
 
 	for {
 		select {

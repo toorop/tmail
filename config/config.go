@@ -5,8 +5,10 @@ package config
 */
 
 import (
+	"container/list"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"reflect"
 	"strconv"
@@ -39,8 +41,9 @@ type Config struct {
 		SmtpdMaxDataBytes       int    `name:"smtpd_max_databytes" default:"60"`
 		SmtpdMaxHops            int    `name:"smtpd_max_hops" default:"10"`
 
-		LaunchDeliverd      bool `name:"deliverd_launch" default:"false"`
-		DeliverdMaxInFlight int  `name:"deliverd_max_in_flight" default:"5"`
+		LaunchDeliverd      bool   `name:"deliverd_launch" default:"false"`
+		LocalIps            string `name:"deliverd_local_ips" default:"_"`
+		DeliverdMaxInFlight int    `name:"deliverd_max_in_flight" default:"5"`
 	}
 }
 
@@ -266,4 +269,45 @@ func (c *Config) GetDeliverdMaxInFlight() int {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.DeliverdMaxInFlight
+}
+
+// GetLocalIps returns ordered lits of local IP to use when sending mail
+func (c *Config) GetLocalIps() (*list.List, error) {
+	lIps := list.New()
+	c.Lock()
+	localIps := c.cfg.LocalIps
+	c.Unlock()
+	// no mix beetween & and |
+	failover := strings.Count(localIps, "&") != 0
+	roundRobin := strings.Count(localIps, "|") != 0
+
+	if failover && roundRobin {
+		return nil, errors.New("mixing & and | are not allowed in config TMAIL_DELIVERD_LOCAL_IPS")
+	}
+
+	var sIps []string
+
+	// one local ip
+	if !failover && !roundRobin {
+		sIps = append(sIps, localIps)
+	} else { // multiple locales ips
+		var sep string
+		if failover {
+			sep = "&"
+		} else {
+			sep = "|"
+		}
+		sIps = strings.Split(localIps, sep)
+	}
+
+	for _, ip := range sIps {
+		ip := net.ParseIP(ip)
+		if ip == nil {
+			return nil, errors.New("invalid IP " + localIps + " found in config TMAIL_DELIVERD_LOCAL_IPS")
+		}
+		lIps.PushBack(ip)
+		return lIps, nil
+		lIps.PushBack(ip)
+	}
+	return lIps, nil
 }

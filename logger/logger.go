@@ -22,9 +22,9 @@ func New(debugEnabled bool) *Logger {
 
 	return &Logger{
 		debugEnabled: debugEnabled,
-		debug:        log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime),
-		info:         log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime),
-		err:          log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime),
+		debug:        log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lmicroseconds),
+		info:         log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lmicroseconds),
+		err:          log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lmicroseconds),
 		trace:        log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lshortfile),
 	}
 }

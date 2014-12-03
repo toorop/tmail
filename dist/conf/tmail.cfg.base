@@ -96,8 +96,32 @@ export TMAIL_SMTPD_MAX_HOPS=50
 ###
 # deliverd
 
+# Locals addresses
+#
+# Formating :
+# ip1SEPip2SEPip3SEP...
+#
+# Separator could be :
+# | -> or  -> round robin
+# & -> and -> fail over
+# Warning: you can't mix | and & 
+
+# Examples : 
+# 127.0.0.1&127.0.0.2&127.0.0.3
+# deliverd will start tring with 127.0.0.1, if it doesn't works it will try with 127.0.0.2 ...
+#
+# 127.0.0.1|127.0.0.2|127.0.0.3|127.0.0.3
+# deliverd will use local IP in a random order
+# If an IP is present X time this will increase its priority
+#
+# You must define at least one local addresses
+export TMAIL_DELIVERD_LOCAL_IPS="88.178.118.205"
+
+
 # maxInFlight: the number of conncurent deliverd process
 export TMAIL_DELIVERD_MAX_IN_FLIGHT=5
+
+
 
 
 

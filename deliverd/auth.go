@@ -11,6 +11,7 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
+	//"net"
 )
 
 // Auth is implemented by an SMTP authentication mechanism.
@@ -35,6 +36,7 @@ type Auth interface {
 
 // ServerInfo records information about an SMTP server.
 type ServerInfo struct {
+	//Address net.TCPAddr // SMTP adrress
 	Name string   // SMTP server name
 	TLS  bool     // using TLS, with valid certificate for Name
 	Auth []string // advertised authentication mechanisms

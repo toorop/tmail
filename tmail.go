@@ -14,6 +14,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	"log"
 	stdLog "log"
 	"math/rand"
 	"os"
@@ -111,6 +112,10 @@ func main() {
 
 	// nsqd
 	opts := nsqd.NewNSQDOptions()
+	// logs
+	//opts.Logger = log.New(os.Stderr, "[nsqd] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+	hostname, err := os.Hostname()
+	opts.Logger = log.New(os.Stdout, hostname+"(127.0.0.1) - NSQD :", log.Ldate|log.Ltime|log.Lmicroseconds)
 	opts.Verbose = scope.Cfg.GetDebugEnabled() // verbosity
 	opts.DataPath = util.GetBasePath() + "/nsq"
 	// if cluster get lookupd addresses
@@ -139,7 +144,7 @@ func main() {
 
 	nsqd := nsqd.NewNSQD(opts)
 	nsqd.LoadMetadata()
-	err := nsqd.PersistMetadata()
+	err = nsqd.PersistMetadata()
 	if err != nil {
 		stdLog.Fatalf("ERROR: failed to persist metadata - %s", err.Error())
 	}
@@ -158,7 +163,8 @@ func main() {
 	}
 
 	// deliverd
-	go deliverd.New(scope).Run()
+	deliverd.Scope = scope
+	go deliverd.Run()
 
 	<-sigChan
 	scope.Log.Info("Exiting...")
