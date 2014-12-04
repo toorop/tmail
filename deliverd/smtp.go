@@ -20,14 +20,19 @@ import (
 	"io"
 	"net"
 	"net/textproto"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // A Client represents a client connection to an SMTP server.
 type Client struct {
 	// Text is the textproto.Conn used by the Client. It is exported to allow for
 	// clients to add extensions.
-	Text *textproto.Conn
+	Text       *textproto.Conn
+	RemoteIP   string
+	RemotePort uint64
+
 	// keep a reference to the connection so it can be used to create a TLS
 	// connection later
 	conn net.Conn
@@ -41,6 +46,7 @@ type Client struct {
 	localName  string // the name to use in HELO/EHLO
 	didHello   bool   // whether we've said HELO/EHLO
 	helloError error  // the error from the hello
+
 }
 
 // Dial returns a new Client connected to an SMTP server at addr.
@@ -54,6 +60,39 @@ func Dial(addr string) (*Client, error) {
 	return NewClient(conn, host)
 }
 
+// Dialz returns a new Client connected to an SMTP server at addr.
+// The diff
+func Dialz(rServer *rServer, lIp string, heloHost string, timeout int) (*Client, error) {
+	var laddr *net.TCPAddr
+	var conn *net.TCPConn
+	var err error
+	laddr, err = net.ResolveTCPAddr("tcp", lIp+":0")
+	if err != nil {
+		return nil, err
+	}
+
+	// Dial timeout
+	connectTimer := time.NewTimer(time.Duration(timeout) * time.Second)
+	done := make(chan error, 1)
+	go func() {
+		conn, err = net.DialTCP("tcp", laddr, &rServer.addr)
+		done <- err
+	}()
+
+	// Wait for the conn or  timeout
+	select {
+	case err = <-done:
+		if err == nil {
+			return NewClientz(conn, rServer.addr.IP.String(), heloHost)
+		} else {
+			return nil, err
+		}
+	// Timeout
+	case <-connectTimer.C:
+		return nil, errors.New("connect timeout")
+	}
+}
+
 // NewClient returns a new Client using an existing connection and host as a
 // server name to be used when authenticating.
 func NewClient(conn net.Conn, host string) (*Client, error) {
@@ -65,6 +104,26 @@ func NewClient(conn net.Conn, host string) (*Client, error) {
 	}
 	c := &Client{Text: text, conn: conn, serverName: host, localName: "localhost"}
 	return c, nil
+}
+
+// NewClientz returns a new Client using an existing connection and host as a
+// server name to be used when authenticating.
+func NewClientz(conn net.Conn, host string, localName string) (*Client, error) {
+	text := textproto.NewConn(conn)
+	_, _, err := text.ReadResponse(220)
+	if err != nil {
+		text.Close()
+		return nil, err
+	}
+	c := &Client{Text: text, conn: conn, serverName: host, localName: localName}
+	p := strings.Split(conn.RemoteAddr().String(), ":")
+	c.RemoteIP = p[0]
+	c.RemotePort, _ = strconv.ParseUint(p[1], 10, 64)
+	err = c.ehlo()
+	if err != nil {
+		err = c.helo()
+	}
+	return c, err
 }
 
 // Close closes the connection.
@@ -98,15 +157,33 @@ func (c *Client) Hello(localName string) error {
 }
 
 // cmd is a convenience function that sends a command and returns the response
+// add timeout
 func (c *Client) cmd(expectCode int, format string, args ...interface{}) (int, string, error) {
-	id, err := c.Text.Cmd(format, args...)
-	if err != nil {
-		return 0, "", err
+	var id uint
+	var err error
+	timeout := make(chan bool, 1)
+	done := make(chan bool, 1)
+	timer := time.AfterFunc(time.Duration(Scope.Cfg.GetDeliverdRemoteTimeout())*time.Second, func() {
+		timeout <- true
+	})
+	defer timer.Stop()
+	go func() {
+		id, err = c.Text.Cmd(format, args...)
+		done <- true
+	}()
+
+	select {
+	case <-timeout:
+		return 0, "", errors.New("timeout")
+	case <-done:
+		if err != nil {
+			return 0, "", err
+		}
+		c.Text.StartResponse(id)
+		defer c.Text.EndResponse(id)
+		code, msg, err := c.Text.ReadResponse(expectCode)
+		return code, msg, err
 	}
-	c.Text.StartResponse(id)
-	defer c.Text.EndResponse(id)
-	code, msg, err := c.Text.ReadResponse(expectCode)
-	return code, msg, err
 }
 
 // helo sends the HELO greeting to the server. It should be used only when the

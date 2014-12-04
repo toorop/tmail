@@ -10,7 +10,7 @@ import (
 
 // storer is a interface for stores
 type Storer interface {
-	Get(key string) (io.Writer, error)
+	Get(key string) (io.Reader, error)
 	Put(key string, reader io.Reader) error
 	Del(key string) error
 }

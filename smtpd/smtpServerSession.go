@@ -501,7 +501,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	//TRACE.Println(err, message)
 
 	// On ajoute le uuid
-	message.AddHeader("x-pm-uuid", s.uuid)
+	message.AddHeader("x-tmail-uuid", s.uuid)
 
 	// x-env-from
 	message.AddHeader("x-env-from", s.envelope.MailFrom)

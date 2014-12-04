@@ -1,8 +1,10 @@
 package store
 
 import (
+	"bytes"
 	"errors"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 )
@@ -32,8 +34,16 @@ func NewDiskStore(basePath string) (*diskStore, error) {
 }
 
 // Get
-func (s *diskStore) Get(key string) (writter io.Writer, err error) {
-	return nil, nil
+func (s *diskStore) Get(key string) (io.Reader, error) {
+	if key == "" {
+		return nil, errors.New("diskStore.Get: key is empty")
+	}
+	spath := s.getStoragePath(key)
+	raw, err := ioutil.ReadFile(spath)
+	if err != nil {
+		return nil, errors.New("diskStore.Get: unable to open " + spath + " for reading." + err.Error())
+	}
+	return io.Reader(bytes.NewReader(raw)), nil
 }
 
 // Put

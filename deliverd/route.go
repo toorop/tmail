@@ -2,7 +2,6 @@ package deliverd
 
 import (
 	"errors"
-	"fmt"
 	"net"
 )
 
@@ -14,17 +13,16 @@ type rServer struct {
 
 // routes represents all the routes allowed to access remote MX
 type routes struct {
-	Local  []net.IP
-	Remote []rServer
+	localIp      []net.IP
+	remoteServer []rServer
 }
 
-// getRoute reutrn the route for the specified destination host
+// getRoute reutrn routes for the specified destination host
 func getRoutes(host string) (r *routes, err error) {
-	r = new(routes)
-	r.Local = []net.IP{}
-	r.Remote = []rServer{}
+	r = &routes{[]net.IP{}, []rServer{}}
+
 	// Get locals IP
-	r.Local, err = Scope.Cfg.GetLocalIps()
+	r.localIp, err = Scope.Cfg.GetLocalIps()
 	if err != nil {
 		return
 	}
@@ -34,7 +32,6 @@ func getRoutes(host string) (r *routes, err error) {
 	if err != nil {
 		return
 	}
-
 	for _, mx := range mxs {
 		// Get IP from MX
 		ipStr, err := net.LookupHost(mx.Host)
@@ -47,7 +44,8 @@ func getRoutes(host string) (r *routes, err error) {
 		}
 		addr := net.TCPAddr{}
 		addr.IP = ip
-		r.Remote = append(r.Remote, rServer{addr})
+		addr.Port = 25
+		r.remoteServer = append(r.remoteServer, rServer{addr})
 	}
 	return
 }

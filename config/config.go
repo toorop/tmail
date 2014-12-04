@@ -40,9 +40,10 @@ type Config struct {
 		SmtpdMaxDataBytes       int    `name:"smtpd_max_databytes" default:"60"`
 		SmtpdMaxHops            int    `name:"smtpd_max_hops" default:"10"`
 
-		LaunchDeliverd      bool   `name:"deliverd_launch" default:"false"`
-		LocalIps            string `name:"deliverd_local_ips" default:"_"`
-		DeliverdMaxInFlight int    `name:"deliverd_max_in_flight" default:"5"`
+		LaunchDeliverd        bool   `name:"deliverd_launch" default:"false"`
+		LocalIps              string `name:"deliverd_local_ips" default:"_"`
+		DeliverdMaxInFlight   int    `name:"deliverd_max_in_flight" default:"5"`
+		DeliverdRemoteTimeout int    `name:"deliverd_remote_timeout" default:"60"`
 	}
 }
 
@@ -306,4 +307,12 @@ func (c *Config) GetLocalIps() (lIps []net.IP, err error) {
 		lIps = append(lIps, ip)
 	}
 	return lIps, nil
+}
+
+// GetDeliverdRemoteTimeout return remote timeout in second
+// time to wait for a response from remote server before closing conn
+func (c *Config) GetDeliverdRemoteTimeout() int {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.DeliverdRemoteTimeout
 }
