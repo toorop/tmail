@@ -9,6 +9,7 @@ import (
 	"github.com/Toorop/tmail/store"
 	"github.com/bitly/go-nsq"
 	"io"
+	"strconv"
 	"time"
 )
 
@@ -38,7 +39,7 @@ func processMsg(m *nsq.Message) {
 		return
 	}
 
-	Scope.Log.Debug(fmt.Sprintf("deliverd-remote: starting new delivery %d", qMessage.Id))
+	Scope.Log.Info(fmt.Sprintf("deliverd-remote %d: starting new delivery", qMessage.Id))
 
 	// {"Id":7,"Key":"7f88b72858ae57c17b6f5e89c1579924615d7876","MailFrom":"toorop@toorop.fr",
 	// "RcptTo":"toorop@toorop.fr","Host":"toorop.fr","AddedAt":"2014-12-02T09:05:59.342268145+01:00",
@@ -54,8 +55,9 @@ func processMsg(m *nsq.Message) {
 	routes, err := getRoutes(qMessage.Host)
 	Scope.Log.Debug("deliverd-remote: ", routes, err)
 
-	// HERE
-	err = sendmail(qMessage.MailFrom, qMessage.RcptTo, qMessage.Key, routes)
+	// sendmail
+	response, err := sendmail(qMessage.Id, qMessage.MailFrom, qMessage.RcptTo, qMessage.Key, routes)
+	Scope.Log.Debug(response)
 
 	// TODO gestion de l'erreur
 	if err != nil {
@@ -72,7 +74,7 @@ func processMsg(m *nsq.Message) {
 	// Si il n'y a pas d'autre message en queue avec cette key alors on supprime
 	// le messag de la DB
 
-	Scope.Log.Info("deliverd-remote: Job Done")
+	Scope.Log.Info(fmt.Sprintf("deliverd-remote %d: end delivery", qMessage.Id))
 	//m.RequeueWithoutBackoff(5 * time.Second)
 	//m.Requeue(5 * time.Second)
 	m.Finish()
@@ -80,30 +82,26 @@ func processMsg(m *nsq.Message) {
 
 // sendmail send an email
 // TODO: l'erreur doit spécifier si elle es 4** ou 5**
-func sendmail(sender, recipient, mailKey string, routes *routes) error {
-	// on commence par aller chercher le mail dans le store
-	// c'est le plus long (enfin ça peut)
+func sendmail(qMsgId int64, sender, recipient, mailKey string, routes *routes) (response smtpResponse, err error) {
+	response = smtpResponse{}
 
+	// on commence par aller chercher le mail dans le store
+	// c'est le plus long (enfin ça peut si c'est par exemple sur du S3 ou RA)
 	qStore, err := store.New(Scope.Cfg.GetStoreDriver(), Scope.Cfg.GetStoreSource())
 	if err != nil {
-		return err
+		Scope.Log.Error(fmt.Sprintf("deliverd-remote %d : unable to get rawmail %s from store - %s", qMsgId, mailKey, err))
+		return response, errors.New("unable to get raw mail from store")
 	}
-
 	DataReader, err := qStore.Get(mailKey)
 	if err != nil {
-		return err
+		return
 	}
 
-	/*rawMail, err := ioutil.ReadAll(rawMailreader)
-	if err != nil {
-		return err
-	}
-	Scope.Log.Debug(string(rawMail))*/
-
+	// Get client
 	c, err := getSmtpClient(routes)
 	Scope.Log.Debug(c, err)
 	if err != nil {
-		return err
+		return
 	}
 	defer c.Close()
 
@@ -120,7 +118,7 @@ func sendmail(sender, recipient, mailKey string, routes *routes) error {
 			c.Close()
 			c, err = getSmtpClient(routes)
 			if err != nil {
-				return err
+				return
 			}
 			defer c.Close()
 		}
@@ -130,32 +128,32 @@ func sendmail(sender, recipient, mailKey string, routes *routes) error {
 
 	// MAIL FROM
 	if err = c.Mail(sender); err != nil {
-		return errors.New("connected to remote server " + c.RemoteIP + ":" + fmt.Sprintf("%d", c.RemotePort) + " but sender was rejected." + err.Error())
+		return response, errors.New("connected to remote server " + c.RemoteIP + ":" + fmt.Sprintf("%d", c.RemotePort) + " but sender was rejected." + err.Error())
 	}
 
 	// RCPT TO
-	Scope.Log.Debug("YYYYYYYYYYYYYYYYYYYY")
 	if err = c.Rcpt(recipient); err != nil {
-		return err
+		response, err = parseSmtpResponse(err.Error())
+		return
 	}
 
 	// DATA
 	w, err := c.Data()
 	if err != nil {
-		return err
+		return
 	}
 	// TODO one day: check if the size returned by copy is the same as mail size
 	_, err = io.Copy(w, DataReader)
 	w.Close()
 	if err != nil {
-		return err
+		return
 	}
 
 	// Bye
 	err = c.Close()
 
-	Scope.Log.Debug("Fin de la transmission SMTP")
-	return err
+	Scope.Log.Debug("Fin de la transmission SMTP: " + err.Error())
+	return
 }
 
 // getSmtpClient returns a smtp client
@@ -180,4 +178,25 @@ func getSmtpClient(r *routes) (c *Client, err error) {
 
 func bounce(qm *mailqueue.QMessage) {
 	Scope.Log.Info("deliverd: bouncing message from: " + qm.MailFrom + " to: " + qm.RcptTo)
+}
+
+// smtpResponse represents a SMTP response
+type smtpResponse struct {
+	Code int
+	Msg  string
+}
+
+// parseSmtpResponse parse an smtp response
+// warning ça parse juste une ligne et ne tient pas compte des continued (si line[4]=="-")
+func parseSmtpResponse(line string) (response smtpResponse, err error) {
+	err = errors.New("invalid smtp response from remote server: " + line)
+	if len(line) < 4 || line[3] != ' ' && line[3] != '-' {
+		return
+	}
+	response.Code, err = strconv.Atoi(line[0:3])
+	if err != nil {
+		return
+	}
+	response.Msg = line[4:]
+	return
 }
