@@ -8,7 +8,7 @@ import (
 	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/store"
 	"github.com/bitly/go-nsq"
-	"io/ioutil"
+	"io"
 	"time"
 )
 
@@ -21,20 +21,11 @@ func (h *remoteHandler) HandleMessage(m *nsq.Message) error {
 	m.DisableAutoResponse()
 	go processMsg(m)
 	return nil
-	/*go func(m *nsq.Message) {
-		l.Info("deliverd: Processing message " + string(m.Body))
-		time.Sleep(1 * time.Second)
-		l.Info("deliverd: Job Done")
-		//m.RequeueWithoutBackoff(5 * time.Second)
-		//m.Requeue(5 * time.Second)
-		m.Finish()
-	}(m)*/
 }
 
 // processMsg processes message
 func processMsg(m *nsq.Message) {
 	var qMessage mailqueue.QMessage
-	Scope.Log.Info("deliverd-remote: starting new delivery", string(m.Body))
 
 	// decode message from json
 	if err := json.Unmarshal([]byte(m.Body), &qMessage); err != nil {
@@ -46,6 +37,8 @@ func processMsg(m *nsq.Message) {
 		// y a des problemes
 		return
 	}
+
+	Scope.Log.Debug(fmt.Sprintf("deliverd-remote: starting new delivery %d", qMessage.Id))
 
 	// {"Id":7,"Key":"7f88b72858ae57c17b6f5e89c1579924615d7876","MailFrom":"toorop@toorop.fr",
 	// "RcptTo":"toorop@toorop.fr","Host":"toorop.fr","AddedAt":"2014-12-02T09:05:59.342268145+01:00",
@@ -63,12 +56,22 @@ func processMsg(m *nsq.Message) {
 
 	// HERE
 	err = sendmail(qMessage.MailFrom, qMessage.RcptTo, qMessage.Key, routes)
+
 	// TODO gestion de l'erreur
+	if err != nil {
+		Scope.Log.Debug("RETOUR DE SENDMAIL: " + err.Error())
+		// TODO logguer errreur ici
+		// TODO Faire un algo pour déterminer la durée de retours en queue
+		Scope.Log.Info("message requeued")
+		m.RequeueWithoutBackoff(15 * time.Second)
+		return
+	}
+
+	Scope.Log.Info("MAIL ENVOYE Yeah !!!! ")
 
 	// Si il n'y a pas d'autre message en queue avec cette key alors on supprime
 	// le messag de la DB
 
-	time.Sleep(1 * time.Second)
 	Scope.Log.Info("deliverd-remote: Job Done")
 	//m.RequeueWithoutBackoff(5 * time.Second)
 	//m.Requeue(5 * time.Second)
@@ -86,16 +89,16 @@ func sendmail(sender, recipient, mailKey string, routes *routes) error {
 		return err
 	}
 
-	rawMailreader, err := qStore.Get(mailKey)
+	DataReader, err := qStore.Get(mailKey)
 	if err != nil {
 		return err
 	}
 
-	rawMail, err := ioutil.ReadAll(rawMailreader)
+	/*rawMail, err := ioutil.ReadAll(rawMailreader)
 	if err != nil {
 		return err
 	}
-	Scope.Log.Debug(string(rawMail))
+	Scope.Log.Debug(string(rawMail))*/
 
 	c, err := getSmtpClient(routes)
 	Scope.Log.Debug(c, err)
@@ -131,9 +134,28 @@ func sendmail(sender, recipient, mailKey string, routes *routes) error {
 	}
 
 	// RCPT TO
+	Scope.Log.Debug("YYYYYYYYYYYYYYYYYYYY")
+	if err = c.Rcpt(recipient); err != nil {
+		return err
+	}
 
-	return nil
+	// DATA
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	// TODO one day: check if the size returned by copy is the same as mail size
+	_, err = io.Copy(w, DataReader)
+	w.Close()
+	if err != nil {
+		return err
+	}
 
+	// Bye
+	err = c.Close()
+
+	Scope.Log.Debug("Fin de la transmission SMTP")
+	return err
 }
 
 // getSmtpClient returns a smtp client
@@ -144,7 +166,7 @@ func getSmtpClient(r *routes) (c *Client, err error) {
 	for _, lIp := range r.localIp {
 		for _, remoteServer := range r.remoteServer {
 			// TODO timeout en config
-			c, err = Dialz(&remoteServer, lIp.String(), Scope.Cfg.GetMe(), 240)
+			c, err = Dialz(&remoteServer, lIp.String(), Scope.Cfg.GetMe(), 30)
 			if err == nil {
 				return
 			} else {

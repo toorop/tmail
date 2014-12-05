@@ -28,6 +28,9 @@ func Run() {
 
 	cfg.UserAgent = "tmail/deliverd"
 	cfg.MaxInFlight = Scope.Cfg.GetDeliverdMaxInFlight()
+	// MaxAttempts: number of attemps for a message before sending a
+	// 1 [queueRemote/deliverd] msg 07814777d6312000 attempted 6 times, giving up
+	cfg.MaxAttempts = 0
 
 	// create consummer
 	// TODO creation de plusieurs consumer: local, remote, ...

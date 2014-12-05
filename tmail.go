@@ -136,10 +136,14 @@ func main() {
 	// if a message timeout it returns to the queue: https://groups.google.com/d/msg/nsq-users/xBQF1q4srUM/kX22TIoIs-QJ
 	// msg timeout : base time to wait from consummer before requeuing a message
 	// note: deliverd consumer return immediatly (message is handled in a go routine)
-	opts.MsgTimeout = 60 * time.Second
+	// Ce qui est au dessus est faux malgres la go routine il attends toujours a la réponse
+	// et c'est normal car le message est toujours "in flight"
+	// En fait ce timeout c'est le temps durant lequel le message peut rester dans le state "in flight"
+	// autrement dit c'est le temps maxi que peu prendre deliverd.processMsg
+	opts.MsgTimeout = 10 * time.Minute
 
 	// maximum duration before a message will timeout
-	opts.MaxMsgTimeout = 15 * time.Minute
+	opts.MaxMsgTimeout = 15 * time.Hour
 
 	// maximum requeuing timeout for a message
 	// je pense que si le client ne demande pas de requeue dans ce delais alors
