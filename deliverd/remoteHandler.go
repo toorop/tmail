@@ -25,6 +25,10 @@ func (h *remoteHandler) HandleMessage(m *nsq.Message) error {
 }
 
 // processMsg processes message
+// At the end :
+// - message send
+// - temp failure -> requeue if not expired
+// - perm failure
 func processMsg(m *nsq.Message) {
 	var qMessage mailqueue.QMessage
 
@@ -32,8 +36,8 @@ func processMsg(m *nsq.Message) {
 	if err := json.Unmarshal([]byte(m.Body), &qMessage); err != nil {
 		Scope.Log.Error("deliverd-remote: unable to parse nsq message - " + err.Error())
 		// in this case :
-		//  on expire le message de la queue par contre on ne
-		// le supprime pas de la db (en meme temps on ne peut pas)
+		// on expire le message de la queue par contre on ne
+		// le supprime pas de la db
 		// un process doit venir checker la db regulierement pour voir si il
 		// y a des problemes
 		return
@@ -49,46 +53,12 @@ func processMsg(m *nsq.Message) {
 	// retrieve message from DB
 
 	// Retrieve message from store
-
-	// SMTP send message
-	// get route (MX)
-	routes, err := getRoutes(qMessage.Host)
-	Scope.Log.Debug("deliverd-remote: ", routes, err)
-
-	// sendmail
-	response, err := sendmail(qMessage.Id, qMessage.MailFrom, qMessage.RcptTo, qMessage.Key, routes)
-	Scope.Log.Debug(response)
-
-	// TODO gestion de l'erreur
-	if err != nil {
-		Scope.Log.Debug("RETOUR DE SENDMAIL: " + err.Error())
-		// TODO logguer errreur ici
-		// TODO Faire un algo pour déterminer la durée de retours en queue
-		Scope.Log.Info("message requeued")
-		m.RequeueWithoutBackoff(15 * time.Second)
-		return
-	}
-
-	Scope.Log.Info("MAIL ENVOYE Yeah !!!! ")
-
-	// Si il n'y a pas d'autre message en queue avec cette key alors on supprime
-	// le messag de la DB
-
-	Scope.Log.Info(fmt.Sprintf("deliverd-remote %d: end delivery", qMessage.Id))
-	//m.RequeueWithoutBackoff(5 * time.Second)
-	//m.Requeue(5 * time.Second)
-	m.Finish()
-}
-
-// sendmail send an email
-// TODO: l'erreur doit spécifier si elle es 4** ou 5**
-func sendmail(qMsgId int64, sender, recipient, mailKey string, routes *routes) (response smtpResponse, err error) {
-	response = smtpResponse{}
-
-	// on commence par aller chercher le mail dans le store
 	// c'est le plus long (enfin ça peut si c'est par exemple sur du S3 ou RA)
 	qStore, err := store.New(Scope.Cfg.GetStoreDriver(), Scope.Cfg.GetStoreSource())
 	if err != nil {
+		// On va considerer que c'est une erreur temporaire
+		// il se peut que le store soit momentanément inhoignable
+		// A terme on peut regarder le
 		Scope.Log.Error(fmt.Sprintf("deliverd-remote %d : unable to get rawmail %s from store - %s", qMsgId, mailKey, err))
 		return response, errors.New("unable to get raw mail from store")
 	}
@@ -96,6 +66,11 @@ func sendmail(qMsgId int64, sender, recipient, mailKey string, routes *routes) (
 	if err != nil {
 		return
 	}
+
+	// Get route (MX)
+	routes, err := getRoutes(qMessage.Host)
+	Scope.Log.Debug("deliverd-remote: ", routes, err)
+	// TODO gestion de l'erreur de la route
 
 	// Get client
 	c, err := getSmtpClient(routes)
@@ -127,14 +102,14 @@ func sendmail(qMsgId int64, sender, recipient, mailKey string, routes *routes) (
 	// TODO auth
 
 	// MAIL FROM
-	if err = c.Mail(sender); err != nil {
+	if err = c.Mail(qMessage.MailFrom); err != nil {
+		// TODO ajouter le sender dans le message d'erreur
 		return response, errors.New("connected to remote server " + c.RemoteIP + ":" + fmt.Sprintf("%d", c.RemotePort) + " but sender was rejected." + err.Error())
 	}
 
 	// RCPT TO
 	if err = c.Rcpt(recipient); err != nil {
-		response, err = parseSmtpResponse(err.Error())
-		return
+		return handleSmtpError(nsqMsg, qMsg, err.Error())
 	}
 
 	// DATA
@@ -154,6 +129,66 @@ func sendmail(qMsgId int64, sender, recipient, mailKey string, routes *routes) (
 
 	Scope.Log.Debug("Fin de la transmission SMTP: " + err.Error())
 	return
+
+	// sendmail
+	response, err := sendmail(qMessage.Id, qMessage.MailFrom, qMessage.RcptTo, qMessage.Key, routes)
+	Scope.Log.Debug(response)
+
+	// TODO gestion de l'erreur
+	if err != nil {
+		Scope.Log.Debug("Sendmail return error: " + err.Error())
+		// TODO logguer errreur ici
+		// TODO Faire un algo pour déterminer la durée de retours en queue
+		Scope.Log.Info("message requeued")
+		m.RequeueWithoutBackoff(15 * time.Second)
+		return
+	}
+
+	Scope.Log.Info("MAIL ENVOYE Yeah !!!! ")
+
+	// Si il n'y a pas d'autre message en queue avec cette key alors on supprime
+	// le messag de la DB
+
+	Scope.Log.Info(fmt.Sprintf("deliverd-remote %d: end delivery", qMessage.Id))
+	//m.RequeueWithoutBackoff(5 * time.Second)
+	//m.Requeue(5 * time.Second)
+	//m.Finish()
+}
+
+func handleSmtpError(nsqMsg *nsq.Message, qMsg *mailqueue.QMessage, smtpErr string) {
+	smtpResponse, err := parseSmtpResponse(smtpErr)
+	if smtpResponse.Code > 499 {
+		diePerm(nsqMsg, qMsg, errMsg)
+	}
+
+}
+
+func dieOk(nsqMsg *nsq.Message, qMsg *mailqueue.QMessage, msg string) {
+	//TODO log msg
+	nsqMsg.Finish()
+}
+
+// dieTemp die when a 4** error occured
+func dieTemp(nsqMsg *nsq.Message, qMsg *mailqueue.QMessage, errMsg string) {
+	// on regarde depuis quand le message est en queue
+
+	// on regarde le nombre de tentatives
+
+	// si les deux du dessus sont trop élevés on
+	// diePerm()
+
+	// on calcul le delay avant d'etre de nouveau présenté
+
+	// on requeue (attention pas de finish)
+}
+
+// diePerm when a 5** error occured
+func diePerm(nsqMsg *nsq.Message, qMsg *mailqueue.QMessage, errMsg string) {
+
+}
+
+func bounce(qm *mailqueue.QMessage) {
+	Scope.Log.Info("deliverd: bouncing message from: " + qm.MailFrom + " to: " + qm.RcptTo)
 }
 
 // getSmtpClient returns a smtp client
@@ -174,10 +209,6 @@ func getSmtpClient(r *routes) (c *Client, err error) {
 	}
 	// All routes have been tested -> Fail !
 	return nil, errors.New("deliverd.getSmtpClient: unable to get a client, all routes have been tested")
-}
-
-func bounce(qm *mailqueue.QMessage) {
-	Scope.Log.Info("deliverd: bouncing message from: " + qm.MailFrom + " to: " + qm.RcptTo)
 }
 
 // smtpResponse represents a SMTP response
