@@ -565,7 +565,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		s.out("451 temporary queue init error")
 		return nil
 	}*/
-	id, err := mailqueue.AddMessage(scope, message, s.envelope)
+	mailqueue.Scope = scope
+	id, err := mailqueue.AddMessage(message, s.envelope)
 	if err != nil {
 		s.logError("Unable to put message in queue -", err.Error())
 		s.out("451 temporary queue error")

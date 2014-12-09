@@ -10,20 +10,19 @@ import (
 	"github.com/Toorop/tmail/store"
 	"github.com/bitly/go-nsq"
 	"io"
+	"net/mail"
 	"time"
 )
 
-/*var (
-	s *scope.Scope
-	//cfg    *config.Config
-	//DB     gorm.DB
-	//qStore store.Storer
-)*/
+var (
+	Scope *scope.Scope
+)
 
 type QMessage struct {
 	Id                  int64
 	Key                 string // identifier  -> store.Get(key)
 	MailFrom            string
+	ReturnPath          string
 	RcptTo              string
 	Host                string
 	AddedAt             time.Time
@@ -44,14 +43,28 @@ func New(scope *scope.Scope) (*MailQueue, error) {
 }*/
 
 // Add add a new mail in queue
-func AddMessage(s *scope.Scope, msg *message.Message, envelope message.Envelope) (key string, err error) {
-	qStore, err := store.New(s.Cfg.GetStoreDriver(), s.Cfg.GetStoreSource())
+func AddMessage(msg *message.Message, envelope message.Envelope) (key string, err error) {
+	qStore, err := store.New(Scope.Cfg.GetStoreDriver(), Scope.Cfg.GetStoreSource())
 	if err != nil {
 		return
 	}
 	rawMess, err := msg.GetRaw()
 	if err != nil {
 		return
+	}
+
+	// Retun Path
+	returnPath := ""
+	// Exist ?
+	if msg.HaveHeader("return-path") {
+		t, err := mail.ParseAddress(msg.GetHeader("return-path"))
+		if err != nil {
+			return "", err
+		}
+		returnPath = t.Address
+	} else {
+		returnPath = envelope.MailFrom
+
 	}
 
 	// generate key
@@ -71,6 +84,7 @@ func AddMessage(s *scope.Scope, msg *message.Message, envelope message.Envelope)
 		qm := QMessage{
 			Key:                 key,
 			MailFrom:            envelope.MailFrom,
+			ReturnPath:          returnPath,
 			RcptTo:              rcptTo,
 			Host:                message.GetHostFromAddress(rcptTo),
 			AddedAt:             time.Now(),
@@ -81,7 +95,7 @@ func AddMessage(s *scope.Scope, msg *message.Message, envelope message.Envelope)
 		}
 
 		// create record in db
-		err = s.DB.Create(&qm).Error
+		err = Scope.DB.Create(&qm).Error
 		if err != nil {
 			// Rollback on storage
 			if cloop == 0 {
@@ -100,7 +114,7 @@ func AddMessage(s *scope.Scope, msg *message.Message, envelope message.Envelope)
 			if cloop == 0 {
 				qStore.Del(key)
 			}
-			s.DB.Delete(&qm)
+			Scope.DB.Delete(&qm)
 			return
 		}
 
@@ -111,7 +125,7 @@ func AddMessage(s *scope.Scope, msg *message.Message, envelope message.Envelope)
 			if cloop == 0 {
 				qStore.Del(key)
 			}
-			s.DB.Delete(&qm)
+			Scope.DB.Delete(&qm)
 			return
 		}
 		// queue local  | queue remote
@@ -120,7 +134,7 @@ func AddMessage(s *scope.Scope, msg *message.Message, envelope message.Envelope)
 			if cloop == 0 {
 				qStore.Del(key)
 			}
-			s.DB.Delete(&qm)
+			Scope.DB.Delete(&qm)
 			return
 		}
 		cloop++
