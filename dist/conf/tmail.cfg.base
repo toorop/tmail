@@ -121,6 +121,12 @@ export TMAIL_DELIVERD_LOCAL_IPS="88.178.118.205"
 # maxInFlight: the number of conncurent deliverd process
 export TMAIL_DELIVERD_MAX_IN_FLIGHT=5
 
+# Default queue lifetime in minutes
+# After this delay
+# Bounce on temp failure
+# discard if bounce failed
+export TMAIL_DELIVERD_QUEUE_LIFETIME=168
+
 
 
 

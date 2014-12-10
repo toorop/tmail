@@ -24,6 +24,7 @@ type delivery struct {
 	nsqMsg  *nsq.Message
 	qMsg    *mailqueue.QMessage
 	rawData *[]byte
+	qStore  store.Storer
 }
 
 // processMsg processes message
@@ -63,7 +64,8 @@ func (d *delivery) processMsg() {
 		Scope.Log.Error(fmt.Sprintf("deliverd-remote %s : unable to get rawmail %s from store - %s", d.id, d.qMsg.Key, err))
 		//return response, errors.New("unable to get raw mail from store")
 	}
-	dataReader, err := qStore.Get(d.qMsg.Key)
+	d.qStore = qStore
+	dataReader, err := d.qStore.Get(d.qMsg.Key)
 	if err != nil {
 		d.dieTemp("unable to retrieve raw mail from store. " + err.Error())
 		return
@@ -162,49 +164,49 @@ func (d *delivery) processMsg() {
 
 func (d *delivery) dieOk() {
 	Scope.Log.Info("deliverd-remote " + d.id + ": success.")
+	if err := d.qMsg.Delete(); err != nil {
+		Scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+	}
 	d.nsqMsg.Finish()
 }
 
 // dieTemp die when a 4** error occured
 func (d *delivery) dieTemp(msg string) {
 	Scope.Log.Info("deliverd-remote " + d.id + ": temp failure - " + msg)
-	// on regarde depuis quand le message est en queue
-
-	// on regarde le nombre de tentatives
-
-	// si les deux du dessus sont trop élevés on
-	// diePerm()
-
-	// on calcul le delay avant d'etre de nouveau présenté
-
-	// on requeue (attention pas de finish)
+	if time.Since(d.qMsg.DeliveryStartedAt) < time.Duration(Scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
+		d.requeue()
+		return
+	}
+	msg += "\r\nI'm not going to try again, this message has been in the queue for too long."
+	d.diePerm(msg)
 }
 
 // diePerm when a 5** error occured
 func (d *delivery) diePerm(msg string) {
 	Scope.Log.Info("deliverd-remote " + d.id + ": perm failure - " + msg)
-
-	// TODO bounce message
+	// bounce message
 	err := d.bounce(msg)
 	if err != nil {
-		Scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message." + err.Error())
+		Scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message from " + d.qMsg.MailFrom + "to " + d.qMsg.RcptTo + ". " + err.Error())
+		// If message queuing > queue lifetime dicard
+		if time.Since(d.qMsg.DeliveryStartedAt) < time.Duration(Scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
+			d.requeue()
+			return
+		}
 	}
 
 	// remove qmessage from DB
-	Scope.Log.Debug("deliverd-remote " + d.id + ": msg removed from DB.")
-
-	// remove raw message from store if there is no other deliveries
-	Scope.Log.Debug("deliverd-remote " + d.id + ": msg removed from store.")
+	mailqueue.Scope = Scope
+	if err = d.qMsg.Delete(); err != nil {
+		Scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+	}
 
 	// finish
 	d.nsqMsg.Finish()
-	Scope.Log.Debug("On a normalement appelé le finish sur le message d'origine")
-
 	return
-
 }
 
-// bounce bounce the message
+// bounce creates & enqueues a bounce message
 func (d *delivery) bounce(errMsg string) error {
 	// If returnPath =="" -> double bounce -> discard
 	if d.qMsg.ReturnPath == "" {
@@ -254,10 +256,19 @@ func (d *delivery) bounce(errMsg string) error {
 	if err != nil {
 		return err
 	}
-	Scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " queued with id " + id + " for for bounced.")
+	Scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " queued with id " + id + " for being bounced.")
 	return nil
 }
 
+// requeue requeues the message increasing the delay
+func (d *delivery) requeue() {
+	// Calcul du delais, pour le moment on accroit betement de 60 secondes a chaque tentative
+	delay := time.Duration(d.nsqMsg.Attempts*60) * time.Second
+	d.nsqMsg.RequeueWithoutBackoff(delay)
+	return
+}
+
+// handleSmtpError handles SMTP error response
 func (d *delivery) handleSmtpError(smtpErr string) {
 	smtpResponse, err := parseSmtpResponse(smtpErr)
 	if err != nil { // invalid smtp response

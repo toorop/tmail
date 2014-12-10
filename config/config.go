@@ -44,6 +44,7 @@ type Config struct {
 		LocalIps              string `name:"deliverd_local_ips" default:"_"`
 		DeliverdMaxInFlight   int    `name:"deliverd_max_in_flight" default:"5"`
 		DeliverdRemoteTimeout int    `name:"deliverd_remote_timeout" default:"60"`
+		DeliverdQueueLifetime int    `name:"deliverd_queue_lifetime" default:"10080"`
 	}
 }
 
@@ -315,4 +316,11 @@ func (c *Config) GetDeliverdRemoteTimeout() int {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.DeliverdRemoteTimeout
+}
+
+// GetDeliverdQueueLifetime return queue lifetime in minutes
+func (c *Config) GetDeliverdQueueLifetime() int {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.DeliverdQueueLifetime
 }

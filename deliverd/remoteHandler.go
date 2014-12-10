@@ -10,7 +10,7 @@ import (
 type remoteHandler struct {
 }
 
-// HandleMessage implement interace
+// HandleMessage implement interface
 func (h *remoteHandler) HandleMessage(m *nsq.Message) error {
 	var err error
 	d := new(delivery)
