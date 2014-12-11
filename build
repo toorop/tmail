@@ -1,10 +1,15 @@
 #!/bin/sh
 
+
 # Linux 32
-#GOOS=linux GOARCH=386 CGO_ENABLED=0 go build -o  dist/tmail-linux32
+GOOS=linux CGO_ENABLED=1 go build -o  builds/skel/tmail
+
+# zip
+#cd builds/skel/
+#zip -r ../../builds/linux/tmail.zip *
+#cd ../../
+
 
 # Sync
-#rsync -vvv dist/tmail-linux32 root@toorop.fr:/home/tmail/dist/tmail-linux32
-
-# Mac
-go build -o dist/tmail 
+#rsync -vvv builds/linux/tmail.zip root@toorop.fr:/home/tmail/
+rsync -vvv builds/skel/tmail root@toorop.fr:/home/tmail/

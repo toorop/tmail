@@ -311,7 +311,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 	// Check if there is already this recipient
 	if !util.IsStringInSlice(rcptto, s.envelope.RcptTo) {
 		s.envelope.RcptTo = append(s.envelope.RcptTo, rcptto)
-		s.log(fmt.Sprintf("rcpt to: %s", s.envelope.RcptTo))
+		s.log(fmt.Sprintf("rcpt to: %s", rcptto))
 	}
 	s.out("250 ok")
 }
@@ -573,46 +573,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		return nil
 	}
 	s.log("message queued as ", id)
-	s.out(fmt.Sprintf("550 2.0.0 Ok: queued %s", id))
+	s.out(fmt.Sprintf("250 2.0.0 Ok: queued %s", id))
 	return
-
-	// TODO go processQueuedMessage(queueId)
-
-	/*qqueue := exec.Command("/var/qmail/bin/qmail-inject", "-a", fmt.Sprintf("-f%s", s.envelope.mailFrom), strings.Join(s.envelope.rcptTo, " "))
-	qqIn, err := qqueue.StdinPipe()
-	if err != nil {
-		ERROR.Fatal(err)
-	}
-
-	if err := qqueue.Start(); err != nil {
-		ERROR.Fatal(err)
-	}
-
-	// mail - data
-	if _, err = qqIn.Write(rawMessage); err != nil {
-		ERROR.Fatal(err)
-	}
-
-	err = qqIn.Close()
-	if err != nil {
-		// TODO
-		ERROR.Fatal(err)
-	}
-
-	TRACE.Println("Writed to qmail")
-
-	if err := qqueue.Wait(); err != nil {
-		// TODO
-		ERROR.Fatal(err)
-	}
-
-	// Pour eviter de se retapper le mail de test
-	//TRACE.Fatal("OK mail parti")
-	// Send event
-
-	s.log("queued")
-	s.out(fmt.Sprintf("250 2.0.0 Ok: queued %s", s.uuid))
-	return*/
 }
 
 // QUIT
@@ -754,7 +716,8 @@ func (s *smtpServerSession) handle() {
 				} else if !strings.Contains(error.Error(), "use of closed network connection") { // timeout
 					s.logError("Client s.connection error: ", error.Error())
 				}
-				s.conn.Close()
+				s.exitasap()
+				//s.conn.Close()
 				break
 			}
 

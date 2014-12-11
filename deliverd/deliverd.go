@@ -46,7 +46,8 @@ func Run() {
 	if Scope.Cfg.GetClusterModeEnabled() {
 		err = consumer.ConnectToNSQLookupds(Scope.Cfg.GetNSQLookupdHttpAddresses())
 	} else {
-		err = consumer.ConnectToNSQDs([]string{"127.0.0.1:4151"})
+
+		err = consumer.ConnectToNSQDs([]string{"127.0.0.1:4150"})
 	}
 	if err != nil {
 		log.Fatalln(err)
