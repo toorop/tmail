@@ -716,7 +716,7 @@ func (s *smtpServerSession) handle() {
 				} else if !strings.Contains(error.Error(), "use of closed network connection") { // timeout
 					s.logError("Client s.connection error: ", error.Error())
 				}
-				s.exitasap()
+				s.exitAsap()
 				//s.conn.Close()
 				break
 			}
