@@ -590,7 +590,7 @@ func (s *smtpServerSession) smtpStartTls() {
 		return
 	}
 	s.out("220 Ready to start TLS")
-	cert, err := tls.LoadX509KeyPair(path.Join(util.GetBasePath(), "ssl/mycert1.cer"), path.Join(util.GetBasePath(), "ssl/mycert1.key"))
+	cert, err := tls.LoadX509KeyPair(path.Join(util.GetBasePath(), "ssl/server.crt"), path.Join(util.GetBasePath(), "ssl/server.key"))
 	if err != nil {
 		s.logError("Unable to load SSL keys:", err.Error())
 		s.out("451 Unable to load SSL keys (#4.5.1)")

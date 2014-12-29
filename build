@@ -2,7 +2,7 @@
 
 
 # Linux 32
-GOOS=linux CGO_ENABLED=1 go build -o  builds/skel/tmail
+GOOS=linux CGO_ENABLED=1 go build -o  /tmp/tmail
 
 # zip
 #cd builds/skel/
@@ -12,4 +12,4 @@ GOOS=linux CGO_ENABLED=1 go build -o  builds/skel/tmail
 
 # Sync
 #rsync -vvv builds/linux/tmail.zip root@toorop.fr:/home/tmail/
-rsync -vvv builds/skel/tmail root@toorop.fr:/home/tmail/
+rsync -vvv /tmp/tmail root@smtp.tmail.io:/home/tmail/dist/tmail

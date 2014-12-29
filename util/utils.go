@@ -47,3 +47,11 @@ func StripQuotes(s string) string {
 	}
 	return s
 }
+
+// IsIpv4 return true if ip is ipV4
+func IsIpV4(ip string) bool {
+	if len(ip) > 15 {
+		return false
+	}
+	return true
+}

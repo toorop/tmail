@@ -3,6 +3,7 @@ package smtpd
 import (
 	"errors"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 )
 
 type SmtpUser struct {
@@ -20,16 +21,13 @@ func NewSmtpUser(login, passwd string) (user *SmtpUser, err error) {
 		return nil, err
 	}
 
-	/*hashed, err := bcrypt.GenerateFromPassword([]byte(passwd), 10)
-	TRACE.Println(string(hashed), err)*/
-
 	err = scope.DB.Where("login = ?", login).First(user).Error
 	if err != nil {
 		return nil, err
 	}
 	// Encoding passwd
-	/*hashed, err := bcrypt.GenerateFromPassword([]byte(passwd), 10)
-	TRACE.Println(string(hashed), err)*/
+	hashed, err := bcrypt.GenerateFromPassword([]byte(passwd), 10)
+	log.Println(string(hashed), err)
 
 	// Check passwd
 	err = bcrypt.CompareHashAndPassword([]byte(user.Passwd), []byte(passwd))

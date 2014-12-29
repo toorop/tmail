@@ -163,6 +163,7 @@ func (d *delivery) processMsg() {
 }
 
 func (d *delivery) dieOk() {
+	mailqueue.Scope = Scope
 	Scope.Log.Info("deliverd-remote " + d.id + ": success.")
 	if err := d.qMsg.Delete(); err != nil {
 		Scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
@@ -172,6 +173,7 @@ func (d *delivery) dieOk() {
 
 // dieTemp die when a 4** error occured
 func (d *delivery) dieTemp(msg string) {
+
 	Scope.Log.Info("deliverd-remote " + d.id + ": temp failure - " + msg)
 	if time.Since(d.qMsg.DeliveryStartedAt) < time.Duration(Scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
 		d.requeue()
@@ -288,6 +290,10 @@ func (d *delivery) handleSmtpError(smtpErr string) {
 func getSmtpClient(r *routes) (c *Client, err error) {
 	for _, lIp := range r.localIp {
 		for _, remoteServer := range r.remoteServer {
+			// on doit avopir de l'IPv4 en entré et sortie ou de l'IP6 en e/s
+			if util.IsIpV4(lIp.String()) != util.IsIpV4(remoteServer.addr.IP.String()) {
+				continue
+			}
 			// TODO timeout en config
 			c, err = Dialz(&remoteServer, lIp.String(), Scope.Cfg.GetMe(), 30)
 			if err == nil {
