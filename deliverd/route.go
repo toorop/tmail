@@ -38,11 +38,8 @@ func getRoutes(host string) (r *routes, err error) {
 		if err != nil {
 			return r, err
 		}
-		Scope.Log.Debug(ipStr)
-
 		for _, i := range ipStr {
 			ip := net.ParseIP(i)
-			Scope.Log.Debug(ip)
 			if ip == nil {
 				return nil, errors.New("unable to parse IP " + i)
 			}

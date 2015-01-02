@@ -17,6 +17,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/textproto"
@@ -328,8 +329,13 @@ type dataCloser struct {
 
 func (d *dataCloser) Close() error {
 	d.WriteCloser.Close()
-	_, _, err := d.c.Text.ReadResponse(250)
-	return err
+	code, msg, e := d.c.Text.ReadResponse(250)
+	// bad hack
+	errMsg := ""
+	if e != nil {
+		errMsg = e.Error()
+	}
+	return errors.New(fmt.Sprintf("%dé%sé%s", code, msg, errMsg))
 }
 
 // Data issues a DATA command to the server and returns a writer that

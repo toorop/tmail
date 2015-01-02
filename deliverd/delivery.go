@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"path"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 )
@@ -136,7 +137,8 @@ func (d *delivery) processMsg() {
 	}
 
 	// DATA
-	w, err := c.Data()
+	dataPipe, err := c.Data()
+
 	if err != nil {
 		d.handleSmtpError(err.Error())
 		return
@@ -144,10 +146,19 @@ func (d *delivery) processMsg() {
 	// TODO one day: check if the size returned by copy is the same as mail size
 	// TODO HERE recuperer le message retourné par le serveur distant
 	dataBuf := bytes.NewBuffer(*d.rawData)
-	_, err = io.Copy(w, dataBuf)
-	w.Close()
+	_, err = io.Copy(dataPipe, dataBuf)
 	if err != nil {
 		d.dieTemp(err.Error())
+		return
+	}
+
+	err = dataPipe.Close()
+	// err existe toujours car c'est ce qui nous permet de récuperer la reponse du serveur distant
+	// on parse err
+	parts := strings.Split(err.Error(), "é")
+	Scope.Log.Info(fmt.Sprintf("deliverd-remote %s: remote server %s reply to data cmd: %s - %s", d.id, c.RemoteIP, parts[0], parts[1]))
+	if len(parts) > 2 && len(parts[2]) != 0 {
+		d.dieTemp(parts[2])
 		return
 	}
 
