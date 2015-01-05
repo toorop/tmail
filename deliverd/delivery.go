@@ -29,10 +29,9 @@ type delivery struct {
 }
 
 // processMsg processes message
-// At the end :
-// - message send
-// - temp failure -> requeue if not expired
-// - perm failure
+// TODO :
+// - ajout header recieved
+// - ajout header tmail-msg-id
 func (d *delivery) processMsg() {
 	// decode message from json
 	if err := json.Unmarshal([]byte(d.nsqMsg.Body), d.qMsg); err != nil {
@@ -46,7 +45,7 @@ func (d *delivery) processMsg() {
 		return
 	}
 
-	Scope.Log.Info(fmt.Sprintf("deliverd-remote %s: starting new delivery from %s to %s (msg id: %d)", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.Id))
+	Scope.Log.Info(fmt.Sprintf("deliverd-remote %s: starting new delivery from %s to %s (msg id: %s)", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.Key))
 
 	// {"Id":7,"Key":"7f88b72858ae57c17b6f5e89c1579924615d7876","MailFrom":"toorop@toorop.fr",
 	// "RcptTo":"toorop@toorop.fr","Host":"toorop.fr","AddedAt":"2014-12-02T09:05:59.342268145+01:00",
@@ -79,8 +78,6 @@ func (d *delivery) processMsg() {
 		return
 	}
 	d.rawData = &t
-
-	// TODO add X-Tmail-Deliverd-Id header
 
 	// Get route (MX)
 	routes, err := getRoutes(d.qMsg.Host)
@@ -144,7 +141,27 @@ func (d *delivery) processMsg() {
 		return
 	}
 	// TODO one day: check if the size returned by copy is the same as mail size
-	// TODO HERE recuperer le message retourné par le serveur distant
+	// TODO add X-Tmail-Deliverd-Id header
+	// Parse raw email to add headers
+	// - x-tmail-deliverd-id
+	// - x-tmail-msg-id
+	// - received
+
+	msg, err := message.New(*d.rawData)
+	if err != nil {
+		d.dieTemp(err.Error())
+		return
+	}
+
+	msg.SetHeader("x-tmail-deliverd-id", d.id)
+	msg.SetHeader("x-tmail-msg-id", d.qMsg.Key)
+	msg.AddHeader("recieved", "tmail deliverd; "+time.Now().Format(time.RFC822))
+	*d.rawData, err = msg.GetRaw()
+	if err != nil {
+		d.dieTemp(err.Error())
+		return
+	}
+
 	dataBuf := bytes.NewBuffer(*d.rawData)
 	_, err = io.Copy(dataPipe, dataBuf)
 	if err != nil {

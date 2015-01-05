@@ -6,13 +6,13 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net"
-	"net/mail"
 	//"os/exec"
 	"github.com/Toorop/tmail/logger"
 	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/message"
 	"github.com/Toorop/tmail/util"
 	"github.com/jinzhu/gorm"
+	"net/mail"
 	"path"
 	"strings"
 	"time"
@@ -501,10 +501,10 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	//TRACE.Println(err, message)
 
 	// On ajoute le uuid
-	message.AddHeader("x-tmail-uuid", s.uuid)
+	message.SetHeader("x-tmail-smtpd-sess-uuid", s.uuid)
 
 	// x-env-from
-	message.AddHeader("x-env-from", s.envelope.MailFrom)
+	message.SetHeader("x-env-from", s.envelope.MailFrom)
 
 	// recieved
 	// Add recieved header

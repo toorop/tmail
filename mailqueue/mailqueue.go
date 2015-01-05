@@ -119,6 +119,7 @@ func AddMessage(msg *message.Message, envelope message.Envelope) (key string, er
 		}
 
 		// Send message to smtpd.deliverd on localhost
+		// TODO ne pas mettre le producer dans la loop
 		var producer *nsq.Producer
 		nsqCfg := nsq.NewConfig()
 		nsqCfg.UserAgent = "tmail.smtpd"
