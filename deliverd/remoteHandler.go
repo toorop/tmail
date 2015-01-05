@@ -2,6 +2,7 @@ package deliverd
 
 import (
 	"github.com/Toorop/tmail/mailqueue"
+	"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/util"
 	"github.com/bitly/go-nsq"
 	"time"
@@ -17,7 +18,7 @@ func (h *remoteHandler) HandleMessage(m *nsq.Message) error {
 	d.id, err = util.NewUUID()
 	if err != nil {
 		// TODO gerer mieux cette erreur
-		Scope.Log.Error("deliverd-remote: unable to create new uuid")
+		scope.Log.Error("deliverd-remote: unable to create new uuid")
 		m.RequeueWithoutBackoff(10 * time.Minute)
 	}
 

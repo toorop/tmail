@@ -2,6 +2,7 @@ package smtpd
 
 import (
 	"errors"
+	"github.com/Toorop/tmail/scope"
 	"golang.org/x/crypto/bcrypt"
 	"log"
 )

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/message"
+	"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/store"
 	"github.com/Toorop/tmail/util"
 	"github.com/bitly/go-nsq"
@@ -35,7 +36,7 @@ type delivery struct {
 func (d *delivery) processMsg() {
 	// decode message from json
 	if err := json.Unmarshal([]byte(d.nsqMsg.Body), d.qMsg); err != nil {
-		Scope.Log.Error("deliverd-remote: unable to parse nsq message - " + err.Error())
+		scope.Log.Error("deliverd-remote: unable to parse nsq message - " + err.Error())
 		// TODO
 		// in this case :
 		// on expire le message de la queue par contre on ne
@@ -45,7 +46,7 @@ func (d *delivery) processMsg() {
 		return
 	}
 
-	Scope.Log.Info(fmt.Sprintf("deliverd-remote %s: starting new delivery from %s to %s (msg id: %s)", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.Key))
+	scope.Log.Info(fmt.Sprintf("deliverd-remote %s: starting new delivery from %s to %s (msg id: %s)", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.Key))
 
 	// {"Id":7,"Key":"7f88b72858ae57c17b6f5e89c1579924615d7876","MailFrom":"toorop@toorop.fr",
 	// "RcptTo":"toorop@toorop.fr","Host":"toorop.fr","AddedAt":"2014-12-02T09:05:59.342268145+01:00",
@@ -54,14 +55,14 @@ func (d *delivery) processMsg() {
 
 	// Retrieve message from store
 	// c'est le plus long (enfin ça peut si c'est par exemple sur du S3 ou RA)
-	qStore, err := store.New(Scope.Cfg.GetStoreDriver(), Scope.Cfg.GetStoreSource())
+	qStore, err := store.New(scope.Cfg.GetStoreDriver(), scope.Cfg.GetStoreSource())
 	if err != nil {
 		// TODO
 		// On va considerer que c'est une erreur temporaire
 		// il se peut que le store soit momentanément injoignable
 		// A terme on peut regarder le
 
-		Scope.Log.Error(fmt.Sprintf("deliverd-remote %s : unable to get rawmail %s from store - %s", d.id, d.qMsg.Key, err))
+		scope.Log.Error(fmt.Sprintf("deliverd-remote %s : unable to get rawmail %s from store - %s", d.id, d.qMsg.Key, err))
 		//return response, errors.New("unable to get raw mail from store")
 	}
 	d.qStore = qStore
@@ -81,7 +82,7 @@ func (d *delivery) processMsg() {
 
 	// Get route (MX)
 	routes, err := getRoutes(d.qMsg.Host)
-	Scope.Log.Debug("deliverd-remote: ", routes, err)
+	scope.Log.Debug("deliverd-remote: ", routes, err)
 	if err != nil {
 		d.dieTemp("unable to get route to host " + d.qMsg.Host + ". " + err.Error())
 		return
@@ -89,7 +90,7 @@ func (d *delivery) processMsg() {
 
 	// Get client
 	c, err := getSmtpClient(routes)
-	Scope.Log.Debug(c, err)
+	scope.Log.Debug(c, err)
 	if err != nil {
 		// TODO
 		d.dieTemp("unable to get client")
@@ -122,7 +123,7 @@ func (d *delivery) processMsg() {
 	// MAIL FROM
 	if err = c.Mail(d.qMsg.MailFrom); err != nil {
 		msg := "connected to remote server " + c.RemoteIP + ":" + fmt.Sprintf("%d", c.RemotePort) + " but sender " + d.qMsg.MailFrom + " was rejected." + err.Error()
-		Scope.Log.Info(fmt.Sprintf("deliverd-remote %s: %s", d.id, msg))
+		scope.Log.Info(fmt.Sprintf("deliverd-remote %s: %s", d.id, msg))
 		d.diePerm(msg)
 		return
 	}
@@ -173,7 +174,7 @@ func (d *delivery) processMsg() {
 	// err existe toujours car c'est ce qui nous permet de récuperer la reponse du serveur distant
 	// on parse err
 	parts := strings.Split(err.Error(), "é")
-	Scope.Log.Info(fmt.Sprintf("deliverd-remote %s: remote server %s reply to data cmd: %s - %s", d.id, c.RemoteIP, parts[0], parts[1]))
+	scope.Log.Info(fmt.Sprintf("deliverd-remote %s: remote server %s reply to data cmd: %s - %s", d.id, c.RemoteIP, parts[0], parts[1]))
 	if len(parts) > 2 && len(parts[2]) != 0 {
 		d.dieTemp(parts[2])
 		return
@@ -191,19 +192,17 @@ func (d *delivery) processMsg() {
 }
 
 func (d *delivery) dieOk() {
-	mailqueue.Scope = Scope
-	Scope.Log.Info("deliverd-remote " + d.id + ": success.")
+	scope.Log.Info("deliverd-remote " + d.id + ": success.")
 	if err := d.qMsg.Delete(); err != nil {
-		Scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+		scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
 	}
 	d.nsqMsg.Finish()
 }
 
 // dieTemp die when a 4** error occured
 func (d *delivery) dieTemp(msg string) {
-
-	Scope.Log.Info("deliverd-remote " + d.id + ": temp failure - " + msg)
-	if time.Since(d.qMsg.DeliveryStartedAt) < time.Duration(Scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
+	scope.Log.Info("deliverd-remote " + d.id + ": temp failure - " + msg)
+	if time.Since(d.qMsg.DeliveryStartedAt) < time.Duration(scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
 		d.requeue()
 		return
 	}
@@ -213,22 +212,22 @@ func (d *delivery) dieTemp(msg string) {
 
 // diePerm when a 5** error occured
 func (d *delivery) diePerm(msg string) {
-	Scope.Log.Info("deliverd-remote " + d.id + ": perm failure - " + msg)
+	scope.Log.Info("deliverd-remote " + d.id + ": perm failure - " + msg)
 	// bounce message
 	err := d.bounce(msg)
 	if err != nil {
-		Scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message from " + d.qMsg.MailFrom + "to " + d.qMsg.RcptTo + ". " + err.Error())
+		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message from " + d.qMsg.MailFrom + "to " + d.qMsg.RcptTo + ". " + err.Error())
 		// If message queuing > queue lifetime dicard
-		if time.Since(d.qMsg.DeliveryStartedAt) < time.Duration(Scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
+		if time.Since(d.qMsg.DeliveryStartedAt) < time.Duration(scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
 			d.requeue()
 			return
 		}
 	}
 
 	// remove qmessage from DB
-	mailqueue.Scope = Scope
+	//mailqueue.scope = scope
 	if err = d.qMsg.Delete(); err != nil {
-		Scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+		scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
 	}
 
 	// finish
@@ -240,13 +239,13 @@ func (d *delivery) diePerm(msg string) {
 func (d *delivery) bounce(errMsg string) error {
 	// If returnPath =="" -> double bounce -> discard
 	if d.qMsg.ReturnPath == "" {
-		Scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " double bounce: discarding")
+		scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " double bounce: discarding")
 		return nil
 	}
 
 	// triple bounce
 	if d.qMsg.ReturnPath == "#@[]" {
-		Scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " tripke bounce: discarding")
+		scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " tripke bounce: discarding")
 		return nil
 	}
 
@@ -259,7 +258,7 @@ func (d *delivery) bounce(errMsg string) error {
 		BouncedMail string
 	}
 
-	tData := templateData{time.Now().Format(time.RFC822Z), Scope.Cfg.GetMe(), d.qMsg.RcptTo, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
+	tData := templateData{time.Now().Format(time.RFC822Z), scope.Cfg.GetMe(), d.qMsg.RcptTo, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
 	t, err := template.ParseFiles(path.Join(util.GetBasePath(), "tpl/bounce.tpl"))
 	if err != nil {
 		return err
@@ -276,8 +275,6 @@ func (d *delivery) bounce(errMsg string) error {
 	}
 	// enqueue
 	envelope := message.Envelope{"", []string{d.qMsg.ReturnPath}}
-
-	mailqueue.Scope = Scope
 	message, err := message.New(b)
 	if err != nil {
 		return err
@@ -286,7 +283,7 @@ func (d *delivery) bounce(errMsg string) error {
 	if err != nil {
 		return err
 	}
-	Scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " queued with id " + id + " for being bounced.")
+	scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " queued with id " + id + " for being bounced.")
 	return nil
 }
 
@@ -323,11 +320,11 @@ func getSmtpClient(r *routes) (c *Client, err error) {
 				continue
 			}
 			// TODO timeout en config
-			c, err = Dialz(&remoteServer, lIp.String(), Scope.Cfg.GetMe(), 30)
+			c, err = Dialz(&remoteServer, lIp.String(), scope.Cfg.GetMe(), 30)
 			if err == nil {
 				return
 			} else {
-				Scope.Log.Debug("deliverd.getSmtpClient: unable to get a client", lIp, "->", remoteServer.addr.IP.String(), ":", remoteServer.addr.Port, "-", err)
+				scope.Log.Debug("deliverd.getSmtpClient: unable to get a client", lIp, "->", remoteServer.addr.IP.String(), ":", remoteServer.addr.Port, "-", err)
 			}
 		}
 	}

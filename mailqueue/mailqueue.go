@@ -14,10 +14,6 @@ import (
 	"time"
 )
 
-var (
-	Scope *scope.Scope
-)
-
 type QMessage struct {
 	Id                  int64
 	Key                 string // identifier  -> store.Get(key)
@@ -36,19 +32,19 @@ type QMessage struct {
 func (q *QMessage) Delete() error {
 	var err error
 	// remove from DB
-	if err = Scope.DB.Delete(q).Error; err != nil {
+	if err = scope.DB.Delete(q).Error; err != nil {
 		return err
 	}
 
 	// If there is no other reference in DB, remove raw message from store
 	var c uint
-	if err = Scope.DB.Model(QMessage{}).Where("key = ?", q.Key).Count(&c).Error; err != nil {
+	if err = scope.DB.Model(QMessage{}).Where("key = ?", q.Key).Count(&c).Error; err != nil {
 		return err
 	}
 	if c != 0 {
 		return nil
 	}
-	qStore, err := store.New(Scope.Cfg.GetStoreDriver(), Scope.Cfg.GetStoreSource())
+	qStore, err := store.New(scope.Cfg.GetStoreDriver(), scope.Cfg.GetStoreSource())
 	if err != nil {
 		return err
 	}
@@ -58,7 +54,7 @@ func (q *QMessage) Delete() error {
 
 // Add add a new mail in queue
 func AddMessage(msg *message.Message, envelope message.Envelope) (key string, err error) {
-	qStore, err := store.New(Scope.Cfg.GetStoreDriver(), Scope.Cfg.GetStoreSource())
+	qStore, err := store.New(scope.Cfg.GetStoreDriver(), scope.Cfg.GetStoreSource())
 	if err != nil {
 		return
 	}
@@ -109,7 +105,7 @@ func AddMessage(msg *message.Message, envelope message.Envelope) (key string, er
 		}
 
 		// create record in db
-		err = Scope.DB.Create(&qm).Error
+		err = scope.DB.Create(&qm).Error
 		if err != nil {
 			// Rollback on storage
 			if cloop == 0 {
@@ -129,7 +125,7 @@ func AddMessage(msg *message.Message, envelope message.Envelope) (key string, er
 			if cloop == 0 {
 				qStore.Del(key)
 			}
-			Scope.DB.Delete(&qm)
+			scope.DB.Delete(&qm)
 			return
 		}
 
@@ -140,7 +136,7 @@ func AddMessage(msg *message.Message, envelope message.Envelope) (key string, er
 			if cloop == 0 {
 				qStore.Del(key)
 			}
-			Scope.DB.Delete(&qm)
+			scope.DB.Delete(&qm)
 			return
 		}
 		// queue local  | queue remote
@@ -149,7 +145,7 @@ func AddMessage(msg *message.Message, envelope message.Envelope) (key string, er
 			if cloop == 0 {
 				qStore.Del(key)
 			}
-			Scope.DB.Delete(&qm)
+			scope.DB.Delete(&qm)
 			return
 		}
 		cloop++

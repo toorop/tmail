@@ -6,7 +6,7 @@ import (
 	"github.com/Toorop/tmail/config"
 	"github.com/Toorop/tmail/deliverd"
 	"github.com/Toorop/tmail/logger"
-	s "github.com/Toorop/tmail/scope"
+	"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/smtpd"
 	"github.com/Toorop/tmail/util"
 	"github.com/bitly/nsq/nsqd"
@@ -28,10 +28,6 @@ import (
 const (
 	// TMAIL_VERSION version of tmail
 	TMAIL_VERSION = "0.0.1"
-)
-
-var (
-	scope *s.Scope
 )
 
 func init() {
@@ -61,8 +57,8 @@ func init() {
 		}
 	}
 
-	// if clusterMode check if nsqlookupd is available
-	// Todo
+	// TODO: if clusterMode check if nsqlookupd is available
+	//
 
 	// Init DB
 	DB, err := gorm.Open(cfg.GetDbDriver(), cfg.GetDbSource())
@@ -94,7 +90,8 @@ func init() {
 	}
 
 	// Init scope
-	scope = s.New(cfg, DB, log)
+	//scope = s.New(cfg, DB, log)
+	scope.Init(cfg, DB, log)
 }
 
 // MAIN
@@ -172,13 +169,13 @@ func main() {
 			stdLog.Fatalln("unable to parse smtpd dsn -", err)
 		}
 		for _, dsn := range smtpdDsns {
-			go smtpd.New(scope, dsn).ListenAndServe()
+			go smtpd.New(dsn).ListenAndServe()
 			scope.Log.Info("smtpd " + dsn.String() + " launched.")
 		}
 	}
 
 	// deliverd
-	deliverd.Scope = scope
+	//deliverd.Scope = scope
 	go deliverd.Run()
 
 	<-sigChan

@@ -2,6 +2,7 @@ package deliverd
 
 import (
 	"errors"
+	"github.com/Toorop/tmail/scope"
 	"net"
 )
 
@@ -22,7 +23,7 @@ func getRoutes(host string) (r *routes, err error) {
 	r = &routes{[]net.IP{}, []rServer{}}
 
 	// Get locals IP
-	r.localIp, err = Scope.Cfg.GetLocalIps()
+	r.localIp, err = scope.Cfg.GetLocalIps()
 	if err != nil {
 		return
 	}

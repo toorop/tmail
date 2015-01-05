@@ -9,10 +9,6 @@ import (
 	"syscall"
 )
 
-var (
-	Scope *scope.Scope
-)
-
 /*type deliverd struct {
 }
 
@@ -27,7 +23,7 @@ func Run() {
 	cfg := nsq.NewConfig()
 
 	cfg.UserAgent = "tmail/deliverd"
-	cfg.MaxInFlight = Scope.Cfg.GetDeliverdMaxInFlight()
+	cfg.MaxInFlight = scope.Cfg.GetDeliverdMaxInFlight()
 	// MaxAttempts: number of attemps for a message before sending a
 	// 1 [queueRemote/deliverd] msg 07814777d6312000 attempted 6 times, giving up
 	cfg.MaxAttempts = 0
@@ -43,8 +39,8 @@ func Run() {
 	consumer.AddHandler(&remoteHandler{})
 
 	// connect
-	if Scope.Cfg.GetClusterModeEnabled() {
-		err = consumer.ConnectToNSQLookupds(Scope.Cfg.GetNSQLookupdHttpAddresses())
+	if scope.Cfg.GetClusterModeEnabled() {
+		err = consumer.ConnectToNSQLookupds(scope.Cfg.GetNSQLookupdHttpAddresses())
 	} else {
 
 		err = consumer.ConnectToNSQDs([]string{"127.0.0.1:4150"})
@@ -53,7 +49,7 @@ func Run() {
 		log.Fatalln(err)
 	}
 
-	Scope.Log.Info("deliverd launched")
+	scope.Log.Info("deliverd launched")
 
 	for {
 		select {

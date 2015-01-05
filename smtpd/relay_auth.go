@@ -1,6 +1,7 @@
 package smtpd
 
 import (
+	"github.com/Toorop/tmail/scope"
 	"github.com/jinzhu/gorm"
 	"net"
 	"strings"

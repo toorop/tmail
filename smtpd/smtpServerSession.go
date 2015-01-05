@@ -10,6 +10,7 @@ import (
 	"github.com/Toorop/tmail/logger"
 	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/message"
+	"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/util"
 	"github.com/jinzhu/gorm"
 	"net/mail"
@@ -565,7 +566,6 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		s.out("451 temporary queue init error")
 		return nil
 	}*/
-	mailqueue.Scope = scope
 	id, err := mailqueue.AddMessage(message, s.envelope)
 	if err != nil {
 		s.logError("Unable to put message in queue -", err.Error())

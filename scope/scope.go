@@ -6,14 +6,16 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-type Scope struct {
+var (
 	Cfg *config.Config
 	DB  gorm.DB
 	Log *logger.Logger
-}
+)
 
-// New return pointer to a scope struct
-// Helper
-func New(cfg *config.Config, db gorm.DB, log *logger.Logger) *Scope {
-	return &Scope{cfg, db, log}
+// TODO check validity de chaque élément
+func Init(cfg *config.Config, db gorm.DB, log *logger.Logger) {
+	Cfg = cfg
+	DB = db
+	Log = log
+	return
 }

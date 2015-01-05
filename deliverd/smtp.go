@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/Toorop/tmail/scope"
 	"io"
 	"net"
 	"net/textproto"
@@ -164,7 +165,7 @@ func (c *Client) cmd(expectCode int, format string, args ...interface{}) (int, s
 	var err error
 	timeout := make(chan bool, 1)
 	done := make(chan bool, 1)
-	timer := time.AfterFunc(time.Duration(Scope.Cfg.GetDeliverdRemoteTimeout())*time.Second, func() {
+	timer := time.AfterFunc(time.Duration(scope.Cfg.GetDeliverdRemoteTimeout())*time.Second, func() {
 		timeout <- true
 	})
 	defer timer.Stop()

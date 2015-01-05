@@ -3,7 +3,7 @@ package smtpd
 import (
 	"crypto/rand"
 	"crypto/tls"
-	s "github.com/Toorop/tmail/scope"
+	//"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/util"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -13,18 +13,13 @@ import (
 	"path"
 )
 
-var (
-	scope *s.Scope
-)
-
 // SmtpServer SMTP Server
 type Smtpd struct {
 	dsn dsn
 }
 
 // New returns a new SmtpServer
-func New(s *s.Scope, d dsn) *Smtpd {
-	scope = s
+func New(d dsn) *Smtpd {
 	return &Smtpd{d}
 }
 
