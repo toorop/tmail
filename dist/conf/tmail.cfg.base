@@ -19,6 +19,9 @@ export TMAIL_CLUSTER_MODE_ENABLED=false
 ###
 # nsqd
 
+# dis|enable logging
+export TMAIL_NSQD_ENABLE_LOGGIN = false
+
 # lookupd-tcp-address
 # Format "IP1:PORT1;IP2:PORT2"
 export TMAIL_NSQ_LOOKUPD_TCP_ADDRESSES="127.0.0.1:4160"

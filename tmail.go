@@ -14,6 +14,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	"io/ioutil"
 	"log"
 	stdLog "log"
 	"math/rand"
@@ -122,7 +123,10 @@ func main() {
 	// logs
 	//opts.Logger = log.New(os.Stderr, "[nsqd] ", log.Ldate|log.Ltime|log.Lmicroseconds)
 	hostname, err := os.Hostname()
-	opts.Logger = log.New(os.Stdout, hostname+"(127.0.0.1) - NSQD :", log.Ldate|log.Ltime|log.Lmicroseconds)
+	opts.Logger = log.New(ioutil.Discard, "", 0)
+	if scope.Cfg.GetNsqdEnableLogging() {
+		opts.Logger = log.New(os.Stdout, hostname+"(127.0.0.1) - NSQD :", log.Ldate|log.Ltime|log.Lmicroseconds)
+	}
 	opts.Verbose = scope.Cfg.GetDebugEnabled() // verbosity
 	opts.DataPath = util.GetBasePath() + "/nsq"
 	// if cluster get lookupd addresses

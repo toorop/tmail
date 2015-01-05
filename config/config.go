@@ -31,6 +31,7 @@ type Config struct {
 		StoreDriver  string `name:"store_driver"`
 		StroreSource string `name:"store_source"`
 
+		NsqdEnbleLogging        bool   `name:"nsqd_eanble_logging" default:"false"`
 		NSQLookupdTcpAddresses  string `name:"nsq_lookupd_tcp_addresses" default:"_"`
 		NSQLookupdHttpAddresses string `name:"nsq_lookupd_http_addresses" default:"_"`
 
@@ -235,6 +236,13 @@ func (c *Config) GetLaunchDeliverd() bool {
 }
 
 // nsqd
+// GetNsqdEnableLogging return loging enable/disable for nsqd
+func (c *Config) GetNsqdEnableLogging() bool {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.NsqdEnbleLogging
+}
+
 // GetNSQLookupdTCPAddresses return lookupd tcp adresses
 func (c *Config) GetNSQLookupdTcpAddresses() (addr []string) {
 	if c.cfg.NSQLookupdTcpAddresses == "_" {
