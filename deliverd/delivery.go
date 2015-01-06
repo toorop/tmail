@@ -34,6 +34,13 @@ type delivery struct {
 // - ajout header recieved
 // - ajout header tmail-msg-id
 func (d *delivery) processMsg() {
+	// Recover on panic
+	defer func() {
+		if err := recover(); err != nil {
+			scope.Log.Error(fmt.Sprintf("deliverd-remote %s : PANIC - %s", d.id, err))
+		}
+	}()
+
 	// decode message from json
 	if err := json.Unmarshal([]byte(d.nsqMsg.Body), d.qMsg); err != nil {
 		scope.Log.Error("deliverd-remote: unable to parse nsq message - " + err.Error())
@@ -61,8 +68,9 @@ func (d *delivery) processMsg() {
 		// On va considerer que c'est une erreur temporaire
 		// il se peut que le store soit momentanément injoignable
 		// A terme on peut regarder le
-
 		scope.Log.Error(fmt.Sprintf("deliverd-remote %s : unable to get rawmail %s from store - %s", d.id, d.qMsg.Key, err))
+		d.requeue()
+		return
 		//return response, errors.New("unable to get raw mail from store")
 	}
 	d.qStore = qStore

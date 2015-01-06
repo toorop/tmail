@@ -676,13 +676,9 @@ func (s *smtpServerSession) smtpAuth(rawMsg string) {
 func (s *smtpServerSession) handle() {
 
 	// Recover on panic
-
 	defer func() {
 		if err := recover(); err != nil {
 			s.logError("PANIC")
-			/*stack := debug.Stack()
-			f := "PANIC: %s\n%s"
-			ERROR.Printf(f, err, stack)*/
 			s.conn.Close()
 		}
 	}()

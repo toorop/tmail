@@ -42,7 +42,6 @@ func Run() {
 	if scope.Cfg.GetClusterModeEnabled() {
 		err = consumer.ConnectToNSQLookupds(scope.Cfg.GetNSQLookupdHttpAddresses())
 	} else {
-
 		err = consumer.ConnectToNSQDs([]string{"127.0.0.1:4150"})
 	}
 	if err != nil {
