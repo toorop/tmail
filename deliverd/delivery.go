@@ -34,6 +34,7 @@ type delivery struct {
 // - ajout header recieved
 // - ajout header tmail-msg-id
 func (d *delivery) processMsg() {
+	var err error
 	// Recover on panic
 	defer func() {
 		if err := recover(); err != nil {
@@ -42,7 +43,7 @@ func (d *delivery) processMsg() {
 	}()
 
 	// decode message from json
-	if err := json.Unmarshal([]byte(d.nsqMsg.Body), d.qMsg); err != nil {
+	if err = json.Unmarshal([]byte(d.nsqMsg.Body), d.qMsg); err != nil {
 		scope.Log.Error("deliverd-remote: unable to parse nsq message - " + err.Error())
 		// TODO
 		// in this case :
@@ -62,7 +63,7 @@ func (d *delivery) processMsg() {
 
 	// Retrieve message from store
 	// c'est le plus long (enfin ça peut si c'est par exemple sur du S3 ou RA)
-	qStore, err := store.New(scope.Cfg.GetStoreDriver(), scope.Cfg.GetStoreSource())
+	d.qStore, err = store.New(scope.Cfg.GetStoreDriver(), scope.Cfg.GetStoreSource())
 	if err != nil {
 		// TODO
 		// On va considerer que c'est une erreur temporaire
@@ -73,7 +74,7 @@ func (d *delivery) processMsg() {
 		return
 		//return response, errors.New("unable to get raw mail from store")
 	}
-	d.qStore = qStore
+	//d.qStore = qStore
 	dataReader, err := d.qStore.Get(d.qMsg.Key)
 	if err != nil {
 		d.dieTemp("unable to retrieve raw mail from store. " + err.Error())
@@ -322,17 +323,17 @@ func (d *delivery) handleSmtpError(smtpErr string) {
 // Donc on testes d'abord toutes les IP locales sur les remotes
 func getSmtpClient(r *routes) (c *Client, err error) {
 	for _, lIp := range r.localIp {
-		for _, remoteServer := range r.remoteServer {
+		for _, remoteAddr := range r.remoteAddr {
 			// on doit avopir de l'IPv4 en entré et sortie ou de l'IP6 en e/s
-			if util.IsIpV4(lIp.String()) != util.IsIpV4(remoteServer.addr.IP.String()) {
+			if util.IsIpV4(lIp.String()) != util.IsIpV4(remoteAddr.IP.String()) {
 				continue
 			}
 			// TODO timeout en config
-			c, err = Dialz(&remoteServer, lIp.String(), scope.Cfg.GetMe(), 30)
+			c, err = Dialz(&remoteAddr, lIp.String(), scope.Cfg.GetMe(), 30)
 			if err == nil {
 				return
 			} else {
-				scope.Log.Debug("deliverd.getSmtpClient: unable to get a client", lIp, "->", remoteServer.addr.IP.String(), ":", remoteServer.addr.Port, "-", err)
+				scope.Log.Debug("deliverd.getSmtpClient: unable to get a client", lIp, "->", remoteAddr.IP.String(), ":", remoteAddr.Port, "-", err)
 			}
 		}
 	}
