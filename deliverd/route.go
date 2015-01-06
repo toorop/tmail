@@ -3,18 +3,28 @@ package deliverd
 import (
 	"errors"
 	"github.com/Toorop/tmail/scope"
+	//"github.com/jinzhu/gorm"
 	"net"
 )
 
+// Route represents a route in DB
+type Route struct {
+	Id         int64
+	Host       string
+	RemoteHost string
+	RemotePort int
+	Priority   int
+}
+
 // routes represents all the routes allowed to access remote MX
-type routes struct {
+type matchingRoutes struct {
 	localIp    []net.IP
 	remoteAddr []net.TCPAddr
 }
 
-// getRoute reutrn routes for the specified destination host
-func getRoutes(host string) (r *routes, err error) {
-	r = &routes{[]net.IP{}, []net.TCPAddr{}}
+// getRoute return matchingRoutes for the specified destination host
+func getRoutes(host string) (r *matchingRoutes, err error) {
+	r = &matchingRoutes{[]net.IP{}, []net.TCPAddr{}}
 
 	// Get locals IP
 	r.localIp, err = scope.Cfg.GetLocalIps()
@@ -22,9 +32,22 @@ func getRoutes(host string) (r *routes, err error) {
 		return
 	}
 
-	// On cherche un route spécifique à cet host
+	// On cherche les routes spécifiques à cet host
+	routes := []Route{}
+	if err = scope.DB.Where("host=?", host).Find(&routes).Error; err != nil {
+		return r, err
+	}
 
-	// Sinon n cherche une wildcard
+	// Sinon on cherche une wildcard
+	if len(routes) == 0 {
+		if err = scope.DB.Where("host=?", "*").Find(&routes).Error; err != nil {
+			return r, err
+		}
+	}
+	// Got routes from DB
+	if len(routes) != 0 {
+		return
+	}
 
 	// Sinon on prends les MX
 	mxs, err := net.LookupMX(host)

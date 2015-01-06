@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"github.com/Toorop/tmail/deliverd"
 	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/smtpd"
 	"github.com/jinzhu/gorm"
@@ -21,6 +22,9 @@ func dbIsOk(DB gorm.DB) bool {
 		return false
 	}
 	if !DB.HasTable(&mailqueue.QMessage{}) {
+		return false
+	}
+	if !DB.HasTable(&deliverd.Route{}) {
 		return false
 	}
 	return true
@@ -72,6 +76,16 @@ func initDB(DB gorm.DB) error {
 
 		if err = DB.Model(&mailqueue.QMessage{}).AddUniqueIndex("uidx_id", "id").Error; err != nil {
 			return errors.New("Unable to add unique index uidx_id on table queued_messages - " + err.Error())
+		}
+	}
+	// deliverd.route
+	if !DB.HasTable(&deliverd.Route{}) {
+		if err = DB.CreateTable(&deliverd.Route{}).Error; err != nil {
+			return errors.New("Unable to create table route - " + err.Error())
+		}
+		// Index
+		if err = DB.Model(&deliverd.Route{}).AddIndex("idx_route_host", "host").Error; err != nil {
+			return errors.New("Unable to add index idx_route_host on table route - " + err.Error())
 		}
 	}
 	return nil

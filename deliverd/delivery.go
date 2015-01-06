@@ -321,7 +321,7 @@ func (d *delivery) handleSmtpError(smtpErr string) {
 // On doit faire un choix de priorité entre les locales et les remotes
 // La priorité sera basée sur l'ordre des remotes
 // Donc on testes d'abord toutes les IP locales sur les remotes
-func getSmtpClient(r *routes) (c *Client, err error) {
+func getSmtpClient(r *matchingRoutes) (c *Client, err error) {
 	for _, lIp := range r.localIp {
 		for _, remoteAddr := range r.remoteAddr {
 			// on doit avopir de l'IPv4 en entré et sortie ou de l'IP6 en e/s
