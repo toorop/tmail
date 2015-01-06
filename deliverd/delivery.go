@@ -156,13 +156,13 @@ func (d *delivery) processMsg() {
 
 	msg.SetHeader("x-tmail-deliverd-id", d.id)
 	msg.SetHeader("x-tmail-msg-id", d.qMsg.Key)
-	msg.AddHeader("recieved", "tmail deliverd; "+time.Now().Format(time.RFC822))
 	*d.rawData, err = msg.GetRaw()
 	if err != nil {
 		d.dieTemp(err.Error())
 		return
 	}
 
+	*d.rawData = append([]byte("Received: tmail deliverd; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
 	dataBuf := bytes.NewBuffer(*d.rawData)
 	_, err = io.Copy(dataPipe, dataBuf)
 	if err != nil {
@@ -258,7 +258,7 @@ func (d *delivery) bounce(errMsg string) error {
 		BouncedMail string
 	}
 
-	tData := templateData{time.Now().Format(time.RFC822Z), scope.Cfg.GetMe(), d.qMsg.RcptTo, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
+	tData := templateData{time.Now().Format(scope.Time822), scope.Cfg.GetMe(), d.qMsg.RcptTo, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
 	t, err := template.ParseFiles(path.Join(util.GetBasePath(), "tpl/bounce.tpl"))
 	if err != nil {
 		return err

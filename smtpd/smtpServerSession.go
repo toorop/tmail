@@ -492,20 +492,14 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		}
 
 	}
-	//TRACE.Println(string(rawMessage))
-
-	// Transformer le mail en objet
-	message, err := message.New(rawMessage)
-	if err != nil {
-		return
-	}
-	//TRACE.Println(err, message)
 
 	// On ajoute le uuid
-	message.SetHeader("x-tmail-smtpd-sess-uuid", s.uuid)
+	//message.SetHeader("x-tmail-smtpd-sess-uuid", s.uuid)
+	rawMessage = append([]byte("X-Tmail-SmtpdSess-Uuid: "+s.uuid+"\r\n"), rawMessage...)
 
 	// x-env-from
-	message.SetHeader("x-env-from", s.envelope.MailFrom)
+	rawMessage = append([]byte("X-Env-From: "+s.envelope.MailFrom+"\r\n"), rawMessage...)
+	//message.SetHeader("x-env-from", s.envelope.MailFrom)
 
 	// recieved
 	// Add recieved header
@@ -523,7 +517,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	if err == nil {
 		localHost = localHosts[0]
 	}
-	recieved := fmt.Sprintf("from %s (%s)", remoteIp, remoteHost)
+	recieved := fmt.Sprintf("Received: from %s (%s)", remoteIp, remoteHost)
 
 	// helo
 	if len(s.helo) != 0 {
@@ -546,26 +540,22 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	}
 
 	// timestamp
-	recieved += time.Now().Format(time.RFC822)
+	recieved += time.Now().Format(scope.Time822)
 
 	// tmail
-	recieved += fmt.Sprintf("; tmail")
+	recieved += fmt.Sprintf("; tmail\r\n")
+	rawMessage = append([]byte(recieved), rawMessage...)
+	recieved = ""
 
-	message.AddHeader("recieved", recieved)
+	//message.AddHeader("recieved", recieved)
 
-	// On recupere le mail en raw
-	/*rawMessage, err = message.getRaw()
-	if err != nil
-		return
-	}*/
-	// Put in queue
-	//
-	/*q, err := mailqueue.New(scope)
+	// Transformer le mail en objet
+	message, err := message.New(rawMessage)
 	if err != nil {
-		s.logError("Unable to create a new queue -", err.Error())
-		s.out("451 temporary queue init error")
-		return nil
-	}*/
+		return
+	}
+
+	// put message in queue
 	id, err := mailqueue.AddMessage(message, s.envelope)
 	if err != nil {
 		s.logError("Unable to put message in queue -", err.Error())

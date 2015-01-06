@@ -6,6 +6,10 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+const (
+	Time822 = "02 Jan 2006 15:04:05 -0700" // "02 Jan 06 15:04 -0700"
+)
+
 var (
 	Cfg *config.Config
 	DB  gorm.DB

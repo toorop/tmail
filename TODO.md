@@ -1,6 +1,7 @@
 TODO
-- [ ] changer le scope dans smtpd (voir deliverd)
 - [ ] recovery pour deliverd
+- [ ] routes "en dur"
+- [ ] deliverd throtteling
 - [ ] Dans smtpRcptTo definir un domaine par defaut si il y a seulement la partie locale
 - [ ] Pas de startttls si on est deja en tls
 - [ ] pas d'auth plain si pas en tls
