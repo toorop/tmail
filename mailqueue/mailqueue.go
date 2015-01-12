@@ -89,6 +89,19 @@ func AddMessage(msg *message.Message, envelope message.Envelope) (key string, er
 		return
 	}
 
+	// Send message to smtpd.deliverd on localhost
+	// TODO ne pas mettre le producer dans la loop
+	var producer *nsq.Producer
+	nsqCfg := nsq.NewConfig()
+	nsqCfg.UserAgent = "tmail.smtpd"
+
+	producer, err = nsq.NewProducer("127.0.0.1:4150", nsqCfg)
+	if err != nil {
+		return
+	}
+
+	defer producer.Stop()
+
 	cloop := 0
 	for _, rcptTo := range envelope.RcptTo {
 		qm := QMessage{
@@ -111,21 +124,6 @@ func AddMessage(msg *message.Message, envelope message.Envelope) (key string, er
 			if cloop == 0 {
 				qStore.Del(key)
 			}
-			return
-		}
-
-		// Send message to smtpd.deliverd on localhost
-		// TODO ne pas mettre le producer dans la loop
-		var producer *nsq.Producer
-		nsqCfg := nsq.NewConfig()
-		nsqCfg.UserAgent = "tmail.smtpd"
-
-		producer, err = nsq.NewProducer("127.0.0.1:4150", nsqCfg)
-		if err != nil {
-			if cloop == 0 {
-				qStore.Del(key)
-			}
-			scope.DB.Delete(&qm)
 			return
 		}
 
