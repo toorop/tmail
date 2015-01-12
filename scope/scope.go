@@ -1,10 +1,14 @@
 package scope
 
 import (
+	"errors"
 	"github.com/Toorop/tmail/config"
 	"github.com/Toorop/tmail/logger"
 	"github.com/bitly/go-nsq"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
+	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -19,16 +23,36 @@ var (
 )
 
 // TODO check validity de chaque élément
-func Init(cfg *config.Config, db gorm.DB, log *logger.Logger) error {
-	Cfg = cfg
-	DB = db
-	Log = log
+func Init() (err error) {
+	// Load config
+	Cfg, err = config.Init("tmail")
+	if err != nil {
+		return
+	}
+
+	// logger
+	// Logger
+	Log = logger.New(Cfg.GetDebugEnabled())
+
+	// Init DB
+	// Init DB
+	DB, err = gorm.Open(Cfg.GetDbDriver(), Cfg.GetDbSource())
+	if err != nil {
+		return
+	}
+	DB.LogMode(Cfg.GetDebugEnabled())
+
+	// ping
+	if DB.DB().Ping() != nil {
+		err = errors.New("I could not access to database " + Cfg.GetDbDriver() + " " + Cfg.GetDbSource())
+		return
+	}
 
 	// init NSQ MailQueueProducer (Nmqp)
 	if Cfg.GetLaunchSmtpd() {
-		err := initMailQueueProducer()
+		err = initMailQueueProducer()
 	}
-	return err
+	return
 }
 
 // initMailQueueProducer init producer for queue

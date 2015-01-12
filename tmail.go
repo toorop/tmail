@@ -3,20 +3,16 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/Toorop/tmail/config"
 	"github.com/Toorop/tmail/deliverd"
-	"github.com/Toorop/tmail/logger"
 	"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/smtpd"
 	"github.com/Toorop/tmail/util"
 	"github.com/bitly/nsq/nsqd"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/jinzhu/gorm"
-	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-sqlite3"
+	//_ "github.com/go-sql-driver/mysql"
+	//_ "github.com/lib/pq"
+	//_ "github.com/mattn/go-sqlite3"
 	"io/ioutil"
 	"log"
-	stdLog "log"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -32,67 +28,42 @@ const (
 
 func init() {
 	var err error
-
-	// Load config
-	cfg, err := config.Init("tmail")
-	if err != nil {
-		stdLog.Fatalln(err)
+	if err = scope.Init(); err != nil {
+		log.Fatalln(err)
 	}
-
-	// check config
 
 	// Check local ip
-	if _, err = cfg.GetLocalIps(); err != nil {
-		stdLog.Fatalln("bad config parameter TMAIL_DELIVERD_LOCAL_IPS", err.Error())
+	if _, err = scope.Cfg.GetLocalIps(); err != nil {
+		log.Fatalln("bad config parameter TMAIL_DELIVERD_LOCAL_IPS", err.Error())
 	}
-
-	// Logger
-	log := logger.New(cfg.GetDebugEnabled())
 
 	// Check base path structure
 	requiredPaths := []string{"db", "nsq", "ssl"}
 	for _, p := range requiredPaths {
 		if err = os.MkdirAll(path.Join(util.GetBasePath(), p), 0700); err != nil {
-			stdLog.Fatalln("Unable to create path "+path.Join(util.GetBasePath(), p), " - ", err.Error())
+			log.Fatalln("Unable to create path "+path.Join(util.GetBasePath(), p), " - ", err.Error())
 		}
 	}
 
 	// TODO: if clusterMode check if nsqlookupd is available
-	//
 
-	// Init DB
-	DB, err := gorm.Open(cfg.GetDbDriver(), cfg.GetDbSource())
-	if err != nil {
-		stdLog.Fatalln("Database initialisation failed", err)
-	}
-	DB.LogMode(cfg.GetDebugEnabled())
-
-	// ping
-	if DB.DB().Ping() != nil {
-		stdLog.Fatalln("I could not access to database", cfg.GetDbDriver(), cfg.GetDbSource(), err)
-	}
-	if !dbIsOk(DB) {
+	// On vérifie que le base est à jour
+	if !dbIsOk(scope.DB) {
 		var r []byte
 		for {
-			fmt.Print(fmt.Sprintf("Database 'driver: %s, source: %s' misses some tables.\r\nShould i create them ? (y/n):", cfg.GetDbDriver(), cfg.GetDbSource()))
+			fmt.Print(fmt.Sprintf("Database 'driver: %s, source: %s' misses some tables.\r\nShould i create them ? (y/n):", scope.Cfg.GetDbDriver(), scope.Cfg.GetDbSource()))
 			r, _, _ = bufio.NewReader(os.Stdin).ReadLine()
 			if r[0] == 110 || r[0] == 121 {
 				break
 			}
 		}
 		if r[0] == 121 {
-			if err = initDB(DB); err != nil {
-				stdLog.Fatalln(err)
+			if err = initDB(scope.DB); err != nil {
+				log.Fatalln(err)
 			}
 		} else {
-			stdLog.Fatalln("See you soon...")
+			log.Fatalln("See you soon...")
 		}
-	}
-
-	// Init scope
-	//scope = s.New(cfg, DB, log)
-	if err = scope.Init(cfg, DB, log); err != nil {
-		stdLog.Fatalln(err)
 	}
 }
 
@@ -102,12 +73,12 @@ func main() {
 
 	// if there nothing to do do nothing
 	if !scope.Cfg.GetLaunchDeliverd() && !scope.Cfg.GetLaunchSmtpd() {
-		stdLog.Fatalln("I have nothing to do, so i do nothing. Bye.")
+		log.Fatalln("I have nothing to do, so i do nothing. Bye.")
 	}
 
 	// Synch tables to structs
 	if err := autoMigrateDB(scope.DB); err != nil {
-		stdLog.Fatalln(err)
+		log.Fatalln(err)
 	}
 
 	// Loop
@@ -160,7 +131,7 @@ func main() {
 	nsqd.LoadMetadata()
 	err = nsqd.PersistMetadata()
 	if err != nil {
-		stdLog.Fatalf("ERROR: failed to persist metadata - %s", err.Error())
+		log.Fatalf("ERROR: failed to persist metadata - %s", err.Error())
 	}
 	nsqd.Main()
 
@@ -168,7 +139,7 @@ func main() {
 	if scope.Cfg.GetLaunchSmtpd() {
 		smtpdDsns, err := smtpd.GetDsnsFromString(scope.Cfg.GetSmtpdDsns())
 		if err != nil {
-			stdLog.Fatalln("unable to parse smtpd dsn -", err)
+			log.Fatalln("unable to parse smtpd dsn -", err)
 		}
 		for _, dsn := range smtpdDsns {
 			go smtpd.New(dsn).ListenAndServe()
