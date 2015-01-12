@@ -91,7 +91,9 @@ func init() {
 
 	// Init scope
 	//scope = s.New(cfg, DB, log)
-	scope.Init(cfg, DB, log)
+	if err = scope.Init(cfg, DB, log); err != nil {
+		stdLog.Fatalln(err)
+	}
 }
 
 // MAIN
@@ -180,6 +182,9 @@ func main() {
 
 	<-sigChan
 	scope.Log.Info("Exiting...")
+
+	// close NsqQueueProducer if exists
+	scope.NsqQueueProducer.Stop()
 
 	// flush nsqd memory to disk
 	nsqd.Exit()

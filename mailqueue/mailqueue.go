@@ -8,7 +8,7 @@ import (
 	"github.com/Toorop/tmail/message"
 	"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/store"
-	"github.com/bitly/go-nsq"
+	//"github.com/bitly/go-nsq"
 	"io"
 	"net/mail"
 	"time"
@@ -89,18 +89,16 @@ func AddMessage(msg *message.Message, envelope message.Envelope) (key string, er
 		return
 	}
 
-	// Send message to smtpd.deliverd on localhost
-	// TODO ne pas mettre le producer dans la loop
-	var producer *nsq.Producer
+	// init new producer
+	/*var producer *nsq.Producer
 	nsqCfg := nsq.NewConfig()
 	nsqCfg.UserAgent = "tmail.smtpd"
 
 	producer, err = nsq.NewProducer("127.0.0.1:4150", nsqCfg)
 	if err != nil {
 		return
-	}
-
-	defer producer.Stop()
+	}*/
+	//defer producer.Stop()
 
 	cloop := 0
 	for _, rcptTo := range envelope.RcptTo {
@@ -138,7 +136,7 @@ func AddMessage(msg *message.Message, envelope message.Envelope) (key string, er
 			return
 		}
 		// queue local  | queue remote
-		err = producer.Publish("queueRemote", jMsg)
+		err = scope.NsqQueueProducer.Publish("queueRemote", jMsg)
 		if err != nil {
 			if cloop == 0 {
 				qStore.Del(key)
