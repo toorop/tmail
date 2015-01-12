@@ -25,7 +25,9 @@ func Init(cfg *config.Config, db gorm.DB, log *logger.Logger) error {
 	Log = log
 
 	// init NSQ MailQueueProducer (Nmqp)
-	err := initMailQueueProducer()
+	if Cfg.GetLaunchSmtpd() {
+		err := initMailQueueProducer()
+	}
 	return err
 }
 
