@@ -3,4 +3,4 @@
 . dist/conf/tmail.cfg
 
 # Build
-go build -o dist/tmail && dist/tmail smtpd addUser toorop tototo true;
+go build -o dist/tmail && dist/tmail smtpd delUser toorop;

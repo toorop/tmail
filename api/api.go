@@ -12,7 +12,12 @@ func SmtpdGetAllowedUsers() (users []smtpd.SmtpUser, err error) {
 	return smtpd.GetAllowedUsers()
 }
 
-// SmtpdAddUser add e new smtp user
+// SmtpdAddUser add a new smtp user
 func SmtpdAddUser(login, passwd string, authRelay bool) error {
 	return smtpd.AddUser(login, passwd, authRelay)
+}
+
+// SmtpdDelUser delete user
+func SmtpdDelUser(login string) error {
+	return smtpd.DelUser(login)
 }

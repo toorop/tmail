@@ -40,6 +40,7 @@ func (s *SmtpUser) canUseSmtp() (bool, error) {
 	return s.AuthRelay, nil
 }
 
+// AddUser add a new user
 func AddUser(login, passwd string, authRelay bool) (err error) {
 	// login must be < 257 char
 	if len(login) > 256 {
@@ -69,6 +70,20 @@ func AddUser(login, passwd string, authRelay bool) (err error) {
 	}
 
 	return scope.DB.Save(&user).Error
+}
+
+// DelUser delete an user
+func DelUser(login string) error {
+	var err error
+	// users exits ?
+	var count int
+	if err = scope.DB.Model(SmtpUser{}).Where("login = ?", login).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("User " + login + " doesn't exists")
+	}
+	return scope.DB.Where("login = ?", login).Delete(&SmtpUser{}).Error
 }
 
 // GetAuthorizedUsers returns users who can use SMTP to send mail
