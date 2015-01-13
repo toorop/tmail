@@ -22,7 +22,17 @@ func SmtpdDelUser(login string) error {
 	return smtpd.DelUser(login)
 }
 
-// SmtpdAddRcptHost ad a rcpthost
+// SmtpdAddRcptHost add a rcpthost
 func SmtpdAddRcptHost(host string) error {
 	return smtpd.AddRcptHost(host)
+}
+
+// SmtpdDelRcptHost delete a rcpthost
+func SmtpdDelRcptHost(host string) error {
+	return smtpd.DelRcptHost(host)
+}
+
+// SmtpdGetRcptHosts returns rcpthosts
+func SmtpdGetRcptHosts() (hosts []smtpd.RcptHost, err error) {
+	return smtpd.GetRcptHosts()
 }

@@ -89,7 +89,6 @@ func DelUser(login string) error {
 // GetAuthorizedUsers returns users who can use SMTP to send mail
 func GetAllowedUsers() (users []SmtpUser, err error) {
 	users = []SmtpUser{}
-	// fixme: si on utilise ("auth_relay=?", true) ça ne fonctionne pas
-	err = scope.DB.Where("auth_relay!=?", false).Find(&users).Error
+	err = scope.DB.Where("auth_relay=?", true).Find(&users).Error
 	return
 }

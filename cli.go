@@ -14,23 +14,7 @@ var cliCommands = []cli.Command{
 		Subcommands: []cli.Command{
 			// SMTPD
 			// users
-			{
-				Name:        "listAutorizedUsers",
-				Usage:       "Return a list of authorized users (users who can send mail after authentification)",
-				Description: "",
-				Action: func(c *cli.Context) {
-					users, err := api.SmtpdGetAllowedUsers()
-					cliHandleErr(err)
-					if len(users) == 0 {
-						println("There is no smtpd users yet.")
-						return
-					}
-					println("Relay access granted to: ", c.Args().First())
-					for _, user := range users {
-						println(user.Login)
-					}
-				},
-			},
+
 			{
 				Name:        "addUser",
 				Usage:       "Add a smtpd user",
@@ -66,9 +50,26 @@ var cliCommands = []cli.Command{
 				},
 			},
 			{
-				Name:        "addRcptHost",
-				Usage:       "Add a 'RcptHost' which is a hostname that tmail have to handle mails for",
-				Description: "tmail smtpd addRcptHost HOSTNAME",
+				Name:        "listAutorizedUsers",
+				Usage:       "Return a list of authorized users (users who can send mail after authentification)",
+				Description: "",
+				Action: func(c *cli.Context) {
+					users, err := api.SmtpdGetAllowedUsers()
+					cliHandleErr(err)
+					if len(users) == 0 {
+						println("There is no smtpd users yet.")
+						return
+					}
+					println("Relay access granted to: ", c.Args().First())
+					for _, user := range users {
+						println(user.Login)
+					}
+				},
+			},
+			{
+				Name:        "addRcpthost",
+				Usage:       "Add a 'rcpthost' which is a hostname that tmail have to handle mails for",
+				Description: "tmail smtpd addRcpthost HOSTNAME",
 				Action: func(c *cli.Context) {
 					var err error
 					if len(c.Args()) != 1 {
@@ -77,6 +78,36 @@ var cliCommands = []cli.Command{
 					err = api.SmtpdAddRcptHost(c.Args()[0])
 					cliHandleErr(err)
 					cliDieOk()
+				},
+			},
+			{
+				Name:        "delRcpthost",
+				Usage:       "Delete a rcpthost",
+				Description: "tmail smtpd delRcpthost HOSTNAME",
+				Action: func(c *cli.Context) {
+					var err error
+					if len(c.Args()) != 1 {
+						cliDieBadArgs(c)
+					}
+					err = api.SmtpdDelRcptHost(c.Args()[0])
+					cliHandleErr(err)
+					cliDieOk()
+				},
+			},
+			{
+				Name:        "getRcpthosts",
+				Usage:       "Returns all the rcpthosts ",
+				Description: "tmail smtpd getRcpthost",
+				Action: func(c *cli.Context) {
+					var err error
+					if len(c.Args()) != 0 {
+						cliDieBadArgs(c)
+					}
+					rcptHosts, err := api.SmtpdGetRcptHosts()
+					cliHandleErr(err)
+					for _, h := range rcptHosts {
+						println(h.Hostname)
+					}
 				},
 			},
 		},
