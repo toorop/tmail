@@ -21,3 +21,8 @@ func SmtpdAddUser(login, passwd string, authRelay bool) error {
 func SmtpdDelUser(login string) error {
 	return smtpd.DelUser(login)
 }
+
+// SmtpdAddRcptHost ad a rcpthost
+func SmtpdAddRcptHost(host string) error {
+	return smtpd.AddRcptHost(host)
+}

@@ -65,6 +65,20 @@ var cliCommands = []cli.Command{
 					cliDieOk()
 				},
 			},
+			{
+				Name:        "addRcptHost",
+				Usage:       "Add a 'RcptHost' which is a hostname that tmail have to handle mails for",
+				Description: "tmail smtpd addRcptHost HOSTNAME",
+				Action: func(c *cli.Context) {
+					var err error
+					if len(c.Args()) != 1 {
+						cliDieBadArgs(c)
+					}
+					err = api.SmtpdAddRcptHost(c.Args()[0])
+					cliHandleErr(err)
+					cliDieOk()
+				},
+			},
 		},
 	},
 }

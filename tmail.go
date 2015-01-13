@@ -69,6 +69,11 @@ func init() {
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
+	// Synch tables to structs
+	if err := autoMigrateDB(scope.DB); err != nil {
+		log.Fatalln(err)
+	}
+
 	app := cli.NewApp()
 	app.Name = "tmail"
 	app.Usage = "smtp server... and a little more"
@@ -84,11 +89,6 @@ func main() {
 			// if there nothing to do do nothing
 			if !scope.Cfg.GetLaunchDeliverd() && !scope.Cfg.GetLaunchSmtpd() {
 				log.Fatalln("I have nothing to do, so i do nothing. Bye.")
-			}
-
-			// Synch tables to structs
-			if err := autoMigrateDB(scope.DB); err != nil {
-				log.Fatalln(err)
 			}
 
 			// Loop
