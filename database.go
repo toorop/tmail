@@ -49,7 +49,7 @@ func initDB(DB gorm.DB) error {
 			return errors.New("Unable to create RcptHost - " + err.Error())
 		}
 		// Index
-		if err = DB.Model(&smtpd.RcptHost{}).AddIndex("idx_rcpthots_domain", "domain").Error; err != nil {
+		if err = DB.Model(&smtpd.RcptHost{}).AddIndex("idx_rcpthots_hostname", "hostname").Error; err != nil {
 			return errors.New("Unable to add index idx_rcpthots_domain on table RcptHost - " + err.Error())
 		}
 	}

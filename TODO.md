@@ -1,4 +1,5 @@
 TODO
+- [ ]  Unable to put message in queue - email must contains only 7-bit ASCII characters - 4a584cfc0c13d784edebbde97cec81bce8f80638 
 - [ ] Initialiser la conf et la DB dans scope
 - [ ] CLI
 - [ ] deliverd throtteling

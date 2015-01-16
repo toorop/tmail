@@ -20,7 +20,7 @@ export TMAIL_CLUSTER_MODE_ENABLED=false
 # nsqd
 
 # dis|enable logging
-export TMAIL_NSQD_ENABLE_LOGGIN = false
+export TMAIL_NSQD_ENABLE_LOGGIN=false
 
 # lookupd-tcp-address
 # Format "IP1:PORT1;IP2:PORT2"
@@ -42,7 +42,7 @@ export TMAIL_NSQ_LOOKUPD_HTTP_ADDRESSES="127.0.0.1:4161"
 # "mysql" "user:password@/dbname"
 # "sqlite3" "/tmp/gorm.db"
 export TMAIL_DB_DRIVER="sqlite3"
-export TMAIL_DB_SOURCE="/home/toorop/Projects/go/src/github.com/Toorop/tmail/dist/db/tmail.db"
+export TMAIL_DB_SOURCE="/tmp/tmail.db"
 
 
 ##
@@ -78,7 +78,7 @@ export TMAIL_SMTPD_LAUNCH=true;
 # will launch 2 smtpd deamons
 # 	- one listening on 127.0.0.1:2525 without encryption (but upgradable via STARTTLS)
 # 	- one listening on 127.0.0.1:4656 with encryption
-export TMAIL_SMTPD_DSNS="127.0.0.1:2525:false;127.0.0.1:4656:true"
+export TMAIL_SMTPD_DSNS="127.0.0.1:2525:false"
 
 # smtp transaction timeout in seconds
 # throw a timeout if smtp client does not show signs of life

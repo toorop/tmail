@@ -1,0 +1,21 @@
+#!/bin/sh
+
+
+# rm 
+rm tmail.zip
+
+# Linux 32
+GOOS=linux CGO_ENABLED=1 go build -o  dist/tmail
+
+# zip
+zip -r tmail.zip dist/conf/tmail.cfg.base
+zip -r tmail.zip dist/ssl
+zip -r tmail.zip dist/tpl
+zip -r tmail.zip dist/run
+zip -r tmail.zip dist/tmail
+
+
+
+# Sync
+rsync -vvv tmail.zip root@toorop.fr:/srv/ftp/softs/tmail/
+
