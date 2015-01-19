@@ -20,17 +20,21 @@ type Route struct {
 }
 
 // routes represents all the routes allowed to access remote MX
-type matchingRoutes struct {
+/*type matchingRoutes struct {
 	localIp    []net.IP
 	remoteAddr []net.TCPAddr
+}*/
+
+type matchingRoutes struct {
+	routes []Route
 }
 
 // getRoute return matchingRoutes for the specified destination host
 func getRoutes(host string) (r *matchingRoutes, err error) {
-	r = &matchingRoutes{[]net.IP{}, []net.TCPAddr{}}
+	r = &matchingRoutes{}
 
 	// Get locals IP
-	r.localIp, err = scope.Cfg.GetLocalIps()
+	localIps, err := scope.Cfg.GetLocalIps()
 	if err != nil {
 		return
 	}
