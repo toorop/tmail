@@ -15,7 +15,7 @@ type RcptHost struct {
 
 // isInRcptHost checks if domain is in the RcptHost list (-> relay authorozed)
 func isInRcptHost(hostname string) (bool, error) {
-	err := scope.DB.Where("hotsname = ?", hostname).First(&RcptHost{}).Error
+	err := scope.DB.Where("hostname = ?", hostname).First(&RcptHost{}).Error
 	if err == nil {
 		return true, nil
 	}
