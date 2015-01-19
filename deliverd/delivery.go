@@ -14,6 +14,8 @@ import (
 	"github.com/bitly/go-nsq"
 	"io"
 	"io/ioutil"
+	"math/rand"
+	"net"
 	"path"
 	"strconv"
 	"strings"
@@ -89,8 +91,8 @@ func (d *delivery) processMsg() {
 	}
 	d.rawData = &t
 
-	// Get route (MX)
-	routes, err := getRoutes(d.qMsg.Host)
+	// Get route
+	routes, err := getRoutes(d.qMsg.Host, d.qMsg.AuthUser)
 	scope.Log.Debug("deliverd-remote: ", routes, err)
 	if err != nil {
 		d.dieTemp("unable to get route to host " + d.qMsg.Host + ". " + err.Error())
@@ -321,19 +323,92 @@ func (d *delivery) handleSmtpError(smtpErr string) {
 // On doit faire un choix de priorité entre les locales et les remotes
 // La priorité sera basée sur l'ordre des remotes
 // Donc on testes d'abord toutes les IP locales sur les remotes
-func getSmtpClient(r *matchingRoutes) (c *Client, err error) {
-	for _, lIp := range r.localIp {
-		for _, remoteAddr := range r.remoteAddr {
-			// on doit avopir de l'IPv4 en entré et sortie ou de l'IP6 en e/s
-			if util.IsIpV4(lIp.String()) != util.IsIpV4(remoteAddr.IP.String()) {
-				continue
-			}
-			// TODO timeout en config
-			c, err = Dialz(&remoteAddr, lIp.String(), scope.Cfg.GetMe(), 30)
-			if err == nil {
-				return
+func getSmtpClient(routes *[]Route) (c *Client, err error) {
+
+	for _, route := range *routes {
+		localIps := []net.IP{}
+		remoteAddresses := []net.TCPAddr{}
+		// no mix beetween & and |
+		failover := strings.Count(route.LocalIp, "&") != 0
+		roundRobin := strings.Count(route.LocalIp, "|") != 0
+
+		if failover && roundRobin {
+			return nil, errors.New("mixing & and | are not allowed in localIP routes: " + route.LocalIp)
+		}
+
+		// Contient les IP sous forme de string
+		var sIps []string
+
+		// On a une seule IP locale
+		if !failover && !roundRobin {
+			sIps = append(sIps, route.LocalIp)
+		} else { // multiple locales ips
+			var sep string
+			if failover {
+				sep = "&"
 			} else {
-				scope.Log.Debug("deliverd.getSmtpClient: unable to get a client", lIp, "->", remoteAddr.IP.String(), ":", remoteAddr.Port, "-", err)
+				sep = "|"
+			}
+			sIps = strings.Split(route.LocalIp, sep)
+
+			// if roundRobin we need tu schuffle IP
+			rSIps := make([]string, len(sIps))
+			perm := rand.Perm(len(sIps))
+			for i, v := range perm {
+				rSIps[v] = sIps[i]
+			}
+			sIps = rSIps
+			rSIps = nil
+		}
+
+		// IP string to net.IP
+		for _, ipStr := range sIps {
+			ip := net.ParseIP(ipStr)
+			if ip == nil {
+				return nil, errors.New("invalid IP " + ipStr + " found in localIp routes: " + route.LocalIp)
+			}
+			localIps = append(localIps, ip)
+		}
+
+		// On defini remoteAdresses
+
+		addr := net.TCPAddr{}
+		// Hostname or IP
+		ip := net.ParseIP(route.RemoteHost)
+		if ip != nil { // ip
+			remoteAddresses = append(remoteAddresses, net.TCPAddr{
+				IP:   ip,
+				Port: route.RemotePort,
+			})
+		} else { // hostname
+			ips, err := net.LookupIP(route.RemoteHost)
+			if err != nil {
+				return nil, err
+			}
+			for _, i := range ips {
+				addr.IP = i
+				addr.Port = route.RemotePort
+				remoteAddresses = append(remoteAddresses, net.TCPAddr{
+					IP:   i,
+					Port: route.RemotePort,
+				})
+			}
+		}
+
+		// On essaye de trouver une route qui fonctionne
+		for _, lIp := range localIps {
+			for _, remoteAddr := range remoteAddresses {
+				// on doit avopir de l'IPv4 en entré et sortie ou de l'IP6 en e/s
+				if util.IsIpV4(lIp.String()) != util.IsIpV4(remoteAddr.IP.String()) {
+					continue
+				}
+				// TODO timeout en config
+				c, err = Dialz(&remoteAddr, lIp.String(), scope.Cfg.GetMe(), 30)
+				if err == nil {
+					return
+				} else {
+					scope.Log.Debug("deliverd.getSmtpClient: unable to get a client", lIp, "->", remoteAddr.IP.String(), ":", remoteAddr.Port, "-", err)
+				}
 			}
 		}
 	}

@@ -7,7 +7,7 @@ package config
 import (
 	"errors"
 	"fmt"
-	"net"
+	//"net"
 	"os"
 	"reflect"
 	"strconv"
@@ -281,41 +281,42 @@ func (c *Config) GetDeliverdMaxInFlight() int {
 }
 
 // GetLocalIps returns ordered lits of local IP (net.IP) to use when sending mail
-func (c *Config) GetLocalIps() (lIps []net.IP, err error) {
+func (c *Config) GetLocalIps() string {
 	c.Lock()
-	localIps := c.cfg.LocalIps
-	c.Unlock()
-	// no mix beetween & and |
-	failover := strings.Count(localIps, "&") != 0
-	roundRobin := strings.Count(localIps, "|") != 0
+	defer c.Unlock()
+	return c.cfg.LocalIps
+	/*
+		// no mix beetween & and |
+		failover := strings.Count(localIps, "&") != 0
+		roundRobin := strings.Count(localIps, "|") != 0
 
-	if failover && roundRobin {
-		return nil, errors.New("mixing & and | are not allowed in config TMAIL_DELIVERD_LOCAL_IPS")
-	}
-
-	var sIps []string
-
-	// one local ip
-	if !failover && !roundRobin {
-		sIps = append(sIps, localIps)
-	} else { // multiple locales ips
-		var sep string
-		if failover {
-			sep = "&"
-		} else {
-			sep = "|"
+		if failover && roundRobin {
+			return nil, errors.New("mixing & and | are not allowed in config TMAIL_DELIVERD_LOCAL_IPS")
 		}
-		sIps = strings.Split(localIps, sep)
-	}
 
-	for _, ipStr := range sIps {
-		ip := net.ParseIP(ipStr)
-		if ip == nil {
-			return nil, errors.New("invalid IP " + ipStr + " found in config TMAIL_DELIVERD_LOCAL_IPS")
+		var sIps []string
+
+		// one local ip
+		if !failover && !roundRobin {
+			sIps = append(sIps, localIps)
+		} else { // multiple locales ips
+			var sep string
+			if failover {
+				sep = "&"
+			} else {
+				sep = "|"
+			}
+			sIps = strings.Split(localIps, sep)
 		}
-		lIps = append(lIps, ip)
-	}
-	return lIps, nil
+
+		for _, ipStr := range sIps {
+			ip := net.ParseIP(ipStr)
+			if ip == nil {
+				return nil, errors.New("invalid IP " + ipStr + " found in config TMAIL_DELIVERD_LOCAL_IPS")
+			}
+			lIps = append(lIps, ip)
+		}
+		return lIps, nil*/
 }
 
 // GetDeliverdRemoteTimeout return remote timeout in second

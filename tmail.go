@@ -31,9 +31,9 @@ func init() {
 	}
 
 	// Check local ip
-	if _, err = scope.Cfg.GetLocalIps(); err != nil {
+	/*if _, err = scope.Cfg.GetLocalIps(); err != nil {
 		log.Fatalln("bad config parameter TMAIL_DELIVERD_LOCAL_IPS", err.Error())
-	}
+	}*/
 
 	// Check base path structure
 	requiredPaths := []string{"db", "nsq", "ssl"}
