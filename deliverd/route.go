@@ -11,9 +11,12 @@ import (
 type Route struct {
 	Id         int64
 	Host       string
+	LocalIp    net.IP
 	RemoteHost string
 	RemotePort int
 	Priority   int
+	AuthUser   string
+	AuthPasswd string
 }
 
 // routes represents all the routes allowed to access remote MX

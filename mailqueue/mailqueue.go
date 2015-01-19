@@ -18,6 +18,7 @@ type QMessage struct {
 	Id                  int64
 	Key                 string // identifier  -> store.Get(key)
 	MailFrom            string
+	AuthUser            string // Si il y a eu authetification SMTP contier le login/user sert pour le routage
 	ReturnPath          string
 	RcptTo              string
 	Host                string
@@ -53,7 +54,7 @@ func (q *QMessage) Delete() error {
 }
 
 // Add add a new mail in queue
-func AddMessage(msg *message.Message, envelope message.Envelope) (key string, err error) {
+func AddMessage(msg *message.Message, envelope message.Envelope, authUser string) (key string, err error) {
 	qStore, err := store.New(scope.Cfg.GetStoreDriver(), scope.Cfg.GetStoreSource())
 	if err != nil {
 		return
@@ -104,6 +105,7 @@ func AddMessage(msg *message.Message, envelope message.Envelope) (key string, er
 	for _, rcptTo := range envelope.RcptTo {
 		qm := QMessage{
 			Key:                 key,
+			AuthUser:            authUser,
 			MailFrom:            envelope.MailFrom,
 			ReturnPath:          returnPath,
 			RcptTo:              rcptTo,

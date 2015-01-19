@@ -94,7 +94,7 @@ func initDB(DB gorm.DB) error {
 // autoMigrateDB will keep tables reflecting structs
 func autoMigrateDB(DB gorm.DB) error {
 	// if tables exists check if they reflects struts
-	if err := DB.AutoMigrate(&smtpd.SmtpUser{}, &smtpd.RcptHost{}, &smtpd.RelayIpOk{}, &mailqueue.QMessage{}).Error; err != nil {
+	if err := DB.AutoMigrate(&smtpd.SmtpUser{}, &smtpd.RcptHost{}, &smtpd.RelayIpOk{}, &mailqueue.QMessage{}, &deliverd.Route{}).Error; err != nil {
 		return errors.New("Unable autoMigrateDB - " + err.Error())
 	}
 	return nil

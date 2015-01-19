@@ -288,7 +288,7 @@ func (d *delivery) bounce(errMsg string) error {
 	if err != nil {
 		return err
 	}
-	id, err := mailqueue.AddMessage(message, envelope)
+	id, err := mailqueue.AddMessage(message, envelope, "")
 	if err != nil {
 		return err
 	}
