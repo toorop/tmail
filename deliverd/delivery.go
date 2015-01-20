@@ -100,8 +100,8 @@ func (d *delivery) processMsg() {
 	}
 
 	// Get client
-	c, err := getSmtpClient(routes)
-	scope.Log.Debug(c, err)
+	c, r, err := getSmtpClient(routes)
+	scope.Log.Debug(c, r, err)
 	if err != nil {
 		// TODO
 		d.dieTemp("unable to get client")
@@ -120,7 +120,7 @@ func (d *delivery) processMsg() {
 		err = c.StartTLS(&config)
 		if err != nil { // fallback to no TLS
 			c.Close()
-			c, err = getSmtpClient(routes)
+			c, r, err = getSmtpClient(routes)
 			if err != nil {
 				// TODO
 				d.dieTemp("unable to get client")
@@ -129,7 +129,26 @@ func (d *delivery) processMsg() {
 		}
 	}
 
-	// TODO auth
+	// SMTP AUTH
+	if r.SmtpAuthLogin.Valid && r.SmtpAuthPasswd.Valid {
+		var auth Auth
+		_, auths := c.Extension("AUTH")
+		if strings.Contains(auths, "CRAM-MD5") {
+			auth = CRAMMD5Auth(r.SmtpAuthLogin.String, r.SmtpAuthPasswd.String)
+		} else { // PLAIN
+			auth = PlainAuth("", r.SmtpAuthLogin.String, r.SmtpAuthPasswd.String, r.RemoteHost)
+		}
+
+		if auth != nil {
+			//if ok, _ := c.Extension("AUTH"); ok {
+			err := c.Auth(auth)
+			if err != nil {
+				d.diePerm(err.Error())
+				return
+			}
+		}
+		//}
+	}
 
 	// MAIL FROM
 	if err = c.Mail(d.qMsg.MailFrom); err != nil {
@@ -323,8 +342,8 @@ func (d *delivery) handleSmtpError(smtpErr string) {
 // On doit faire un choix de priorité entre les locales et les remotes
 // La priorité sera basée sur l'ordre des remotes
 // Donc on testes d'abord toutes les IP locales sur les remotes
-func getSmtpClient(routes *[]Route) (c *Client, err error) {
-
+func getSmtpClient(routes *[]Route) (*Client, *Route, error) {
+	//var err error
 	for _, route := range *routes {
 		localIps := []net.IP{}
 		remoteAddresses := []net.TCPAddr{}
@@ -333,7 +352,7 @@ func getSmtpClient(routes *[]Route) (c *Client, err error) {
 		roundRobin := strings.Count(route.LocalIp.String, "|") != 0
 
 		if failover && roundRobin {
-			return nil, errors.New("mixing & and | are not allowed in localIP routes: " + route.LocalIp.String)
+			return nil, &route, errors.New("mixing & and | are not allowed in localIP routes: " + route.LocalIp.String)
 		}
 
 		// Contient les IP sous forme de string
@@ -365,7 +384,7 @@ func getSmtpClient(routes *[]Route) (c *Client, err error) {
 		for _, ipStr := range sIps {
 			ip := net.ParseIP(ipStr)
 			if ip == nil {
-				return nil, errors.New("invalid IP " + ipStr + " found in localIp routes: " + route.LocalIp.String)
+				return nil, &route, errors.New("invalid IP " + ipStr + " found in localIp routes: " + route.LocalIp.String)
 			}
 			localIps = append(localIps, ip)
 		}
@@ -383,7 +402,7 @@ func getSmtpClient(routes *[]Route) (c *Client, err error) {
 		} else { // hostname
 			ips, err := net.LookupIP(route.RemoteHost)
 			if err != nil {
-				return nil, err
+				return nil, &route, err
 			}
 			for _, i := range ips {
 				remoteAddresses = append(remoteAddresses, net.TCPAddr{
@@ -401,9 +420,9 @@ func getSmtpClient(routes *[]Route) (c *Client, err error) {
 					continue
 				}
 				// TODO timeout en config
-				c, err = Dialz(&remoteAddr, lIp.String(), scope.Cfg.GetMe(), 30)
+				c, err := Dialz(&remoteAddr, lIp.String(), scope.Cfg.GetMe(), 30)
 				if err == nil {
-					return
+					return c, &route, nil
 				} else {
 					scope.Log.Debug("deliverd.getSmtpClient: unable to get a client", lIp, "->", remoteAddr.IP.String(), ":", remoteAddr.Port, "-", err)
 				}
@@ -411,7 +430,7 @@ func getSmtpClient(routes *[]Route) (c *Client, err error) {
 		}
 	}
 	// All routes have been tested -> Fail !
-	return nil, errors.New("deliverd.getSmtpClient: unable to get a client, all routes have been tested")
+	return nil, nil, errors.New("deliverd.getSmtpClient: unable to get a client, all routes have been tested")
 }
 
 // smtpResponse represents a SMTP response
