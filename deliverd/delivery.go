@@ -92,7 +92,7 @@ func (d *delivery) processMsg() {
 	d.rawData = &t
 
 	// Get route
-	routes, err := getRoutes(d.qMsg.Host, d.qMsg.AuthUser)
+	routes, err := getRoutes(d.qMsg.MailFrom, d.qMsg.Host, d.qMsg.AuthUser)
 	scope.Log.Debug("deliverd-remote: ", routes, err)
 	if err != nil {
 		d.dieTemp("unable to get route to host " + d.qMsg.Host + ". " + err.Error())
@@ -329,11 +329,11 @@ func getSmtpClient(routes *[]Route) (c *Client, err error) {
 		localIps := []net.IP{}
 		remoteAddresses := []net.TCPAddr{}
 		// no mix beetween & and |
-		failover := strings.Count(route.LocalIp, "&") != 0
-		roundRobin := strings.Count(route.LocalIp, "|") != 0
+		failover := strings.Count(route.LocalIp.String, "&") != 0
+		roundRobin := strings.Count(route.LocalIp.String, "|") != 0
 
 		if failover && roundRobin {
-			return nil, errors.New("mixing & and | are not allowed in localIP routes: " + route.LocalIp)
+			return nil, errors.New("mixing & and | are not allowed in localIP routes: " + route.LocalIp.String)
 		}
 
 		// Contient les IP sous forme de string
@@ -341,7 +341,7 @@ func getSmtpClient(routes *[]Route) (c *Client, err error) {
 
 		// On a une seule IP locale
 		if !failover && !roundRobin {
-			sIps = append(sIps, route.LocalIp)
+			sIps = append(sIps, route.LocalIp.String)
 		} else { // multiple locales ips
 			var sep string
 			if failover {
@@ -349,7 +349,7 @@ func getSmtpClient(routes *[]Route) (c *Client, err error) {
 			} else {
 				sep = "|"
 			}
-			sIps = strings.Split(route.LocalIp, sep)
+			sIps = strings.Split(route.LocalIp.String, sep)
 
 			// if roundRobin we need tu schuffle IP
 			rSIps := make([]string, len(sIps))
@@ -365,20 +365,20 @@ func getSmtpClient(routes *[]Route) (c *Client, err error) {
 		for _, ipStr := range sIps {
 			ip := net.ParseIP(ipStr)
 			if ip == nil {
-				return nil, errors.New("invalid IP " + ipStr + " found in localIp routes: " + route.LocalIp)
+				return nil, errors.New("invalid IP " + ipStr + " found in localIp routes: " + route.LocalIp.String)
 			}
 			localIps = append(localIps, ip)
 		}
 
 		// On defini remoteAdresses
 
-		addr := net.TCPAddr{}
+		//addr := net.TCPAddr{}
 		// Hostname or IP
 		ip := net.ParseIP(route.RemoteHost)
 		if ip != nil { // ip
 			remoteAddresses = append(remoteAddresses, net.TCPAddr{
 				IP:   ip,
-				Port: route.RemotePort,
+				Port: int(route.RemotePort.Int64),
 			})
 		} else { // hostname
 			ips, err := net.LookupIP(route.RemoteHost)
@@ -386,11 +386,9 @@ func getSmtpClient(routes *[]Route) (c *Client, err error) {
 				return nil, err
 			}
 			for _, i := range ips {
-				addr.IP = i
-				addr.Port = route.RemotePort
 				remoteAddresses = append(remoteAddresses, net.TCPAddr{
 					IP:   i,
-					Port: route.RemotePort,
+					Port: int(route.RemotePort.Int64),
 				})
 			}
 		}
