@@ -15,17 +15,18 @@ import (
 )
 
 type QMessage struct {
-	Id                  int64
-	Key                 string // identifier  -> store.Get(key)
-	MailFrom            string
-	AuthUser            string // Si il y a eu authetification SMTP contier le login/user sert pour le routage
-	ReturnPath          string
-	RcptTo              string
-	Host                string
-	AddedAt             time.Time
-	DeliveryStartedAt   time.Time
-	NextDeliveryAt      time.Time
-	DeliveryInProgress  bool
+	Id         int64
+	Key        string // identifier  -> store.Get(key)
+	MailFrom   string
+	AuthUser   string // Si il y a eu authetification SMTP contier le login/user sert pour le routage
+	ReturnPath string
+	RcptTo     string
+	Host       string
+	AddedAt    time.Time
+	//DeliveryStartedAt   time.Time
+	//NextDeliveryAt      time.Time
+	//DeliveryInProgress  bool   // todo change to status (in_flight, discarded)
+	Status              uint32 // 0 delivery in progress, 1 discarded
 	DeliveryFailedCount uint32
 }
 
@@ -111,9 +112,7 @@ func AddMessage(msg *message.Message, envelope message.Envelope, authUser string
 			RcptTo:              rcptTo,
 			Host:                message.GetHostFromAddress(rcptTo),
 			AddedAt:             time.Now(),
-			DeliveryStartedAt:   time.Now(),
-			NextDeliveryAt:      time.Now(),
-			DeliveryInProgress:  true,
+			Status:              0,
 			DeliveryFailedCount: 0,
 		}
 
@@ -149,4 +148,11 @@ func AddMessage(msg *message.Message, envelope message.Envelope, authUser string
 		cloop++
 	}
 	return
+}
+
+// ListMessage return all message in queue
+func ListMessages() ([]QMessage, error) {
+	messages := []QMessage{}
+	err := scope.DB.Find(&messages).Error
+	return messages, err
 }

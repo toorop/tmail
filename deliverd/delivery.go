@@ -58,6 +58,25 @@ func (d *delivery) processMsg() {
 
 	scope.Log.Info(fmt.Sprintf("deliverd-remote %s: starting new delivery from %s to %s (msg id: %s)", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.Key))
 
+	// Update qMessage from db (check if exist)
+	//dbQmsg := mailqueue.QMessage{}
+	if err = scope.DB.Find(d.qMsg).Error; err != nil {
+		scope.Log.Error(fmt.Sprintf("deliverd-remote %s : unable to get qMsg %s from Db - %s", d.id, d.qMsg.Id, err))
+		d.requeue()
+		return
+	}
+	// Discard ?
+	if d.qMsg.Status == 1 {
+		scope.Log.Info("deliverd-remote" + d.id + " discard message " + d.qMsg.Key)
+		if err = d.qMsg.Delete(); err != nil {
+			scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+			d.requeue()
+		} else {
+			d.nsqMsg.Finish()
+		}
+		return
+	}
+
 	// {"Id":7,"Key":"7f88b72858ae57c17b6f5e89c1579924615d7876","MailFrom":"toorop@toorop.fr",
 	// "RcptTo":"toorop@toorop.fr","Host":"toorop.fr","AddedAt":"2014-12-02T09:05:59.342268145+01:00",
 	// "DeliveryStartedAt":"2014-12-02T09:05:59.34226818+01:00","NextDeliveryAt":"2014-12-02T09:05:59.342268216+01:00",
@@ -232,7 +251,7 @@ func (d *delivery) dieOk() {
 // dieTemp die when a 4** error occured
 func (d *delivery) dieTemp(msg string) {
 	scope.Log.Info("deliverd-remote " + d.id + ": temp failure - " + msg)
-	if time.Since(d.qMsg.DeliveryStartedAt) < time.Duration(scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
+	if time.Since(d.qMsg.AddedAt) < time.Duration(scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
 		d.requeue()
 		return
 	}
@@ -248,7 +267,7 @@ func (d *delivery) diePerm(msg string) {
 	if err != nil {
 		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message from " + d.qMsg.MailFrom + "to " + d.qMsg.RcptTo + ". " + err.Error())
 		// If message queuing > queue lifetime dicard
-		if time.Since(d.qMsg.DeliveryStartedAt) < time.Duration(scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
+		if time.Since(d.qMsg.AddedAt) < time.Duration(scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
 			d.requeue()
 			return
 		}

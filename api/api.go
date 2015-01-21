@@ -4,6 +4,7 @@ package api
 
 import (
 	//"github.com/Toorop/tmail/scope"
+	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/smtpd"
 )
 
@@ -35,4 +36,10 @@ func SmtpdDelRcptHost(host string) error {
 // SmtpdGetRcptHosts returns rcpthosts
 func SmtpdGetRcptHosts() (hosts []smtpd.RcptHost, err error) {
 	return smtpd.GetRcptHosts()
+}
+
+// Queue
+// QueueGetMessages returns all message in queue
+func QueueGetMessages() ([]mailqueue.QMessage, error) {
+	return mailqueue.ListMessages()
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/Toorop/tmail/api"
 	"github.com/codegangsta/cli"
 	"os"
@@ -9,10 +10,11 @@ import (
 
 var cliCommands = []cli.Command{
 	{
+		// SMTPD
 		Name:  "smtpd",
 		Usage: "commands to interact with smtpd process",
 		Subcommands: []cli.Command{
-			// SMTPD
+
 			// users
 
 			{
@@ -108,6 +110,38 @@ var cliCommands = []cli.Command{
 					for _, h := range rcptHosts {
 						println(h.Hostname)
 					}
+				},
+			},
+		},
+	}, {
+		// QUEUE
+		Name:  "queue",
+		Usage: "commands to interact with tmail queue",
+		Subcommands: []cli.Command{
+			// list queue
+			{
+				Name:        "list",
+				Usage:       "List messages in queue",
+				Description: "tmail queue list",
+				Action: func(c *cli.Context) {
+					var status string
+					messages, err := api.QueueGetMessages()
+					cliHandleErr(err)
+					if len(messages) == 0 {
+						println("There is no message in queue.")
+					}
+					fmt.Printf("%d messages in queue.\r\n", len(messages))
+					for _, m := range messages {
+						switch m.Status {
+						case 0:
+							status = "Delivery in progress"
+						case 1:
+							status = "Discarded"
+						}
+
+						fmt.Printf("%s - From: %s - To: %s - Status: %s - Added: %v\r\n", m.Key, m.MailFrom, m.RcptTo, status, m.AddedAt)
+					}
+					os.Exit(0)
 				},
 			},
 		},
