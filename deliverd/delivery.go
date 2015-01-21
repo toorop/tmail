@@ -130,7 +130,7 @@ func (d *delivery) processMsg() {
 	}
 
 	// SMTP AUTH
-	if r.SmtpAuthLogin.Valid && r.SmtpAuthPasswd.Valid {
+	if r.SmtpAuthLogin.Valid && r.SmtpAuthPasswd.Valid && len(r.SmtpAuthLogin.String) != 0 && len(r.SmtpAuthLogin.String) != 0 {
 		var auth Auth
 		_, auths := c.Extension("AUTH")
 		if strings.Contains(auths, "CRAM-MD5") {
