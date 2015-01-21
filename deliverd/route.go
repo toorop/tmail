@@ -124,8 +124,6 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 		}
 	}
 
-	scope.Log.Debug("ROUTES avant MX ", routes)
-
 	// Sinon on prends les MX
 	if len(routes) == 0 {
 		mxs, err := net.LookupMX(host)

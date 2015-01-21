@@ -2,7 +2,8 @@ package message
 
 import (
 	"bytes"
-	"fmt"
+	//"fmt"
+	//"github.com/Toorop/tmail/scope"
 	"io/ioutil"
 	"net/mail"
 	"net/textproto"
@@ -82,12 +83,14 @@ func (m *Message) GetRaw() (rawMessage []byte, err error) {
 			// On ne doit pas avoir autre chose que des char < 128
 			// Attention si un jour on implemente l'extension SMTPUTF8
 			// Voir RFC 6531 (SMTPUTF8 extension), RFC 6532 (Internationalized email headers) and RFC 6533 (Internationalized delivery status notifications).
-			for _, c := range value {
+			/*for _, c := range value {
 				if c > 128 {
 					return rawMessage, ErrNonAsciiCharDetected
 				}
-			}
-			rawStr += fmt.Sprintf("%s: %s\r\n", key, value)
+			}*/
+
+			// Fold header
+			rawStr += FoldHeader(key+": "+value) + "\r\n"
 		}
 	}
 
@@ -111,4 +114,46 @@ func (m *Message) GetRaw() (rawMessage []byte, err error) {
 func GetHostFromAddress(address string) string {
 	address = strings.ToLower(address)
 	return address[strings.Index(address, "@")+1:]
+}
+
+// FoldHeader retun header value according to RFC 2822
+// https://tools.ietf.org/html/rfc2822#section-2.1.1
+// There are two limits that this standard places on the number of
+// characters in a line. Each line of characters MUST be no more than
+// 998 characters, and SHOULD be no more than 78 characters, excluding
+// the CRLF.
+// TODO: refactor Foldheader
+func FoldHeader(header string) string {
+	// remove \r & \n
+	header = strings.Replace(header, "\r", "", -1)
+	header = strings.Replace(header, "\n", "", -1)
+	if len(header) < 78 {
+		return header
+	}
+	lastCut := 0
+	lastSpace := 0
+	headerLenght := 0
+	h := []byte{}
+	bHeader := []byte(header)
+	for i, c := range bHeader {
+		headerLenght++
+		// espace
+		if c == 32 {
+			lastSpace = i
+		}
+		if headerLenght > 77 {
+			if len(h) != 0 {
+				h = append(h, []byte{13, 10}...)
+			}
+			h = append(h, bHeader[lastCut:lastSpace]...)
+			lastCut = lastSpace
+			headerLenght = 0
+		}
+	}
+	if len(h) != 0 && lastCut < len(bHeader) {
+		h = append(h, []byte{13, 10}...)
+	}
+	//h = append(h, 32)
+	h = append(h, bHeader[lastCut:]...)
+	return string(h)
 }
