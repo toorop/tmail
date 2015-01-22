@@ -79,6 +79,9 @@ func (q *QMessage) SaveInDb() error {
 
 // Discard mark message as being discarded on next delivery attemp
 func (q *QMessage) Discard() error {
+	if q.Status == 0 {
+		return errors.New("delivery in progress, message status can't be chnaged")
+	}
 	q.Lock()
 	q.Status = 1
 	q.Unlock()

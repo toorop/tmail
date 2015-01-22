@@ -80,6 +80,10 @@ func (d *delivery) processMsg() {
 		return
 	}
 
+	// update to delivery in progress
+	d.qMsg.Status = 0
+	d.qMsg.SaveInDb()
+
 	// {"Id":7,"Key":"7f88b72858ae57c17b6f5e89c1579924615d7876","MailFrom":"toorop@toorop.fr",
 	// "RcptTo":"toorop@toorop.fr","Host":"toorop.fr","AddedAt":"2014-12-02T09:05:59.342268145+01:00",
 	// "DeliveryStartedAt":"2014-12-02T09:05:59.34226818+01:00","NextDeliveryAt":"2014-12-02T09:05:59.342268216+01:00",
@@ -340,6 +344,12 @@ func (d *delivery) bounce(errMsg string) error {
 
 // requeue requeues the message increasing the delay
 func (d *delivery) requeue() {
+	// Si entre deux le status a changé
+	d.qMsg.UpdateFromDb()
+	//si  discard or bounce
+	if d.qMsg.Status == 1 || d.qMsg.Status == 3 {
+		return
+	}
 	// Calcul du delais, pour le moment on accroit betement de 60 secondes a chaque tentative
 	delay := time.Duration(d.nsqMsg.Attempts*60) * time.Second
 	// Todo update next delivery en DB
