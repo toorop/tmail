@@ -70,12 +70,12 @@ func initDB(DB gorm.DB) error {
 			return errors.New("Unable to create table queued_messages - " + err.Error())
 		}
 		// Index
-		if err = DB.Model(&mailqueue.QMessage{}).AddIndex("idx_queued_messages_deliveryinprogress_nextdeliveryat", "delivery_in_progress", "next_delivery_at").Error; err != nil {
+		/*if err = DB.Model(&mailqueue.QMessage{}).AddIndex("idx_queued_messages_deliveryinprogress_nextdeliveryat", "delivery_in_progress", "next_delivery_at").Error; err != nil {
 			return errors.New("Unable to add index idx_rcpthots_domain on table queued_messages - " + err.Error())
-		}
+		}*/
 
-		if err = DB.Model(&mailqueue.QMessage{}).AddUniqueIndex("uidx_id", "id").Error; err != nil {
-			return errors.New("Unable to add unique index uidx_id on table queued_messages - " + err.Error())
+		if err = DB.Model(&mailqueue.QMessage{}).AddUniqueIndex("uidx_key", "key").Error; err != nil {
+			return errors.New("Unable to add unique index uidx_key on table queued_messages - " + err.Error())
 		}
 	}
 	// deliverd.route

@@ -136,18 +136,33 @@ var cliCommands = []cli.Command{
 						case 0:
 							status = "Delivery in progress"
 						case 1:
-							status = "Discarded"
+							status = "Will be discarded"
 						case 2:
 							status = "Scheduled"
+						case 3:
+							status = "Will be bounced"
 						}
 
 						msg := fmt.Sprintf("%s - From: %s - To: %s - Status: %s - Added: %v ", m.Key, m.MailFrom, m.RcptTo, status, m.AddedAt)
-						if m.Status == 2 {
-							msg += fmt.Sprintf("- Next delivery scheduled at: %v", m.NextDeliveryScheduledAt)
+						if m.Status != 0 {
+							msg += fmt.Sprintf("- Next delivery process scheduled at: %v", m.NextDeliveryScheduledAt)
 						}
 						println(msg)
 					}
 					os.Exit(0)
+				},
+			},
+			{
+				Name:        "discard",
+				Usage:       "Discard (delete without bouncing) a message in queue",
+				Description: "tmail queue discard MESSAGE_ID",
+				Action: func(c *cli.Context) {
+					if len(c.Args()) != 1 {
+						cliDieBadArgs(c)
+					}
+					err := api.QueueDiscardMsgByKey(c.Args()[0])
+					cliHandleErr(err)
+					cliDieOk()
 				},
 			},
 		},
@@ -170,6 +185,6 @@ func cliDieBadArgs(c *cli.Context) {
 }
 
 func cliDieOk() {
-	println("Success")
+	//println("Success")
 	os.Exit(0)
 }

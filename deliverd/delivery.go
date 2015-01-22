@@ -123,7 +123,7 @@ func (d *delivery) processMsg() {
 
 	// Get client
 	c, r, err := getSmtpClient(routes)
-	scope.Log.Debug(c, r, err)
+	//scope.Log.Debug(c, r, err)
 	if err != nil {
 		// TODO
 		d.dieTemp("unable to get client")

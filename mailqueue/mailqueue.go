@@ -8,14 +8,18 @@ import (
 	"github.com/Toorop/tmail/message"
 	"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/store"
+	"github.com/jinzhu/gorm"
 	"strings"
 	//"github.com/bitly/go-nsq"
+	"errors"
 	"io"
 	"net/mail"
+	"sync"
 	"time"
 )
 
 type QMessage struct {
+	sync.Mutex
 	Id                      int64
 	Key                     string // identifier  -> store.Get(key)
 	MailFrom                string
@@ -25,12 +29,14 @@ type QMessage struct {
 	Host                    string
 	AddedAt                 time.Time
 	NextDeliveryScheduledAt time.Time
-	Status                  uint32 // 0 delivery in progress, 1 discarded
+	Status                  uint32 // 0 delivery in progress, 1 to be discarded, 2 scheduled, 3 to be bounced
 	DeliveryFailedCount     uint32
 }
 
 // Delete delete message from queue
 func (q *QMessage) Delete() error {
+	q.Lock()
+	defer q.Unlock()
 	var err error
 	// remove from DB
 	if err = scope.DB.Delete(q).Error; err != nil {
@@ -59,12 +65,34 @@ func (q *QMessage) Delete() error {
 
 // UpdateFromDb update message from DB
 func (q *QMessage) UpdateFromDb() error {
+	q.Lock()
+	defer q.Unlock()
 	return scope.DB.Find(q).Error
 }
 
 // SaveInDb save qMessage in DB
 func (q *QMessage) SaveInDb() error {
+	q.Lock()
+	defer q.Unlock()
 	return scope.DB.Save(q).Error
+}
+
+// Discard mark message as being discarded on next delivery attemp
+func (q *QMessage) Discard() error {
+	q.Lock()
+	q.Status = 1
+	q.Unlock()
+	return q.SaveInDb()
+}
+
+// GetMessageByKey return a message from is key
+func GetMessageByKey(key string) (msg *QMessage, err error) {
+	msg = &QMessage{}
+	err = scope.DB.Where("key = ?", key).First(msg).Error
+	if err != nil && err == gorm.RecordNotFound {
+		err = errors.New("not found")
+	}
+	return
 }
 
 // Add add a new mail in queue

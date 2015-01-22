@@ -43,3 +43,12 @@ func SmtpdGetRcptHosts() (hosts []smtpd.RcptHost, err error) {
 func QueueGetMessages() ([]mailqueue.QMessage, error) {
 	return mailqueue.ListMessages()
 }
+
+// QueueDiscardMsgByKey discard a message (delete without bouncing) by is key
+func QueueDiscardMsgByKey(key string) error {
+	m, err := mailqueue.GetMessageByKey(key)
+	if err != nil {
+		return err
+	}
+	return m.Discard()
+}
