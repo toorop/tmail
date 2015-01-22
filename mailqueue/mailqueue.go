@@ -8,6 +8,7 @@ import (
 	"github.com/Toorop/tmail/message"
 	"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/store"
+	"strings"
 	//"github.com/bitly/go-nsq"
 	"io"
 	"net/mail"
@@ -51,7 +52,16 @@ func (q *QMessage) Delete() error {
 		return err
 	}
 	err = qStore.Del(q.Key)
+	// Si le fichier n'existe pas ce n'est pas une véritable erreur
+	if strings.Contains(err.Error(), "no such file") {
+		err = nil
+	}
 	return err
+}
+
+// UpdateFromDb update message from DB
+func (q *QMessage) UpdateFromDb() error {
+	return scope.DB.Find(q).Error
 }
 
 // Add add a new mail in queue

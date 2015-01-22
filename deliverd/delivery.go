@@ -12,6 +12,7 @@ import (
 	"github.com/Toorop/tmail/store"
 	"github.com/Toorop/tmail/util"
 	"github.com/bitly/go-nsq"
+	"github.com/jinzhu/gorm"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -59,21 +60,22 @@ func (d *delivery) processMsg() {
 	scope.Log.Info(fmt.Sprintf("deliverd-remote %s: starting new delivery from %s to %s (msg id: %s)", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.Key))
 
 	// Update qMessage from db (check if exist)
-	//dbQmsg := mailqueue.QMessage{}
-	if err = scope.DB.Find(d.qMsg).Error; err != nil {
-		scope.Log.Error(fmt.Sprintf("deliverd-remote %s : unable to get qMsg %s from Db - %s", d.id, d.qMsg.Id, err))
-		d.requeue()
+	if err = d.qMsg.UpdateFromDb(); err != nil {
+		// si on ne le trouve pas en DB il y a de forte chance pour que le message ait déja
+		// été traité
+		if err == gorm.RecordNotFound {
+			scope.Log.Info(fmt.Sprintf("deliverd-remote %s : qMsg %s not in Db, already delivered, discarding", d.id, d.qMsg.Key))
+			d.discard()
+		} else {
+			scope.Log.Error(fmt.Sprintf("deliverd-remote %s : unable to get qMsg %s from Db - %s", d.id, d.qMsg.Key, err))
+			d.requeue()
+		}
 		return
 	}
+
 	// Discard ?
 	if d.qMsg.Status == 1 {
-		scope.Log.Info("deliverd-remote" + d.id + " discard message " + d.qMsg.Key)
-		if err = d.qMsg.Delete(); err != nil {
-			scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
-			d.requeue()
-		} else {
-			d.nsqMsg.Finish()
-		}
+		d.discard()
 		return
 	}
 
@@ -166,7 +168,6 @@ func (d *delivery) processMsg() {
 				return
 			}
 		}
-		//}
 	}
 
 	// MAIL FROM
@@ -341,6 +342,18 @@ func (d *delivery) requeue() {
 	// Calcul du delais, pour le moment on accroit betement de 60 secondes a chaque tentative
 	delay := time.Duration(d.nsqMsg.Attempts*60) * time.Second
 	d.nsqMsg.RequeueWithoutBackoff(delay)
+	return
+}
+
+// discard dicard(remove) message from queue
+func (d *delivery) discard() {
+	scope.Log.Info("deliverd-remote " + d.id + " discard message " + d.qMsg.Key)
+	if err := d.qMsg.Delete(); err != nil {
+		scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+		d.requeue()
+	} else {
+		d.nsqMsg.Finish()
+	}
 	return
 }
 
