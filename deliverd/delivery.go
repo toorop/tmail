@@ -82,22 +82,6 @@ func (d *delivery) processMsg() {
 		return
 	}
 
-	// Bounce ?
-	if d.qMsg.Status == 3 {
-		d.qMsg.Status = 0
-		d.qMsg.SaveInDb()
-		if err := d.bounce("bounced by admin"); err != nil {
-			scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message from " + d.qMsg.MailFrom + "to " + d.qMsg.RcptTo + ". " + err.Error())
-			// If message queuing > queue lifetime discard
-			d.requeue(3)
-		}
-		return
-	}
-
-	// update to delivery in progress
-	d.qMsg.Status = 0
-	d.qMsg.SaveInDb()
-
 	// {"Id":7,"Key":"7f88b72858ae57c17b6f5e89c1579924615d7876","MailFrom":"toorop@toorop.fr",
 	// "RcptTo":"toorop@toorop.fr","Host":"toorop.fr","AddedAt":"2014-12-02T09:05:59.342268145+01:00",
 	// "DeliveryStartedAt":"2014-12-02T09:05:59.34226818+01:00","NextDeliveryAt":"2014-12-02T09:05:59.342268216+01:00",
@@ -130,6 +114,16 @@ func (d *delivery) processMsg() {
 		return
 	}
 	d.rawData = &t
+
+	// Marked  ?
+	if d.qMsg.Status == 3 {
+		d.bounce("bounced by admin")
+		return
+	}
+
+	// update status to delivery in progress
+	d.qMsg.Status = 0
+	d.qMsg.SaveInDb()
 
 	// Get route
 	routes, err := getRoutes(d.qMsg.MailFrom, d.qMsg.Host, d.qMsg.AuthUser)
@@ -283,24 +277,7 @@ func (d *delivery) dieTemp(msg string) {
 func (d *delivery) diePerm(msg string) {
 	scope.Log.Info("deliverd-remote " + d.id + ": perm failure - " + msg)
 	// bounce message
-	err := d.bounce(msg)
-	if err != nil {
-		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message from " + d.qMsg.MailFrom + "to " + d.qMsg.RcptTo + ". " + err.Error())
-		// If message queuing > queue lifetime dicard
-		if time.Since(d.qMsg.AddedAt) < time.Duration(scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
-			d.requeue()
-			return
-		}
-	}
-
-	// remove qmessage from DB
-	//mailqueue.scope = scope
-	if err = d.qMsg.Delete(); err != nil {
-		scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
-	}
-
-	// finish
-	d.nsqMsg.Finish()
+	d.bounce(msg)
 	return
 }
 
@@ -317,7 +294,6 @@ func (d *delivery) discard() {
 }
 
 // bounce creates & enqueues a bounce message
-// ICI
 func (d *delivery) bounce(errMsg string) {
 	// If returnPath =="" -> double bounce -> discard
 	if d.qMsg.ReturnPath == "" {
@@ -340,7 +316,7 @@ func (d *delivery) bounce(errMsg string) {
 		} else {
 			d.nsqMsg.Finish()
 		}
-		retrun
+		return
 	}
 
 	type templateData struct {
@@ -387,6 +363,14 @@ func (d *delivery) bounce(errMsg string) {
 		d.requeue(3)
 		return
 	}
+
+	if err := d.qMsg.Delete(); err != nil {
+		scope.Log.Error("deliverd-remote " + d.id + ": unable remove bounced message " + d.qMsg.Key + " from queue. " + err.Error())
+		d.requeue(1)
+	} else {
+		d.nsqMsg.Finish()
+	}
+
 	scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " queued with id " + id + " for being bounced.")
 	return
 }

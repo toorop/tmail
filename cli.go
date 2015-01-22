@@ -165,6 +165,19 @@ var cliCommands = []cli.Command{
 					cliDieOk()
 				},
 			},
+			{
+				Name:        "bounce",
+				Usage:       "Bounce a message in queue",
+				Description: "tmail queue bounce MESSAGE_ID",
+				Action: func(c *cli.Context) {
+					if len(c.Args()) != 1 {
+						cliDieBadArgs(c)
+					}
+					err := api.QueueBounceMsgByKey(c.Args()[0])
+					cliHandleErr(err)
+					cliDieOk()
+				},
+			},
 		},
 	},
 }

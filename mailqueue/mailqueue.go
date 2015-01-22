@@ -80,10 +80,21 @@ func (q *QMessage) SaveInDb() error {
 // Discard mark message as being discarded on next delivery attemp
 func (q *QMessage) Discard() error {
 	if q.Status == 0 {
-		return errors.New("delivery in progress, message status can't be chnaged")
+		return errors.New("delivery in progress, message status can't be changed")
 	}
 	q.Lock()
 	q.Status = 1
+	q.Unlock()
+	return q.SaveInDb()
+}
+
+// Bounce mark message as being bounced on next delivery attemp
+func (q *QMessage) Bounce() error {
+	if q.Status == 0 {
+		return errors.New("delivery in progress, message status can't be changed")
+	}
+	q.Lock()
+	q.Status = 3
 	q.Unlock()
 	return q.SaveInDb()
 }

@@ -52,3 +52,12 @@ func QueueDiscardMsgByKey(key string) error {
 	}
 	return m.Discard()
 }
+
+// QueueBounceMsgByKey bounce a message by is key
+func QueueBounceMsgByKey(key string) error {
+	m, err := mailqueue.GetMessageByKey(key)
+	if err != nil {
+		return err
+	}
+	return m.Bounce()
+}
