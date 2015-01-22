@@ -22,6 +22,7 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"runtime/debug"
 )
 
 type delivery struct {
@@ -41,7 +42,7 @@ func (d *delivery) processMsg() {
 	// Recover on panic
 	defer func() {
 		if err := recover(); err != nil {
-			scope.Log.Error(fmt.Sprintf("deliverd-remote %s : PANIC - %s", d.id, err))
+			scope.Log.Error(fmt.Sprintf("deliverd-remote %s : PANIC \r\n %s \r\n %v", d.id, err, debug.))
 		}
 	}()
 
@@ -341,6 +342,10 @@ func (d *delivery) bounce(errMsg string) error {
 func (d *delivery) requeue() {
 	// Calcul du delais, pour le moment on accroit betement de 60 secondes a chaque tentative
 	delay := time.Duration(d.nsqMsg.Attempts*60) * time.Second
+	// Todo update next delivery en DB
+	d.qMsg.NextDeliveryScheduledAt = time.Now().Add(delay)
+	d.qMsg.Status = 2
+	d.qMsg.SaveInDb() // Todo: check error
 	d.nsqMsg.RequeueWithoutBackoff(delay)
 	return
 }

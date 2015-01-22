@@ -137,9 +137,15 @@ var cliCommands = []cli.Command{
 							status = "Delivery in progress"
 						case 1:
 							status = "Discarded"
+						case 2:
+							status = "Scheduled"
 						}
 
-						fmt.Printf("%s - From: %s - To: %s - Status: %s - Added: %v\r\n", m.Key, m.MailFrom, m.RcptTo, status, m.AddedAt)
+						msg := fmt.Sprintf("%s - From: %s - To: %s - Status: %s - Added: %v ", m.Key, m.MailFrom, m.RcptTo, status, m.AddedAt)
+						if m.Status == 2 {
+							msg += fmt.Sprintf("- Next delivery scheduled at: %v", m.NextDeliveryScheduledAt)
+						}
+						println(msg)
 					}
 					os.Exit(0)
 				},

@@ -16,19 +16,17 @@ import (
 )
 
 type QMessage struct {
-	Id         int64
-	Key        string // identifier  -> store.Get(key)
-	MailFrom   string
-	AuthUser   string // Si il y a eu authetification SMTP contier le login/user sert pour le routage
-	ReturnPath string
-	RcptTo     string
-	Host       string
-	AddedAt    time.Time
-	//DeliveryStartedAt   time.Time
-	//NextDeliveryAt      time.Time
-	//DeliveryInProgress  bool   // todo change to status (in_flight, discarded)
-	Status              uint32 // 0 delivery in progress, 1 discarded
-	DeliveryFailedCount uint32
+	Id                      int64
+	Key                     string // identifier  -> store.Get(key)
+	MailFrom                string
+	AuthUser                string // Si il y a eu authetification SMTP contier le login/user sert pour le routage
+	ReturnPath              string
+	RcptTo                  string
+	Host                    string
+	AddedAt                 time.Time
+	NextDeliveryScheduledAt time.Time
+	Status                  uint32 // 0 delivery in progress, 1 discarded
+	DeliveryFailedCount     uint32
 }
 
 // Delete delete message from queue
@@ -62,6 +60,11 @@ func (q *QMessage) Delete() error {
 // UpdateFromDb update message from DB
 func (q *QMessage) UpdateFromDb() error {
 	return scope.DB.Find(q).Error
+}
+
+// SaveInDb save qMessage in DB
+func (q *QMessage) SaveInDb() error {
+	return scope.DB.Save(q).Error
 }
 
 // Add add a new mail in queue
