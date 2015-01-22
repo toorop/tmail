@@ -18,11 +18,11 @@ import (
 	"math/rand"
 	"net"
 	"path"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"text/template"
 	"time"
-	"runtime/debug"
 )
 
 type delivery struct {
@@ -42,7 +42,7 @@ func (d *delivery) processMsg() {
 	// Recover on panic
 	defer func() {
 		if err := recover(); err != nil {
-			scope.Log.Error(fmt.Sprintf("deliverd-remote %s : PANIC \r\n %s \r\n %v", d.id, err, debug.))
+			scope.Log.Error(fmt.Sprintf("deliverd-remote %s : PANIC \r\n %s \r\n %s", d.id, err, debug.Stack()))
 		}
 	}()
 

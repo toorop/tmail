@@ -51,7 +51,7 @@ func (q *QMessage) Delete() error {
 	}
 	err = qStore.Del(q.Key)
 	// Si le fichier n'existe pas ce n'est pas une véritable erreur
-	if strings.Contains(err.Error(), "no such file") {
+	if err != nil && strings.Contains(err.Error(), "no such file") {
 		err = nil
 	}
 	return err
