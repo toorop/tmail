@@ -76,7 +76,21 @@ func (d *delivery) processMsg() {
 
 	// Discard ?
 	if d.qMsg.Status == 1 {
+		d.qMsg.Status = 0
+		d.qMsg.SaveInDb()
 		d.discard()
+		return
+	}
+
+	// Bounce ?
+	if d.qMsg.Status == 3 {
+		d.qMsg.Status = 0
+		d.qMsg.SaveInDb()
+		if err := d.bounce("bounced by admin"); err != nil {
+			scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message from " + d.qMsg.MailFrom + "to " + d.qMsg.RcptTo + ". " + err.Error())
+			// If message queuing > queue lifetime discard
+			d.requeue(3)
+		}
 		return
 	}
 
@@ -290,18 +304,43 @@ func (d *delivery) diePerm(msg string) {
 	return
 }
 
+// discard dicard(remove) message from queue
+func (d *delivery) discard() {
+	scope.Log.Info("deliverd-remote " + d.id + " discard message " + d.qMsg.Key)
+	if err := d.qMsg.Delete(); err != nil {
+		scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+		d.requeue(1)
+	} else {
+		d.nsqMsg.Finish()
+	}
+	return
+}
+
 // bounce creates & enqueues a bounce message
-func (d *delivery) bounce(errMsg string) error {
+// ICI
+func (d *delivery) bounce(errMsg string) {
 	// If returnPath =="" -> double bounce -> discard
 	if d.qMsg.ReturnPath == "" {
 		scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " double bounce: discarding")
-		return nil
+		if err := d.qMsg.Delete(); err != nil {
+			scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+			d.requeue(1)
+		} else {
+			d.nsqMsg.Finish()
+		}
+		return
 	}
 
 	// triple bounce
 	if d.qMsg.ReturnPath == "#@[]" {
-		scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " tripke bounce: discarding")
-		return nil
+		scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " triple bounce: discarding")
+		if err := d.qMsg.Delete(); err != nil {
+			scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+			d.requeue(1)
+		} else {
+			d.nsqMsg.Finish()
+		}
+		retrun
 	}
 
 	type templateData struct {
@@ -316,59 +355,63 @@ func (d *delivery) bounce(errMsg string) error {
 	tData := templateData{time.Now().Format(scope.Time822), scope.Cfg.GetMe(), d.qMsg.RcptTo, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
 	t, err := template.ParseFiles(path.Join(util.GetBasePath(), "tpl/bounce.tpl"))
 	if err != nil {
-		return err
+		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		d.requeue(3)
+		return
 	}
 
 	bouncedMailBuf := new(bytes.Buffer)
 	err = t.Execute(bouncedMailBuf, tData)
 	if err != nil {
-		return err
+		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		d.requeue(3)
+		return
 	}
 	b, err := ioutil.ReadAll(bouncedMailBuf)
 	if err != nil {
-		return err
+		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		d.requeue(3)
+		return
 	}
 	// enqueue
 	envelope := message.Envelope{"", []string{d.qMsg.ReturnPath}}
 	message, err := message.New(b)
 	if err != nil {
-		return err
+		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		d.requeue(3)
+		return
 	}
 	id, err := mailqueue.AddMessage(message, envelope, "")
 	if err != nil {
-		return err
+		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		d.requeue(3)
+		return
 	}
 	scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " queued with id " + id + " for being bounced.")
-	return nil
+	return
 }
 
 // requeue requeues the message increasing the delay
-func (d *delivery) requeue() {
-	// Si entre deux le status a changé
-	d.qMsg.UpdateFromDb()
-	//si  discard or bounce
-	if d.qMsg.Status == 1 || d.qMsg.Status == 3 {
-		return
+func (d *delivery) requeue(newStatus ...uint32) {
+	var status uint32
+	status = 2
+	if len(newStatus) != 0 {
+		status = newStatus[0]
 	}
+
+	// Si entre deux le status a changé
+	//d.qMsg.UpdateFromDb()
+	//si il y a eu un changement entre temps  discard or bounce
+	//if d.qMsg.Status == 1 || d.qMsg.Status == 3 {
+	//	return
+	//}
 	// Calcul du delais, pour le moment on accroit betement de 60 secondes a chaque tentative
 	delay := time.Duration(d.nsqMsg.Attempts*60) * time.Second
 	// Todo update next delivery en DB
 	d.qMsg.NextDeliveryScheduledAt = time.Now().Add(delay)
-	d.qMsg.Status = 2
+	d.qMsg.Status = status
 	d.qMsg.SaveInDb() // Todo: check error
 	d.nsqMsg.RequeueWithoutBackoff(delay)
-	return
-}
-
-// discard dicard(remove) message from queue
-func (d *delivery) discard() {
-	scope.Log.Info("deliverd-remote " + d.id + " discard message " + d.qMsg.Key)
-	if err := d.qMsg.Delete(); err != nil {
-		scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
-		d.requeue()
-	} else {
-		d.nsqMsg.Finish()
-	}
 	return
 }
 
