@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/Toorop/tmail/api"
+	"github.com/Toorop/tmail/scope"
 	"github.com/codegangsta/cli"
 	"os"
 	"strconv"
@@ -14,9 +15,7 @@ var cliCommands = []cli.Command{
 		Name:  "smtpd",
 		Usage: "commands to interact with smtpd process",
 		Subcommands: []cli.Command{
-
 			// users
-
 			{
 				Name:        "addUser",
 				Usage:       "Add a smtpd user",
@@ -129,25 +128,26 @@ var cliCommands = []cli.Command{
 					cliHandleErr(err)
 					if len(messages) == 0 {
 						println("There is no message in queue.")
-					}
-					fmt.Printf("%d messages in queue.\r\n", len(messages))
-					for _, m := range messages {
-						switch m.Status {
-						case 0:
-							status = "Delivery in progress"
-						case 1:
-							status = "Will be discarded"
-						case 2:
-							status = "Scheduled"
-						case 3:
-							status = "Will be bounced"
-						}
+					} else {
+						fmt.Printf("%d messages in queue.\r\n", len(messages))
+						for _, m := range messages {
+							switch m.Status {
+							case 0:
+								status = "Delivery in progress"
+							case 1:
+								status = "Will be discarded"
+							case 2:
+								status = "Scheduled"
+							case 3:
+								status = "Will be bounced"
+							}
 
-						msg := fmt.Sprintf("%s - From: %s - To: %s - Status: %s - Added: %v ", m.Key, m.MailFrom, m.RcptTo, status, m.AddedAt)
-						if m.Status != 0 {
-							msg += fmt.Sprintf("- Next delivery process scheduled at: %v", m.NextDeliveryScheduledAt)
+							msg := fmt.Sprintf("%s - From: %s - To: %s - Status: %s - Added: %v ", m.Key, m.MailFrom, m.RcptTo, status, m.AddedAt)
+							if m.Status != 0 {
+								msg += fmt.Sprintf("- Next delivery process scheduled at: %v", m.NextDeliveryScheduledAt)
+							}
+							println(msg)
 						}
-						println(msg)
 					}
 					os.Exit(0)
 				},
@@ -176,6 +176,23 @@ var cliCommands = []cli.Command{
 					err := api.QueueBounceMsgByKey(c.Args()[0])
 					cliHandleErr(err)
 					cliDieOk()
+				},
+			},
+		},
+	}, {
+		// ROUTES
+		Name:  "routes",
+		Usage: "commands to manage outgoing SMTP routes",
+		Subcommands: []cli.Command{
+			{
+				Name:        "list",
+				Usage:       "List routes",
+				Description: "tmail routes list",
+				Action: func(c *cli.Context) {
+					routes, err := api.RoutesGet()
+					cliHandleErr(err)
+					scope.Log.Debug(routes)
+					os.Exit(0)
 				},
 			},
 		},

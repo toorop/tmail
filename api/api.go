@@ -4,6 +4,7 @@ package api
 
 import (
 	//"github.com/Toorop/tmail/scope"
+	"github.com/Toorop/tmail/deliverd"
 	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/smtpd"
 )
@@ -60,4 +61,9 @@ func QueueBounceMsgByKey(key string) error {
 		return err
 	}
 	return m.Bounce()
+}
+
+// Routes
+func RoutesGet() ([]deliverd.Route, error) {
+	return deliverd.GetAllRoutes()
 }

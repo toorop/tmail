@@ -33,6 +33,13 @@ type matchingRoutes struct {
 	routes []Route
 }
 
+// GetAllRoutes returns all routes (really ?!)
+func GetAllRoutes() (routes []Route, err error) {
+	routes = []Route{}
+	err = scope.DB.Find(&routes).Error
+	return
+}
+
 // getRoute return matchingRoutes for the specified destination host
 func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 	routes := []Route{}
