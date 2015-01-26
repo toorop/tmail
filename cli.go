@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/Toorop/tmail/api"
-	"github.com/Toorop/tmail/scope"
+	//"github.com/Toorop/tmail/scope"
 	"github.com/codegangsta/cli"
 	"os"
 	"strconv"
@@ -193,13 +193,23 @@ var cliCommands = []cli.Command{
 				Action: func(c *cli.Context) {
 					routes, err := api.RoutesGet()
 					cliHandleErr(err)
-					scope.Log.Debug(routes)
+					//scope.Log.Debug(routes)
 					if len(routes) == 0 {
 						println("There is no routes configurated, all mails are routed following MX records")
 					} else {
 						for _, route := range routes {
-							scope.Log.Debug(route)
-							line := "Destination host: " + route.Host
+							//scope.Log.Debug(route)
+
+							// ID
+							line := fmt.Sprintf("%d", route.Id)
+
+							// Host
+							line += " - Destination host: " + route.Host
+
+							// If mail from
+							if route.MailFrom.Valid && route.MailFrom.String != "" {
+								line += " - if mail from: " + route.MailFrom.String
+							}
 
 							// Priority
 							line += " - Prority: "
@@ -216,13 +226,25 @@ var cliCommands = []cli.Command{
 							} else {
 								line += "default"
 							}
+
 							// Remote Host
-							line += " - Remote host: " + route.RemoteHost
+							line += " - Remote host: "
+							if route.SmtpAuthLogin.Valid && route.SmtpAuthLogin.String != "" {
+								line += route.SmtpAuthLogin.String
+								if route.SmtpAuthPasswd.Valid && route.SmtpAuthPasswd.String != "" {
+									line += ":" + route.SmtpAuthPasswd.String
+								}
+								line += "@"
+							}
+
+							line += route.RemoteHost
 							if route.RemotePort.Valid && route.RemotePort.Int64 != 0 {
 								line += fmt.Sprintf(":%d", route.RemotePort.Int64)
 							} else {
 								line += ":25"
 							}
+
+							//
 
 							println(line)
 						}
