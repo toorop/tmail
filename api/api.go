@@ -45,18 +45,18 @@ func QueueGetMessages() ([]mailqueue.QMessage, error) {
 	return mailqueue.ListMessages()
 }
 
-// QueueDiscardMsgByKey discard a message (delete without bouncing) by is key
-func QueueDiscardMsgByKey(key string) error {
-	m, err := mailqueue.GetMessageByKey(key)
+// QueueDiscardMsgByKey discard a message (delete without bouncing) by his id
+func QueueDiscardMsg(id int64) error {
+	m, err := mailqueue.GetMessageById(id)
 	if err != nil {
 		return err
 	}
 	return m.Discard()
 }
 
-// QueueBounceMsgByKey bounce a message by is key
-func QueueBounceMsgByKey(key string) error {
-	m, err := mailqueue.GetMessageByKey(key)
+// QueueBounceMsgByKey bounce a message by his key
+func QueueBounceMsg(id int64) error {
+	m, err := mailqueue.GetMessageById(id)
 	if err != nil {
 		return err
 	}

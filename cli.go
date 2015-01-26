@@ -142,7 +142,7 @@ var cliCommands = []cli.Command{
 								status = "Will be bounced"
 							}
 
-							msg := fmt.Sprintf("%s - From: %s - To: %s - Status: %s - Added: %v ", m.Key, m.MailFrom, m.RcptTo, status, m.AddedAt)
+							msg := fmt.Sprintf("%d - From: %s - To: %s - Status: %s - Added: %v ", m.Id, m.MailFrom, m.RcptTo, status, m.AddedAt)
 							if m.Status != 0 {
 								msg += fmt.Sprintf("- Next delivery process scheduled at: %v", m.NextDeliveryScheduledAt)
 							}
@@ -160,8 +160,9 @@ var cliCommands = []cli.Command{
 					if len(c.Args()) != 1 {
 						cliDieBadArgs(c)
 					}
-					err := api.QueueDiscardMsgByKey(c.Args()[0])
+					id, err := strconv.ParseInt(c.Args()[0], 10, 64)
 					cliHandleErr(err)
+					cliHandleErr(api.QueueDiscardMsg(id))
 					cliDieOk()
 				},
 			},
@@ -173,8 +174,9 @@ var cliCommands = []cli.Command{
 					if len(c.Args()) != 1 {
 						cliDieBadArgs(c)
 					}
-					err := api.QueueBounceMsgByKey(c.Args()[0])
+					id, err := strconv.ParseInt(c.Args()[0], 10, 64)
 					cliHandleErr(err)
+					cliHandleErr(api.QueueBounceMsg(id))
 					cliDieOk()
 				},
 			},
