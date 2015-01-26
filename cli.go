@@ -194,6 +194,39 @@ var cliCommands = []cli.Command{
 					routes, err := api.RoutesGet()
 					cliHandleErr(err)
 					scope.Log.Debug(routes)
+					if len(routes) == 0 {
+						println("There is no routes configurated, all mails are routed following MX records")
+					} else {
+						for _, route := range routes {
+							scope.Log.Debug(route)
+							line := "Destination host: " + route.Host
+
+							// Priority
+							line += " - Prority: "
+							if route.Priority.Valid && route.Priority.Int64 != 0 {
+								line += fmt.Sprintf("%d", route.Priority.Int64)
+							} else {
+								line += "1"
+							}
+
+							// Local IPs
+							line += " - Local IPs: "
+							if route.LocalIp.Valid && route.LocalIp.String != "" {
+								line += route.LocalIp.String
+							} else {
+								line += "default"
+							}
+							// Remote Host
+							line += " - Remote host: " + route.RemoteHost
+							if route.RemotePort.Valid && route.RemotePort.Int64 != 0 {
+								line += fmt.Sprintf(":%d", route.RemotePort.Int64)
+							} else {
+								line += ":25"
+							}
+
+							println(line)
+						}
+					}
 					os.Exit(0)
 				},
 			},
