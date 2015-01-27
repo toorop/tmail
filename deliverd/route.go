@@ -5,6 +5,7 @@ import (
 	"github.com/Toorop/tmail/scope"
 	//"github.com/jinzhu/gorm"
 	"database/sql"
+	"errors"
 	"net"
 	"strings"
 )
@@ -38,6 +39,31 @@ func GetAllRoutes() (routes []Route, err error) {
 	routes = []Route{}
 	err = scope.DB.Find(&routes).Error
 	return
+}
+
+// add en new route
+func addRoute(host, localIp, remoteHost string, remotePort, priority int64, user, mailFrom, smtpAuthUser, smtpAuthPasswd string) error {
+	route := new(Route)
+	// host: Hostname
+	route.Host = strings.ToLower(host)
+
+	// localIP
+	if strings.Index(localIp, "&") != -1 && strings.Index(localIp, "|") != -1 {
+		return errors.New("mixed & and | are not allowed in routes")
+	}
+	route.LocalIp = localIp
+
+	//
+
+	/*ip := net.ParseIP(route.RemoteHost)
+	if ip != nil { // ip
+		route.
+
+	} else { // hostname ?
+		ips, err := net.LookupIP(route.RemoteHost)
+	}*/
+
+	return nil
 }
 
 // getRoute return matchingRoutes for the specified destination host

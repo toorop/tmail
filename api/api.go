@@ -67,3 +67,8 @@ func QueueBounceMsg(id int64) error {
 func RoutesGet() ([]deliverd.Route, error) {
 	return deliverd.GetAllRoutes()
 }
+
+// add en new route
+func RouteAdd(host, localIp, remoteHost string, remotePort, priority int64, user, mailFrom, smtpAuthUser, smtpAuthPasswd string) error {
+	return deliverd.AddRoute(host, localIp, remoteHost, remotePort, priority, user, mailFrom, smtpAuthUser, smtpAuthPasswd)
+}
