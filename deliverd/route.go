@@ -42,28 +42,85 @@ func GetAllRoutes() (routes []Route, err error) {
 }
 
 // add en new route
-func addRoute(host, localIp, remoteHost string, remotePort, priority int64, user, mailFrom, smtpAuthUser, smtpAuthPasswd string) error {
+func AddRoute(host, localIp, remoteHost string, remotePort, priority int, user, mailFrom, smtpAuthLogin, smtpAuthPasswd string) error {
+	var err error
 	route := new(Route)
-	// host: Hostname
-	route.Host = strings.ToLower(host)
+
+	// detination host (not null)
+	route.Host = strings.ToLower(strings.TrimSpace(host))
+	if route.Host == "" {
+		return errors.New("host (user@host) must not be nul nor empty")
+	}
 
 	// localIP
 	if strings.Index(localIp, "&") != -1 && strings.Index(localIp, "|") != -1 {
 		return errors.New("mixed & and | are not allowed in routes")
 	}
-	route.LocalIp = localIp
+	if err = route.LocalIp.Scan(strings.TrimSpace(localIp)); err != nil {
+		return err
+	}
 
-	//
+	// Remote host (not null)
+	route.RemoteHost = strings.ToLower(strings.TrimSpace(remoteHost))
+	if route.RemoteHost == "" {
+		return errors.New("remotHost must not b nul nor empty")
+	}
 
-	/*ip := net.ParseIP(route.RemoteHost)
-	if ip != nil { // ip
-		route.
+	// Remote port
+	if remotePort != 0 {
+		route.RemotePort.Scan(remotePort)
+	} else {
+		if err = route.RemotePort.Scan(25); err != nil {
+			return err
+		}
+	}
 
-	} else { // hostname ?
-		ips, err := net.LookupIP(route.RemoteHost)
-	}*/
+	// Priority
+	if err = route.Priority.Scan(priority); err != nil {
+		return err
+	}
 
-	return nil
+	// SMTPAUTH Login
+	smtpAuthLogin = strings.TrimSpace(smtpAuthLogin)
+	if smtpAuthLogin != "" {
+		if err = route.SmtpAuthLogin.Scan(smtpAuthLogin); err != nil {
+			return err
+		}
+	}
+
+	// SMTPAUTH passwd
+	smtpAuthPasswd = strings.TrimSpace(smtpAuthPasswd)
+	if smtpAuthPasswd != "" {
+		if err = route.SmtpAuthPasswd.Scan(smtpAuthPasswd); err != nil {
+			return err
+		}
+	}
+
+	// MailFrom
+	mailFrom = strings.TrimSpace(mailFrom)
+	if mailFrom != "" {
+		if err = route.MailFrom.Scan(strings.ToLower(mailFrom)); err != nil {
+			return err
+		}
+	}
+
+	// SMTP user
+	user = strings.TrimSpace(user)
+	if user != "" {
+		if err = route.User.Scan(user); err != nil {
+			return err
+		}
+	}
+
+	return scope.DB.Create(route).Error
+}
+
+// DelRoute delete a route
+func DelRoute(id int64) error {
+	r := Route{
+		Id: id,
+	}
+	return scope.DB.Delete(&r).Error
 }
 
 // getRoute return matchingRoutes for the specified destination host

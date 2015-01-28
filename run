@@ -3,4 +3,4 @@
 . dist/conf/tmail.cfg
 
 # Build
-go build -o dist/tmail && dist/tmail #routes add
+go build -o dist/tmail #&& dist/tmail routes add
