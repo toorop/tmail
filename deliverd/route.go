@@ -13,7 +13,7 @@ import (
 // Route represents a route in DB
 type Route struct {
 	Id             int64
-	Host           string `sql:not null`
+	Host           string `sql:not null` // destination
 	LocalIp        sql.NullString
 	RemoteHost     string `sql:not null`
 	RemotePort     sql.NullInt64
