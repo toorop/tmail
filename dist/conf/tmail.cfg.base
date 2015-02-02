@@ -42,7 +42,7 @@ export TMAIL_NSQ_LOOKUPD_HTTP_ADDRESSES="127.0.0.1:4161"
 # "mysql" "user:password@/dbname"
 # "sqlite3" "/tmp/gorm.db"
 export TMAIL_DB_DRIVER="sqlite3"
-export TMAIL_DB_SOURCE="/tmp/tmail.db"
+export TMAIL_DB_SOURCE="/home/tmail/dist/db/tmail.db"
 
 
 ##
@@ -52,7 +52,7 @@ export TMAIL_DB_SOURCE="/tmp/tmail.db"
 # disk: source is baspath
 #
 export TMAIL_STORE_DRIVER="disk"
-export TMAIL_STORE_SOURCE="/tmp"
+export TMAIL_STORE_SOURCE="/home/tmail/dist/store"
 
 
 ###
@@ -118,7 +118,7 @@ export TMAIL_SMTPD_MAX_HOPS=50
 # If an IP is present X time this will increase its priority
 #
 # You must define at least one local addresses
-export TMAIL_DELIVERD_LOCAL_IPS="88.178.118.205"
+export TMAIL_DELIVERD_LOCAL_IPS="127.0.0.1"
 
 
 # maxInFlight: the number of conncurent deliverd process
