@@ -1,8 +1,12 @@
 #!/bin/sh
 
 
-# Linux 32
-GOOS=linux CGO_ENABLED=1 go build -o  /tmp/tmail
+# Linux 64
+GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o  /tmp/tmail & rsync -vvv /tmp/tmail root@smtp.tmail.io:/home/tmail/dist/tmail64
+
+# 32
+# Linux 64
+#GOOS=linux GOARCH=386 CGO_ENABLED=1 go build -o  /tmp/tmail & rsync -vvv /tmp/tmail root@smtp.tmail.io:/home/tmail/dist/tmail
 
 # zip
 #cd builds/skel/
@@ -12,4 +16,4 @@ GOOS=linux CGO_ENABLED=1 go build -o  /tmp/tmail
 
 # Sync
 #rsync -vvv builds/linux/tmail.zip root@toorop.fr:/home/tmail/
-rsync -vvv /tmp/tmail root@smtp.tmail.io:/home/tmail/dist/tmail
+# rsync -vvv /tmp/tmail root@smtp.tmail.io:/home/tmail/dist/tmail

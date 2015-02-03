@@ -230,10 +230,11 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 
 	// On ajoute les IP locales
 	for i, route := range routes {
-		scope.Log.Debug(route)
-		if !route.LocalIp.Valid {
+		//scope.Log.Debug(route)
+		if !route.LocalIp.Valid || route.LocalIp.String == "" {
 			routes[i].LocalIp.String = scope.Cfg.GetLocalIps()
 		}
+
 		// Si il n'y a pas de port pour le remote host
 		if !route.RemotePort.Valid {
 			routes[i].RemotePort = sql.NullInt64{25, true}

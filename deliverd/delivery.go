@@ -328,7 +328,13 @@ func (d *delivery) bounce(errMsg string) {
 		BouncedMail string
 	}
 
-	tData := templateData{time.Now().Format(scope.Time822), scope.Cfg.GetMe(), d.qMsg.RcptTo, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
+	// Si ça bounce car le mail a disparu de la queue:
+	if d.rawData == nil {
+		t := []byte("Raw mail was not found in the store")
+		d.rawData = &t
+	}
+
+	tData := templateData{time.Now().Format(scope.Time822), scope.Cfg.GetMe(), d.qMsg.MailFrom, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
 	t, err := template.ParseFiles(path.Join(util.GetBasePath(), "tpl/bounce.tpl"))
 	if err != nil {
 		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())

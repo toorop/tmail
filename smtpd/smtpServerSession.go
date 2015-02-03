@@ -273,6 +273,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 
 	// User autentified & access granted ?
 	if !relay && s.smtpUser != nil {
+		scope.Log.Debug(s.smtpUser)
 		relay, err = s.smtpUser.canUseSmtp()
 		if err != nil {
 			s.out("454 oops, problem with relay access (#4.3.0)")
@@ -495,10 +496,10 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 
 	// On ajoute le uuid
 	//message.SetHeader("x-tmail-smtpd-sess-uuid", s.uuid)
-	rawMessage = append([]byte("X-Tmail-SmtpdSess-Uuid: "+s.uuid+"\r\n"), rawMessage...)
+	//rawMessage = append([]byte("X-Tmail-SmtpdSess-Uuid: "+s.uuid+"\r\n"), rawMessage...)
 
 	// x-env-from
-	rawMessage = append([]byte("X-Env-From: "+s.envelope.MailFrom+"\r\n"), rawMessage...)
+	//rawMessage = append([]byte("X-Env-From: "+s.envelope.MailFrom+"\r\n"), rawMessage...)
 	//message.SetHeader("x-env-from", s.envelope.MailFrom)
 
 	// recieved
@@ -554,6 +555,18 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	if err != nil {
 		return
 	}
+
+	// si pas de from
+	if !message.HaveHeader("from") {
+		message.AddHeader("from", s.envelope.MailFrom)
+	}
+
+	// On ajoute le uuid
+	//message.SetHeader("x-tmail-smtpd-sess-uuid", s.uuid)
+	message.AddHeader("X-Tmail-SmtpdSess-Uuid", s.uuid)
+
+	// x-env-from
+	message.SetHeader("x-env-from", s.envelope.MailFrom)
 
 	// put message in queue
 	authUser := ""

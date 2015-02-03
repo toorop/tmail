@@ -1,6 +1,4 @@
 TODO
-- [ ] CLI queue management change key to ID
-- [ ] CLI routes
 - [ ] deliverd throtteling
 - [ ] Dans smtpRcptTo definir un domaine par defaut si il y a seulement la partie locale
 - [ ] Pas de startttls si on est deja en tls

@@ -22,7 +22,7 @@ var Smtpd = cgCli.Command{
 				if len(c.Args()) < 2 {
 					cliDieBadArgs(c)
 				}
-				relayAllowed := false
+				relayAllowed := true
 				if len(c.Args()) > 2 {
 					relayAllowed, err = strconv.ParseBool(c.Args()[2])
 					cliHandleErr(err)

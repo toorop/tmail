@@ -131,10 +131,10 @@ var Routes = cgCli.Command{
 				// si la destination n'est pas renseignée on wildcard
 				host := c.String("d")
 				if host == "" {
-					host := "*"
+					host = "*"
 				}
 				// (host, localIp, remoteHost string, remotePort, priority int64, user, mailFrom, smtpAuthLogin, smtpAuthPasswd string)
-				err := api.RoutesAdd(host), c.String("l"), c.String("rh"), c.Int("rp"), c.Int("p"), c.String("u"), c.String("f"), c.String("rl"), c.String("rpwd"))
+				err := api.RoutesAdd(host, c.String("l"), c.String("rh"), c.Int("rp"), c.Int("p"), c.String("u"), c.String("f"), c.String("rl"), c.String("rpwd"))
 				cliHandleErr(err)
 			},
 		},
