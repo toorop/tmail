@@ -633,14 +633,44 @@ func (s *smtpServerSession) smtpAuth(rawMsg string) {
 
 	//
 	splitted := strings.Split(rawMsg, " ")
-	if len(splitted) != 3 {
+	var encoded string
+
+	if len(splitted) == 3 {
+		encoded = splitted[2]
+	} else if len(splitted) == 2 {
+		// refactor: readline function
+		var line []byte
+		ch := make([]byte, 1)
+		// return a
+		s.out("334 ")
+		// get encoded by reading next line
+		for {
+			s.timer.Reset(time.Duration(scope.Cfg.GetSmtpdTransactionTimeout()) * time.Second)
+			_, err := s.conn.Read(ch)
+			s.timer.Stop()
+			if err != nil {
+				s.out("501 malformed auth input (#5.5.4)")
+				s.log("error reading auth err:" + err.Error())
+				s.exitAsap()
+				return
+			}
+			if ch[0] == 10 {
+				s.timer.Stop()
+				encoded = string(line)
+				break
+			}
+			line = append(line, ch[0])
+		}
+
+	} else {
 		s.out("501 malformed auth input (#5.5.4)")
 		s.log("malformed auth input: " + rawMsg)
 		s.exitAsap()
 		return
 	}
+
 	// decode  "authorize-id\0userid\0passwd\0"
-	authData, err := base64.StdEncoding.DecodeString(splitted[2])
+	authData, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
 		s.out("501 malformed auth input (#5.5.4)")
 		s.log("malformed auth input: " + rawMsg + " err:" + err.Error())

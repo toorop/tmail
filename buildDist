@@ -5,10 +5,10 @@
 rm tmail.zip
 
 # Linux 32
-GOOS=linux GOARCH=386 CGO_ENABLED=1 go build -o  dist/tmail
+#GOOS=linux GOARCH=386 CGO_ENABLED=1 go build -o  dist/tmail
 
 # Linux 64
-GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o  dist/tmail64
+#GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o  dist/tmail64
 
 # zip
 zip -r tmail.zip dist/conf/tmail.cfg.base
