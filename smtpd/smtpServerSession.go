@@ -634,9 +634,6 @@ func (s *smtpServerSession) smtpAuth(rawMsg string) {
 	//
 	splitted := strings.Split(rawMsg, " ")
 	var encoded string
-	s.logDebug("encoded")
-	s.logDebug(fmt.Sprintf("%d", len(splitted)))
-
 	if len(splitted) == 3 {
 		encoded = splitted[2]
 	} else if len(splitted) == 2 {
