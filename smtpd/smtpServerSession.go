@@ -657,6 +657,7 @@ func (s *smtpServerSession) smtpAuth(rawMsg string) {
 			if ch[0] == 10 {
 				s.timer.Stop()
 				encoded = string(line)
+				s.logDebug("< " + encoded)
 				break
 			}
 			line = append(line, ch[0])
