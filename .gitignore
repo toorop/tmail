@@ -5,4 +5,4 @@
 dist/tools/easyCert/
 dist/nsq/*
 dist/conf/tmail.cfg
-dist/ssl/*
+
