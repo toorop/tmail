@@ -62,7 +62,6 @@ export TMAIL_STORE_SOURCE="/home/tmail/dist/store"
 export TMAIL_SMTPD_LAUNCH=true;
 
 
-
 # Defines dnsS for smtpd to launch
 # A dns is in the form
 # IP:PORT:SSL
@@ -117,11 +116,11 @@ export TMAIL_SMTPD_MAX_HOPS=50
 # deliverd will use local IP in a random order
 # If an IP is present X time this will increase its priority
 #
-# You must define at least one local addresses
+# You must define at least one local addresse
 export TMAIL_DELIVERD_LOCAL_IPS="127.0.0.1"
 
 
-# maxInFlight: the number of conncurent deliverd process
+# maxInFlight: the number of concurrent deliverd process
 export TMAIL_DELIVERD_MAX_IN_FLIGHT=5
 
 # Default queue lifetime in minutes
