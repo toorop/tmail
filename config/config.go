@@ -23,6 +23,7 @@ type Config struct {
 	cfg struct {
 		ClusterModeEnabled bool   `name:"cluster_mode_enabled" default:"false"`
 		Me                 string `name:"me" default:""`
+		TempDir            string `name:"tempdir" default:"/tmp"`
 		DebugEnabled       bool   `name:"debug_enabled" default:"false"`
 
 		DbDriver string `name:"db_driver"`
@@ -40,6 +41,8 @@ type Config struct {
 		SmtpdTransactionTimeout int    `name:"smtpd_transaction_timeout" default:"60"`
 		SmtpdMaxDataBytes       int    `name:"smtpd_max_databytes" default:"60"`
 		SmtpdMaxHops            int    `name:"smtpd_max_hops" default:"10"`
+		SmtpdClamavEnabled      bool   `name:"smtpd_scan_clamav_enabled" default:"false"`
+		SmtpdClamavDsns         string `name:"smtpd_scan_clamav_dsns" default:""`
 
 		LaunchDeliverd        bool   `name:"deliverd_launch" default:"false"`
 		LocalIps              string `name:"deliverd_local_ips" default:"_"`
@@ -162,6 +165,13 @@ func (c *Config) GetDebugEnabled() bool {
 	return c.cfg.DebugEnabled
 }
 
+// GetTempDir return temp directory
+func (c *Config) GetTempDir() string {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.TempDir
+}
+
 // GetDbDriver returns database driver
 func (c *Config) GetDbDriver() string {
 	c.Lock()
@@ -226,6 +236,20 @@ func (c *Config) GetSmtpdMaxHops() int {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.SmtpdMaxHops
+}
+
+// GetSmtpdClamavEnabled returns if clamav scan is enable
+func (c *Config) GetSmtpdClamavEnabled() bool {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.SmtpdClamavEnabled
+}
+
+// GetSmtpdClamavDsns returns clamav dsns
+func (c *Config) GetSmtpdClamavDsns() string {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.SmtpdClamavDsns
 }
 
 // GetLaunchDeliverd returns true if deliverd have to be launched

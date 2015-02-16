@@ -15,6 +15,10 @@ export TMAIL_DEBUG_ENABLED=true
 # default false
 export TMAIL_CLUSTER_MODE_ENABLED=false
 
+# Temporary directory (for scanning/filtering)
+# RAMDISK recommended
+export TMAIL_TEMPDIR="/dev/shm"
+
 
 ###
 # nsqd
@@ -93,6 +97,15 @@ export TMAIL_SMTPD_MAX_DATABYTES=50000000
 # ->  preventing loops
 # default 30
 export TMAIL_SMTPD_MAX_HOPS=50
+
+### Filters
+# Clamav
+export TMAIL_SMTPD_SCAN_CLAMAV_ENABLED=true
+
+# Clamd DSNS
+# name:ip:port
+# name:socket
+export TMAIL_SMTPD_SCAN_CLAMAV_DSNS="/var/run/clamav/clamd.ctl"
 
 
 ###

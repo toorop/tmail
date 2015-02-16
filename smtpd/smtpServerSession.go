@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"net"
 	//"os/exec"
+	//"bytes"
 	"github.com/Toorop/tmail/logger"
 	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/message"
+	//"github.com/Toorop/tmail/scanner"
 	"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/util"
 	"github.com/jinzhu/gorm"
@@ -494,13 +496,21 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 
 	}
 
-	// On ajoute le uuid
-	//message.SetHeader("x-tmail-smtpd-sess-uuid", s.uuid)
-	//rawMessage = append([]byte("X-Tmail-SmtpdSess-Uuid: "+s.uuid+"\r\n"), rawMessage...)
-
-	// x-env-from
-	//rawMessage = append([]byte("X-Env-From: "+s.envelope.MailFrom+"\r\n"), rawMessage...)
-	//message.SetHeader("x-env-from", s.envelope.MailFrom)
+	// scan
+	// clamav
+	/*if scope.Cfg.GetSmtpdClamavEnabled() {
+		c, err := scanner.NewClamav(scope.Cfg.GetSmtpdClamavDsns())
+		if err != nil {
+			s.out("454 oops, scanner failure (#4.3.0)")
+			s.log("ERROR clamav: " + err.Error())
+			s.purgeConn()
+			s.reset()
+			return err
+		}
+		clamResult, err := c.ScanStream(bytes.NewReader(rawMessage))
+		c.End()
+		c = nil
+	}*/
 
 	// recieved
 	// Add recieved header
