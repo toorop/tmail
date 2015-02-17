@@ -150,11 +150,9 @@ func main() {
 			if scope.Cfg.GetLaunchSmtpd() {
 				// If clamav is enabled test it
 				if scope.Cfg.GetSmtpdClamavEnabled() {
-					c, err := scanner.NewClamav(scope.Cfg.GetSmtpdClamavDsns())
-					if err != nil {
+					if err = scanner.NewClamav().Ping(); err != nil {
 						log.Fatalln("Unable to connect to clamd -", err)
 					}
-					c.Ping()
 				}
 
 				smtpdDsns, err := smtpd.GetDsnsFromString(scope.Cfg.GetSmtpdDsns())

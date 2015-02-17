@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"net"
 	//"os/exec"
-	//"bytes"
+	"bytes"
 	"github.com/Toorop/tmail/logger"
 	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/message"
-	//"github.com/Toorop/tmail/scanner"
+	"github.com/Toorop/tmail/scanner"
 	"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/util"
 	"github.com/jinzhu/gorm"
@@ -498,8 +498,9 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 
 	// scan
 	// clamav
-	/*if scope.Cfg.GetSmtpdClamavEnabled() {
-		c, err := scanner.NewClamav(scope.Cfg.GetSmtpdClamavDsns())
+	if scope.Cfg.GetSmtpdClamavEnabled() {
+		found, virusName, err := scanner.NewClamav().ScanStream(bytes.NewReader(rawMessage))
+		scope.Log.Debug("clamav scan result", found, virusName, err)
 		if err != nil {
 			s.out("454 oops, scanner failure (#4.3.0)")
 			s.log("ERROR clamav: " + err.Error())
@@ -507,11 +508,14 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 			s.reset()
 			return err
 		}
-		clamResult, err := c.ScanStream(bytes.NewReader(rawMessage))
-		c.End()
-		c = nil
-	}*/
-
+		if found {
+			s.out("554 message infected by " + virusName + " (#5.7.1)")
+			s.log("infected by " + virusName)
+			s.purgeConn()
+			s.reset()
+			return err
+		}
+	}
 	// recieved
 	// Add recieved header
 	// Received: from 4.mxout.protecmail.com (91.121.228.128)
