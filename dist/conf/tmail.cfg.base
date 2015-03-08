@@ -43,7 +43,13 @@ export TMAIL_NSQ_LOOKUPD_HTTP_ADDRESSES="127.0.0.1:4161"
 # 
 # Exemple
 # "postgres" "user=gorm dbname=gorm sslmode=disable"
-# "mysql" "user:password@/dbname"
+## Mysql tcp
+# export TMAIL_DB_SOURCE="user:passwd@tcp(ip:port)/tmail?parseTime=true"
+# export TMAIL_DB_DRIVER="mysql"
+## Mysql socket
+# export TMAIL_DB_SOURCE="user:passwd@unix(/path/to/socket)/tmail?parseTime=true"
+# export TMAIL_DB_DRIVER="mysql"
+## sqlite
 # "sqlite3" "/tmp/gorm.db"
 export TMAIL_DB_DRIVER="sqlite3"
 export TMAIL_DB_SOURCE="/home/tmail/dist/db/tmail.db"
