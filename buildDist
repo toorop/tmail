@@ -5,10 +5,10 @@
 rm tmail.zip
 
 # Linux 32
-#GOOS=linux GOARCH=386 CGO_ENABLED=1 go build -o  dist/tmail
+GOOS=linux GOARCH=386 CGO_ENABLED=1 go build -o  dist/tmail32
 
 # Linux 64
-#GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o  dist/tmail
+GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o  dist/tmail
 
 # zip
 zip -r tmail.zip dist/conf/tmail.cfg.base
@@ -16,8 +16,7 @@ zip -r tmail.zip dist/ssl
 zip -r tmail.zip dist/tpl
 zip -r tmail.zip dist/run
 zip -r tmail.zip dist/tmail
-
-
+zip -r tmail.zip dist/tmail32
 
 # Sync
 rsync -vvv tmail.zip root@toorop.fr:/srv/ftp/softs/tmail/

@@ -160,7 +160,7 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 
 		// On teste si il y a une route correspondant à: authUser + host + mailFromHost
 		if len(routes) == 0 {
-			if err = scope.DB.Order("priority asc").Where("user=? and host is null and mail_from is null", authUserHost, host, mailFromHost).Find(&routes).Error; err != nil {
+			if err = scope.DB.Order("priority asc").Where("user=? and host is null and mail_from is null", authUserHost).Find(&routes).Error; err != nil {
 				return
 			}
 		}
@@ -194,7 +194,7 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 
 		// On teste si il y a une route correspondant à: authUserHost
 		if len(routes) == 0 && len(authUserHost) != 0 {
-			if err = scope.DB.Order("priority asc").Where("user=? and host is null and mail_from is null", authUserHost, host).Find(&routes).Error; err != nil {
+			if err = scope.DB.Order("priority asc").Where("user=? and host is null and mail_from is null", authUserHost).Find(&routes).Error; err != nil {
 				return
 			}
 		}
