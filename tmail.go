@@ -46,7 +46,7 @@ func init() {
 
 	// TODO: if clusterMode check if nsqlookupd is available
 
-	// On vérifie que le base est à jour
+	// On vérifie que la base est à jour
 	if !dbIsOk(scope.DB) {
 		var r []byte
 		for {

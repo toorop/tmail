@@ -1,21 +1,20 @@
-package smtpd
+package deliverd
 
 import (
 	"errors"
 	"github.com/Toorop/tmail/scope"
 	"github.com/jinzhu/gorm"
-	"net"
 	"strings"
 )
 
-// RcptHost represent a hostname that tamil have to handle mails for.
+// RcptHost represents a hostname that tmail have to handle mails for (=local domains)
 type RcptHost struct {
 	Id       int64
 	Hostname string
 }
 
 // isInRcptHost checks if domain is in the RcptHost list (-> relay authorozed)
-func isInRcptHost(hostname string) (bool, error) {
+func IsInRcptHost(hostname string) (bool, error) {
 	err := scope.DB.Where("hostname = ?", hostname).First(&RcptHost{}).Error
 	if err == nil {
 		return true, nil
@@ -67,21 +66,4 @@ func GetRcptHosts() (hostnames []RcptHost, err error) {
 	hostnames = []RcptHost{}
 	err = scope.DB.Find(&hostnames).Error
 	return
-}
-
-// relayOkIp represents an IP that can use SMTP for relaying
-type RelayIpOk struct {
-	Addr string
-}
-
-// remoteIpCanUseSmtp checks if an IP can relay
-func remoteIpCanUseSmtp(ip net.Addr) (bool, error) {
-	err := scope.DB.Where("addr = ?", ip.String()[:strings.Index(ip.String(), ":")]).First(&RelayIpOk{}).Error
-	if err == nil {
-		return true, nil
-	}
-	if err != gorm.RecordNotFound {
-		return false, err
-	}
-	return false, nil
 }

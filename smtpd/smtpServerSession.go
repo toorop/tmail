@@ -8,6 +8,7 @@ import (
 	"net"
 	//"os/exec"
 	"bytes"
+	"github.com/Toorop/tmail/deliverd"
 	"github.com/Toorop/tmail/logger"
 	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/message"
@@ -265,7 +266,6 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 
 	// On prend le mail en charge ?
 	relay := false
-	// Si c'est un domaine des destination que l'on gere oui
 	t := strings.Split(rcptto, "@")
 	if len(t) != 2 {
 		s.log(fmt.Sprintf("RCPT TO - Bad email syntax : %s - %s ", strings.Join(msg, " "), e))
@@ -273,20 +273,21 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 		return
 	}
 
-	// User autentified & access granted ?
-	if !relay && s.smtpUser != nil {
-		scope.Log.Debug(s.smtpUser)
-		relay, err = s.smtpUser.canUseSmtp()
+	// is local ?
+	if !relay {
+		relay, err = deliverd.IsInRcptHost(t[1])
 		if err != nil {
 			s.out("454 oops, problem with relay access (#4.3.0)")
 			s.log("ERROR relay access: " + err.Error())
 			return
 		}
 	}
+	// Yes check if destination(mailbox,alias wildcard, catchall) exist
 
-	// remote host in rcpthosts list
-	if !relay {
-		relay, err = isInRcptHost(t[1])
+	// User autentified & access granted ?
+	if !relay && s.smtpUser != nil {
+		scope.Log.Debug(s.smtpUser)
+		relay, err = s.smtpUser.canUseSmtp()
 		if err != nil {
 			s.out("454 oops, problem with relay access (#4.3.0)")
 			s.log("ERROR relay access: " + err.Error())

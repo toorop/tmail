@@ -281,7 +281,7 @@ func (d *delivery) diePerm(msg string) {
 	return
 }
 
-// discard dicard(remove) message from queue
+// discard remove a message from queue
 func (d *delivery) discard() {
 	scope.Log.Info("deliverd-remote " + d.id + " discard message " + d.qMsg.Key)
 	if err := d.qMsg.Delete(); err != nil {
