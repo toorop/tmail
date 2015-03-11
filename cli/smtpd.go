@@ -64,7 +64,7 @@ var Smtpd = cgCli.Command{
 				}
 			},
 		},
-		{
+		/*{
 			Name:        "addRcpthost",
 			Usage:       "Add a 'rcpthost' which is a hostname that tmail have to handle mails for",
 			Description: "tmail smtpd addRcpthost HOSTNAME",
@@ -107,6 +107,6 @@ var Smtpd = cgCli.Command{
 					println(h.Hostname)
 				}
 			},
-		},
+		},*/
 	},
 }
