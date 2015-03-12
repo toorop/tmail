@@ -49,6 +49,8 @@ type Config struct {
 		DeliverdMaxInFlight   int    `name:"deliverd_max_in_flight" default:"5"`
 		DeliverdRemoteTimeout int    `name:"deliverd_remote_timeout" default:"60"`
 		DeliverdQueueLifetime int    `name:"deliverd_queue_lifetime" default:"10080"`
+
+		UsersHomeBase string `name:"users_home_base" default:"/home"`
 	}
 }
 
@@ -356,4 +358,11 @@ func (c *Config) GetDeliverdQueueLifetime() int {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.DeliverdQueueLifetime
+}
+
+// GetUserHomeBase returns users home base
+func (c *Config) GetUsersHomeBase() string {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.UsersHomeBase
 }

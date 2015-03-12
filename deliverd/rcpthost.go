@@ -11,7 +11,7 @@ import (
 type RcptHost struct {
 	Id       int64
 	Hostname string
-	IsLocal  bool `sql:"default:true"`
+	IsLocal  bool `sql:"default:false"`
 }
 
 // isInRcptHost checks if domain is in the RcptHost list (-> relay authorized)

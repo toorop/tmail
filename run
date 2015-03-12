@@ -3,4 +3,4 @@
 . dist/conf/tmail.cfg
 
 # Build
-go build -o dist/tmail && dist/tmail
+go build -o dist/tmail && dist/tmail user add toorop@toorop.fr murphy25 -m -r

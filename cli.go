@@ -8,7 +8,7 @@ import (
 var cliCommands = []cgCli.Command{
 	cli.Queue,
 	cli.Routes,
-	cli.Smtpd,
+	cli.User,
 	cli.Rcpthost,
 	cli.Mailbox,
 }

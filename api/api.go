@@ -7,7 +7,19 @@ import (
 	"github.com/Toorop/tmail/deliverd"
 	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/smtpd"
+	"github.com/Toorop/tmail/user"
 )
+
+// USER
+// UserAdd add a new usere
+func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
+	return user.Add(login, passwd, haveMailbox, authRelay)
+}
+
+// UserDel delete an user (keep his mailboxe)
+func UserDel(login string) error {
+	return user.Del(login)
+}
 
 // SmtpdGetAllowedUsers returns users who are allowed to relay trought smtp
 func SmtpdGetAllowedUsers() (users []smtpd.SmtpUser, err error) {

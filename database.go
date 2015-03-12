@@ -5,14 +5,15 @@ import (
 	"github.com/Toorop/tmail/deliverd"
 	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/smtpd"
+	"github.com/Toorop/tmail/user"
 	"github.com/jinzhu/gorm"
 )
 
 // dbIsOk checks if database is ok
 func dbIsOk(DB gorm.DB) bool {
 	// Check if all tables exists
-	// smtp_users
-	if !DB.HasTable(&smtpd.SmtpUser{}) {
+	// user
+	if !DB.HasTable(&user.User{}) {
 		return false
 	}
 	if !DB.HasTable(&deliverd.RcptHost{}) {
@@ -36,14 +37,14 @@ func dbIsOk(DB gorm.DB) bool {
 // initDB create tables if needed and initialize them
 func initDB(DB gorm.DB) error {
 	var err error
-	//smtp_users table
-	if !DB.HasTable(&smtpd.SmtpUser{}) {
-		if err = DB.CreateTable(&smtpd.SmtpUser{}).Error; err != nil {
-			return errors.New("Unable to create smtp_users - " + err.Error())
+	//users table
+	if !DB.HasTable(&user.User{}) {
+		if err = DB.CreateTable(&user.User{}).Error; err != nil {
+			return errors.New("Unable to create table user - " + err.Error())
 		}
 		// Index
-		if err = DB.Model(&smtpd.SmtpUser{}).AddUniqueIndex("idx_smtpusers_login", "login").Error; err != nil {
-			return errors.New("Unable to add index idx_smtpusers_login on table smtp_users - " + err.Error())
+		if err = DB.Model(&user.User{}).AddUniqueIndex("idx_user_login", "login").Error; err != nil {
+			return errors.New("Unable to add index idx_user_login on table user - " + err.Error())
 		}
 	}
 	//rcpthosts table
@@ -106,7 +107,7 @@ func initDB(DB gorm.DB) error {
 // autoMigrateDB will keep tables reflecting structs
 func autoMigrateDB(DB gorm.DB) error {
 	// if tables exists check if they reflects struts
-	if err := DB.AutoMigrate(&smtpd.SmtpUser{}, &deliverd.RcptHost{}, &smtpd.RelayIpOk{}, &mailqueue.QMessage{}, &deliverd.Route{}).Error; err != nil {
+	if err := DB.AutoMigrate(&user.User{}, &deliverd.RcptHost{}, &smtpd.RelayIpOk{}, &mailqueue.QMessage{}, &deliverd.Route{}).Error; err != nil {
 		return errors.New("Unable autoMigrateDB - " + err.Error())
 	}
 	return nil

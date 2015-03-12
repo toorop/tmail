@@ -14,6 +14,7 @@ import (
 	"github.com/Toorop/tmail/message"
 	"github.com/Toorop/tmail/scanner"
 	"github.com/Toorop/tmail/scope"
+	"github.com/Toorop/tmail/user"
 	"github.com/Toorop/tmail/util"
 	"github.com/jinzhu/gorm"
 	"net/mail"
@@ -36,7 +37,7 @@ type smtpServerSession struct {
 	timer    *time.Timer // for timeout
 	timeout  time.Duration
 	secured  bool
-	smtpUser *SmtpUser
+	user     *user.User
 	seenMail bool
 	helo     string
 	envelope message.Envelope
@@ -307,14 +308,8 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 	// Yes check if destination(mailbox,alias wildcard, catchall) exist
 
 	// User authentified & access granted ?
-	if !relay && s.smtpUser != nil {
-		scope.Log.Debug(s.smtpUser)
-		relay, err = s.smtpUser.canUseSmtp()
-		if err != nil {
-			s.out("454 oops, problem with relay access (#4.3.0)")
-			s.log("ERROR relay access: " + err.Error())
-			return
-		}
+	if !relay && s.user != nil {
+		relay = s.user.AuthRelay
 	}
 
 	// Remote IP authorized
@@ -565,8 +560,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	}
 
 	// Authentified
-	if s.smtpUser != nil {
-		recieved += fmt.Sprintf(" (authentificated as %s)", s.smtpUser.Login)
+	if s.user != nil {
+		recieved += fmt.Sprintf(" (authentificated as %s)", s.user.Login)
 	}
 
 	// local
@@ -610,8 +605,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 
 	// put message in queue
 	authUser := ""
-	if s.smtpUser != nil {
-		authUser = s.smtpUser.Login
+	if s.user != nil {
+		authUser = s.user.Login
 	}
 	id, err := mailqueue.AddMessage(message, s.envelope, authUser)
 	if err != nil {
@@ -732,8 +727,7 @@ func (s *smtpServerSession) smtpAuth(rawMsg string) {
 	authLogin := string(t[1])
 	authPasswd := string(t[2])
 
-	s.smtpUser, err = NewSmtpUser(authLogin, authPasswd)
-
+	s.user, err = user.Get(authLogin, authPasswd)
 	if err != nil {
 		if err == gorm.RecordNotFound {
 			s.out("535 authentication failed - No such user (#5.7.1)")
@@ -753,7 +747,7 @@ func (s *smtpServerSession) smtpAuth(rawMsg string) {
 		return
 	}
 
-	s.log("auth succeed for user " + s.smtpUser.Login)
+	s.log("auth succeed for user " + s.user.Login)
 	s.out("235 ok, go ahead (#2.0.0)")
 }
 
