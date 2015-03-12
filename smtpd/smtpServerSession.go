@@ -273,18 +273,40 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 		return
 	}
 
-	// is local ?
+	// check rcpthost
 	if !relay {
-		relay, err = deliverd.IsInRcptHost(t[1])
-		if err != nil {
-			s.out("454 oops, problem with relay access (#4.3.0)")
-			s.log("ERROR relay access: " + err.Error())
-			return
+		rcpthost, err := deliverd.RcpthostGet(t[1])
+		if err != gorm.RecordNotFound {
+			if err != nil {
+				s.out("454 oops, problem with relay access (#4.3.0)")
+				s.log("ERROR relay access queriyng for rcpthost: " + err.Error())
+				return
+			}
+			// rcpthost exists relay granted
+			relay = true
+
+			// if local check "mailbox" (destination)
+			if rcpthost.IsLocal {
+				s.logDebug("Le domaine est local")
+				// check destination
+				exists, err := deliverd.IsValidLocalRcpt(rcptto)
+				if err != nil {
+					s.out("454 oops, problem with relay access (#4.3.0)")
+					s.log("ERROR relay access checking validity of local rpctto " + err.Error())
+					return
+				}
+				if !exists {
+					s.out("551 Sorry, no mailbox here by that name. (#5.1.1)")
+					s.log("No mailbox here by that name: " + rcptto + " IP: " + s.conn.RemoteAddr().String() + " MAIL FROM: " + s.envelope.MailFrom + " RCPT TO: " + rcptto)
+					s.exitAsap()
+					return
+				}
+			}
 		}
 	}
 	// Yes check if destination(mailbox,alias wildcard, catchall) exist
 
-	// User autentified & access granted ?
+	// User authentified & access granted ?
 	if !relay && s.smtpUser != nil {
 		scope.Log.Debug(s.smtpUser)
 		relay, err = s.smtpUser.canUseSmtp()
@@ -305,9 +327,11 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 		}
 	}
 
+	// Debug
+	//relay = false
 	// Relay denied
 	if !relay {
-		s.out(fmt.Sprintf("554 5.7.1 <%s>: Relay access denied.", rcptto))
+		s.out(fmt.Sprintf("554 5.7.1 <%s>: Relay access denied", rcptto))
 		s.log("Relay access denied - IP: " + s.conn.RemoteAddr().String() + " MAIL FROM: " + s.envelope.MailFrom + " RCPT TO: " + rcptto)
 		s.exitAsap()
 		return
@@ -566,7 +590,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	//message.AddHeader("recieved", recieved)
 
 	// Transformer le mail en objet
-	message, err := message.New(rawMessage)
+	//println(string(rawMessage))
+	message, err := message.New(&rawMessage)
 	if err != nil {
 		return
 	}

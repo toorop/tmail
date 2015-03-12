@@ -211,7 +211,7 @@ func (d *delivery) processMsg() {
 	// - x-tmail-msg-id
 	// - received
 
-	msg, err := message.New(*d.rawData)
+	msg, err := message.New(d.rawData)
 	if err != nil {
 		d.dieTemp(err.Error())
 		return
@@ -224,7 +224,6 @@ func (d *delivery) processMsg() {
 		d.dieTemp(err.Error())
 		return
 	}
-
 	*d.rawData = append([]byte("Received: tmail deliverd; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
 	dataBuf := bytes.NewBuffer(*d.rawData)
 	_, err = io.Copy(dataPipe, dataBuf)
@@ -357,7 +356,7 @@ func (d *delivery) bounce(errMsg string) {
 	}
 	// enqueue
 	envelope := message.Envelope{"", []string{d.qMsg.ReturnPath}}
-	message, err := message.New(b)
+	message, err := message.New(&b)
 	if err != nil {
 		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)

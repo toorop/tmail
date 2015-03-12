@@ -15,7 +15,10 @@ func dbIsOk(DB gorm.DB) bool {
 	if !DB.HasTable(&smtpd.SmtpUser{}) {
 		return false
 	}
-	if !DB.HasTable(&smtpd.RcptHost{}) {
+	if !DB.HasTable(&deliverd.RcptHost{}) {
+		return false
+	}
+	if !DB.HasTable(&deliverd.Mailbox{}) {
 		return false
 	}
 	if !DB.HasTable(&smtpd.RelayIpOk{}) {
@@ -44,15 +47,24 @@ func initDB(DB gorm.DB) error {
 		}
 	}
 	//rcpthosts table
-	if !DB.HasTable(&smtpd.RcptHost{}) {
-		if err = DB.CreateTable(&smtpd.RcptHost{}).Error; err != nil {
+	if !DB.HasTable(&deliverd.RcptHost{}) {
+		if err = DB.CreateTable(&deliverd.RcptHost{}).Error; err != nil {
 			return errors.New("Unable to create RcptHost - " + err.Error())
 		}
 		// Index
-		if err = DB.Model(&smtpd.RcptHost{}).AddIndex("idx_rcpthots_hostname", "hostname").Error; err != nil {
+		if err = DB.Model(&deliverd.RcptHost{}).AddIndex("idx_rcpthots_hostname", "hostname").Error; err != nil {
 			return errors.New("Unable to add index idx_rcpthots_domain on table RcptHost - " + err.Error())
 		}
 	}
+
+	// mailbox
+	if !DB.HasTable(&deliverd.Mailbox{}) {
+		if err = DB.CreateTable(&deliverd.Mailbox{}).Error; err != nil {
+			return errors.New("Unable to create Mailbox - " + err.Error())
+		}
+		// Index
+	}
+
 	//relay_ip_oks table
 	if !DB.HasTable(&smtpd.RelayIpOk{}) {
 		if err = DB.CreateTable(&smtpd.RelayIpOk{}).Error; err != nil {
@@ -94,7 +106,7 @@ func initDB(DB gorm.DB) error {
 // autoMigrateDB will keep tables reflecting structs
 func autoMigrateDB(DB gorm.DB) error {
 	// if tables exists check if they reflects struts
-	if err := DB.AutoMigrate(&smtpd.SmtpUser{}, &smtpd.RcptHost{}, &smtpd.RelayIpOk{}, &mailqueue.QMessage{}, &deliverd.Route{}).Error; err != nil {
+	if err := DB.AutoMigrate(&smtpd.SmtpUser{}, &deliverd.RcptHost{}, &smtpd.RelayIpOk{}, &mailqueue.QMessage{}, &deliverd.Route{}).Error; err != nil {
 		return errors.New("Unable autoMigrateDB - " + err.Error())
 	}
 	return nil

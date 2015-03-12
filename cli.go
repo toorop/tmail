@@ -9,4 +9,6 @@ var cliCommands = []cgCli.Command{
 	cli.Queue,
 	cli.Routes,
 	cli.Smtpd,
+	cli.Rcpthost,
+	cli.Mailbox,
 }

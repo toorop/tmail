@@ -140,7 +140,6 @@ func AddMessage(msg *message.Message, envelope message.Envelope, authUser string
 		return
 	}
 	key = fmt.Sprintf("%x", hasher.Sum(nil))
-
 	err = qStore.Put(key, bytes.NewReader(rawMess))
 	if err != nil {
 		return

@@ -86,7 +86,6 @@ func main() {
 		if len(c.Args()) != 0 {
 			cli.ShowAppHelp(c)
 		} else {
-
 			// if there nothing to do do nothing
 			if !scope.Cfg.GetLaunchDeliverd() && !scope.Cfg.GetLaunchSmtpd() {
 				log.Fatalln("I have nothing to do, so i do nothing. Bye.")

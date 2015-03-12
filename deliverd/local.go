@@ -4,8 +4,6 @@ package deliverd
 // 1 - catchall
 // 2 - Mailbox (or wildcard)
 // 3 - Alias
-//
-//
-func IsValidLocalRcpt(rcpt string) bool {
-	return true
+func IsValidLocalRcpt(rcpt string) (bool, error) {
+	return MailboxExists(rcpt)
 }

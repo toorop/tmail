@@ -24,21 +24,6 @@ func SmtpdDelUser(login string) error {
 	return smtpd.DelUser(login)
 }
 
-// SmtpdAddRcptHost add a rcpthost
-func SmtpdAddRcptHost(host string) error {
-	return smtpd.AddRcptHost(host)
-}
-
-// SmtpdDelRcptHost delete a rcpthost
-func SmtpdDelRcptHost(host string) error {
-	return smtpd.DelRcptHost(host)
-}
-
-// SmtpdGetRcptHosts returns rcpthosts
-func SmtpdGetRcptHosts() (hosts []smtpd.RcptHost, err error) {
-	return smtpd.GetRcptHosts()
-}
-
 // Queue
 // QueueGetMessages returns all message in queue
 func QueueGetMessages() ([]mailqueue.QMessage, error) {
@@ -63,6 +48,7 @@ func QueueBounceMsg(id int64) error {
 	return m.Bounce()
 }
 
+// ROUTES
 // RoutesGet returns all routes
 func RoutesGet() ([]deliverd.Route, error) {
 	return deliverd.GetAllRoutes()
@@ -76,4 +62,37 @@ func RoutesAdd(host, localIp, remoteHost string, remotePort, priority int, user,
 // RoutesDel delete route routeId
 func RoutesDel(routeId int64) error {
 	return deliverd.DelRoute(routeId)
+}
+
+// RCPTHOSTS ie locals domains
+
+// RcptHostAdd add a rcpthost
+func RcpthostAdd(host string, isLocal bool) error {
+	return deliverd.RcpthostAdd(host, isLocal)
+}
+
+// RcpthostDel delete a rcpthost
+func RcpthostDel(host string) error {
+	return deliverd.RcpthostDel(host)
+}
+
+// RcpthostList returns all rcpthosts
+func RcpthostList() (hosts []deliverd.RcptHost, err error) {
+	return deliverd.RcpthostGetAll()
+}
+
+// MAILBOXES
+// MailboxAdd create a new mailbox
+func MailboxAdd(mailbox string) error {
+	return deliverd.MailboxAdd(mailbox)
+}
+
+// MailboxDel delete a mailbox
+func MailboxDel(mailbox string) error {
+	return deliverd.MailboxDel(mailbox)
+}
+
+// MailboxList return all mailboxes
+func MailboxList() (mailboxes []deliverd.Mailbox, err error) {
+	return deliverd.MailboxList()
 }

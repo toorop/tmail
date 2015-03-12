@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/mail"
 	"net/textproto"
+	//"os"
 	"strings"
 )
 
@@ -15,10 +16,10 @@ type Message struct {
 	mail.Message
 }
 
-func New(rawmail []byte) (m *Message, err error) {
+func New(rawmail *[]byte) (m *Message, err error) {
 	m = &Message{}
-	reader := bytes.NewReader(rawmail)
-	// TODO: refarctor
+	reader := bytes.NewReader(*rawmail)
+	// TODO: refactor
 	t, err := mail.ReadMessage(reader)
 	if err != nil {
 		return
@@ -76,6 +77,7 @@ func (m *Message) GetRaw() (rawMessage []byte, err error) {
 		// clean key
 		key = textproto.CanonicalMIMEHeaderKey(key)
 		for _, value := range hs {
+			//println("Les headers avant traitement: " + key + " -> " + value)
 			// TODO clean value
 			// split at 900
 			// remove unsuported char
@@ -90,6 +92,8 @@ func (m *Message) GetRaw() (rawMessage []byte, err error) {
 			}*/
 
 			// Fold header
+			//t := FoldHeader(key+": "+value) + "\r\n"
+			//println("\nHeaders apres traitement: " + t)
 			rawStr += FoldHeader(key+": "+value) + "\r\n"
 		}
 	}
@@ -103,6 +107,9 @@ func (m *Message) GetRaw() (rawMessage []byte, err error) {
 
 	// Body
 	b, err := ioutil.ReadAll(m.Body)
+	if err != nil {
+		return
+	}
 	rawMessage = append(rawMessage, b...)
 	return
 }
@@ -138,10 +145,16 @@ func FoldHeader(header string) string {
 	for i, c := range bHeader {
 		headerLenght++
 		// espace
-		if c == 32 {
+		if c == 32 || c == 9 {
 			lastSpace = i
 		}
 		if headerLenght > 77 {
+			//if strings.HasPrefix(string(h), "Reference") {
+			//	fmt.Println(h)
+			//		println(string(h))
+			//}
+
+			//if len(h) != 0 && h[len(h)-2] != 13 {
 			if len(h) != 0 {
 				h = append(h, []byte{13, 10}...)
 			}
