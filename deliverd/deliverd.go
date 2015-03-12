@@ -30,13 +30,13 @@ func Run() {
 
 	// create consummer
 	// TODO creation de plusieurs consumer: local, remote, ...
-	consumer, err := nsq.NewConsumer("queueRemote", "deliverd", cfg)
+	consumer, err := nsq.NewConsumer("todeliver", "deliverd", cfg)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	// Bind handler
-	consumer.AddHandler(&remoteHandler{})
+	consumer.AddHandler(&deliveryHandler{})
 
 	// connect
 	if scope.Cfg.GetClusterModeEnabled() {

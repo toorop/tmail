@@ -191,7 +191,7 @@ func AddMessage(msg *message.Message, envelope message.Envelope, authUser string
 			return
 		}
 		// queue local  | queue remote
-		err = scope.NsqQueueProducer.Publish("queueRemote", jMsg)
+		err = scope.NsqQueueProducer.Publish("todeliver", jMsg)
 		if err != nil {
 			if cloop == 0 {
 				qStore.Del(key)
