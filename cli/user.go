@@ -7,7 +7,7 @@ import (
 
 var User = cgCli.Command{
 
-	// SMTPD
+	// User
 	Name:  "user",
 	Usage: "commands to manage users of mailserver",
 	Subcommands: []cgCli.Command{
@@ -50,22 +50,38 @@ var User = cgCli.Command{
 				cliDieOk()
 			},
 		},
-		/*{
+		{
 			Name:        "list",
-			Usage:       "Return a list of users (users who can send mail after authentification)",
+			Usage:       "Return a list of users",
 			Description: "",
 			Action: func(c *cgCli.Context) {
-				users, err := api.GetUsers()
+				users, err := api.UserGetAll()
 				cliHandleErr(err)
 				if len(users) == 0 {
-					println("There is no smtpd users yet.")
+					println("There is no users yet.")
 					return
 				}
-				println("Relay access granted to: ", c.Args().First())
 				for _, user := range users {
-					println(user.Login)
+					line := user.Login + " - authrelay: "
+					if user.AuthRelay {
+						line += "yes"
+					} else {
+						line += "no"
+					}
+					line += " - have mailbox: "
+					if user.HaveMailbox {
+						line += "yes - home: " + user.Home
+					} else {
+						line += "no"
+					}
+					if user.Active == "Y" {
+						line += " - active: yes"
+					} else {
+						line += " - active: no"
+					}
+					println(line)
 				}
 			},
-		},*/
+		},
 	},
 }

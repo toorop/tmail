@@ -17,22 +17,10 @@ func UserDel(login string) error {
 	return core.UserDel(login)
 }
 
-/*
-// SmtpdGetAllowedUsers returns users who are allowed to relay trought smtp
-func SmtpdGetAllowedUsers() (users []smtpd.SmtpUser, err error) {
-	return smtpd.GetAllowedUsers()
+// UserList return all users
+func UserGetAll() (users []core.User, err error) {
+	return core.UserList()
 }
-
-// SmtpdAddUser add a new smtp user
-func SmtpdAddUser(login, passwd string, authRelay bool) error {
-	return smtpd.AddUser(login, passwd, authRelay)
-}
-
-// SmtpdDelUser delete user
-func SmtpdDelUser(login string) error {
-	return smtpd.DelUser(login)
-}
-*/
 
 // Queue
 // QueueGetMessages returns all message in queue

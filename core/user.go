@@ -2,8 +2,6 @@ package core
 
 import (
 	"errors"
-	//"github.com/Toorop/tmail/deliverd"
-	"fmt"
 	"github.com/Toorop/tmail/scope"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"
@@ -50,6 +48,13 @@ func UserGetByLogin(login string) (user *User, err error) {
 	return
 }
 
+// UserList return all user
+func UserList() (users []User, err error) {
+	users = []User{}
+	err = scope.DB.Find(&users).Error
+	return
+}
+
 // UserAdd add an user
 func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 	home := ""
@@ -82,17 +87,19 @@ func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 		// hostname must be in rcpthost && must be local
 		// to avoid import cycle
 		var isLocal bool
-		err := scope.DB.Table("rcpt_hosts").Where("hostname = ?", t[1]).Select("is_local").Row().Scan(&isLocal) // (*sql.Row)
-		if err != nil && fmt.Sprintf("%v", err) != "sql: no rows in result set" {
+		err := scope.DB.Where("hostname = ? ", t[1]).Find(&RcptHost{}).Error
+		if err != nil && err != gorm.RecordNotFound {
 			return err
 		}
-
 		exists := err == nil
 		if !exists {
-			err = scope.DB.Exec(`INSERT INTO rcpt_hosts (hostname, is_local) VALUES (?, true)`, t[1]).Error
-		}
-		if err != nil {
-			return err
+			err = scope.DB.Save(&RcptHost{
+				Hostname: t[1],
+				IsLocal:  isLocal,
+			}).Error
+			if err != nil {
+				return err
+			}
 		}
 
 		// home = base/d/domain/u/user
@@ -125,6 +132,9 @@ func UserDel(login string) error {
 	if !exists {
 		return errors.New("User " + login + " doesn't exists")
 	}
+
+	// HERE on doit verifier si l'host doit etre supprimé de rcpthost
+
 	return scope.DB.Where("login = ?", login).Delete(&User{}).Error
 }
 
