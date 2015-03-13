@@ -277,12 +277,12 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 	// check rcpthost
 	if !relay {
 		rcpthost, err := deliverd.RcpthostGet(t[1])
-		if err != gorm.RecordNotFound {
-			if err != nil {
-				s.out("454 oops, problem with relay access (#4.3.0)")
-				s.log("ERROR relay access queriyng for rcpthost: " + err.Error())
-				return
-			}
+		if err != nil && err != gorm.RecordNotFound {
+			s.out("454 oops, problem with relay access (#4.3.0)")
+			s.log("ERROR relay access queriyng for rcpthost: " + err.Error())
+			return
+		}
+		if err == nil {
 			// rcpthost exists relay granted
 			relay = true
 

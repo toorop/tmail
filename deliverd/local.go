@@ -2,6 +2,7 @@ package deliverd
 
 import (
 	"errors"
+	"github.com/Toorop/tmail/user"
 	"github.com/jinzhu/gorm"
 	"strings"
 )
@@ -28,5 +29,13 @@ func isLocalDelivery(rcpt string) (bool, error) {
 // 2 - Mailbox (or wildcard)
 // 3 - Alias
 func IsValidLocalRcpt(rcpt string) (bool, error) {
-	return MailboxExists(rcpt)
+	// Mailbox ?
+	u, err := user.GetByLogin(rcpt)
+	if err != nil && err != gorm.RecordNotFound {
+		return false, err
+	}
+	if err == gorm.RecordNotFound {
+		return false, nil
+	}
+	return u.HaveMailbox, nil
 }

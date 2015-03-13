@@ -43,9 +43,9 @@ func initDB(DB gorm.DB) error {
 			return errors.New("Unable to create table user - " + err.Error())
 		}
 		// Index
-		if err = DB.Model(&user.User{}).AddUniqueIndex("idx_user_login", "login").Error; err != nil {
+		/*if err = DB.Model(&user.User{}).AddUniqueIndex("idx_user_login", "login").Error; err != nil {
 			return errors.New("Unable to add index idx_user_login on table user - " + err.Error())
-		}
+		}*/
 	}
 	//rcpthosts table
 	if !DB.HasTable(&deliverd.RcptHost{}) {
