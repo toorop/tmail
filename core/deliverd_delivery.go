@@ -1,15 +1,13 @@
-package deliverd
+package core
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/message"
 	"github.com/Toorop/tmail/scope"
 	"github.com/Toorop/tmail/store"
-	"github.com/Toorop/tmail/util"
 	"github.com/bitly/go-nsq"
 	"github.com/jinzhu/gorm"
 	"io/ioutil"
@@ -26,7 +24,7 @@ import (
 type delivery struct {
 	id      string
 	nsqMsg  *nsq.Message
-	qMsg    *mailqueue.QMessage
+	qMsg    *QMessage
 	rawData *[]byte
 	qStore  store.Storer
 }
@@ -350,7 +348,7 @@ func (d *delivery) bounce(errMsg string) {
 	}
 
 	tData := templateData{time.Now().Format(scope.Time822), scope.Cfg.GetMe(), d.qMsg.MailFrom, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
-	t, err := template.ParseFiles(path.Join(util.GetBasePath(), "tpl/bounce.tpl"))
+	t, err := template.ParseFiles(path.Join(GetBasePath(), "tpl/bounce.tpl"))
 	if err != nil {
 		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)
@@ -378,7 +376,7 @@ func (d *delivery) bounce(errMsg string) {
 		d.requeue(3)
 		return
 	}
-	id, err := mailqueue.AddMessage(message, envelope, "")
+	id, err := QueueAddMessage(message, envelope, "")
 	if err != nil {
 		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)
@@ -511,7 +509,7 @@ func getSmtpClient(routes *[]Route) (*Client, *Route, error) {
 		for _, lIp := range localIps {
 			for _, remoteAddr := range remoteAddresses {
 				// on doit avopir de l'IPv4 en entré et sortie ou de l'IP6 en e/s
-				if util.IsIpV4(lIp.String()) != util.IsIpV4(remoteAddr.IP.String()) {
+				if IsIpV4(lIp.String()) != IsIpV4(remoteAddr.IP.String()) {
 					continue
 				}
 				// TODO timeout en config

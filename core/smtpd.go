@@ -1,10 +1,8 @@
-package smtpd
+package core
 
 import (
 	"crypto/rand"
 	"crypto/tls"
-	//"github.com/Toorop/tmail/scope"
-	"github.com/Toorop/tmail/util"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
@@ -19,7 +17,7 @@ type Smtpd struct {
 }
 
 // New returns a new SmtpServer
-func New(d dsn) *Smtpd {
+func NewSmtpd(d dsn) *Smtpd {
 	return &Smtpd{d}
 }
 
@@ -30,7 +28,7 @@ func (s *Smtpd) ListenAndServe() {
 	secured := false
 	// SSL ?
 	if s.dsn.ssl {
-		cert, err := tls.LoadX509KeyPair(path.Join(util.GetBasePath(), "ssl/server.crt"), path.Join(util.GetBasePath(), "ssl/server.key"))
+		cert, err := tls.LoadX509KeyPair(path.Join(GetBasePath(), "ssl/server.crt"), path.Join(GetBasePath(), "ssl/server.key"))
 		if err != nil {
 			log.Fatalln("unable to load SSL keys for smtpd.", "dsn:", s.dsn.tcpAddr, "ssl", s.dsn.ssl, "err:", err)
 		}

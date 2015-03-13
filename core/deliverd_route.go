@@ -1,11 +1,10 @@
-package deliverd
+package core
 
 import (
 	//"errors"
-	"github.com/Toorop/tmail/scope"
-	//"github.com/jinzhu/gorm"
 	"database/sql"
 	"errors"
+	"github.com/Toorop/tmail/scope"
 	"net"
 	"strings"
 )

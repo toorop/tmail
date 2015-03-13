@@ -1,4 +1,4 @@
-package mailqueue
+package core
 
 import (
 	"bytes"
@@ -100,7 +100,7 @@ func (q *QMessage) Bounce() error {
 }
 
 // GetMessageByKey return a message from is key
-func GetMessageById(id int64) (msg *QMessage, err error) {
+func QueueGetMessageById(id int64) (msg *QMessage, err error) {
 	msg = &QMessage{}
 	err = scope.DB.Where("id = ?", id).First(msg).Error
 	if err != nil && err == gorm.RecordNotFound {
@@ -110,7 +110,7 @@ func GetMessageById(id int64) (msg *QMessage, err error) {
 }
 
 // Add add a new mail in queue
-func AddMessage(msg *message.Message, envelope message.Envelope, authUser string) (key string, err error) {
+func QueueAddMessage(msg *message.Message, envelope message.Envelope, authUser string) (key string, err error) {
 	qStore, err := store.New(scope.Cfg.GetStoreDriver(), scope.Cfg.GetStoreSource())
 	if err != nil {
 		return
@@ -205,7 +205,7 @@ func AddMessage(msg *message.Message, envelope message.Envelope, authUser string
 }
 
 // ListMessage return all message in queue
-func ListMessages() ([]QMessage, error) {
+func QueueListMessages() ([]QMessage, error) {
 	messages := []QMessage{}
 	err := scope.DB.Find(&messages).Error
 	return messages, err

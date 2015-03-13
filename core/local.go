@@ -1,8 +1,7 @@
-package deliverd
+package core
 
 import (
 	"errors"
-	"github.com/Toorop/tmail/user"
 	"github.com/jinzhu/gorm"
 	"strings"
 )
@@ -30,7 +29,7 @@ func isLocalDelivery(rcpt string) (bool, error) {
 // 3 - Alias
 func IsValidLocalRcpt(rcpt string) (bool, error) {
 	// Mailbox ?
-	u, err := user.GetByLogin(rcpt)
+	u, err := UserGetByLogin(rcpt)
 	if err != nil && err != gorm.RecordNotFound {
 		return false, err
 	}

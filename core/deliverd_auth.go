@@ -4,7 +4,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package deliverd
+package core
 
 import (
 	"crypto/hmac"
@@ -15,7 +15,7 @@ import (
 )
 
 // Auth is implemented by an SMTP authentication mechanism.
-type Auth interface {
+type DeliverdAuth interface {
 	// Start begins an authentication with a server.
 	// It returns the name of the authentication protocol
 	// and optionally data to include in the initial AUTH message
@@ -52,7 +52,7 @@ type plainAuth struct {
 // The returned Auth uses the given username and password to authenticate
 // on TLS connections to host and act as identity. Usually identity will be
 // left blank to act as username.
-func PlainAuth(identity, username, password, host string) Auth {
+func PlainAuth(identity, username, password, host string) DeliverdAuth {
 	return &plainAuth{identity, username, password, host}
 }
 
@@ -92,7 +92,7 @@ type cramMD5Auth struct {
 // mechanism as defined in RFC 2195.
 // The returned Auth uses the given username and secret to authenticate
 // to the server using the challenge-response mechanism.
-func CRAMMD5Auth(username, secret string) Auth {
+func CRAMMD5Auth(username, secret string) DeliverdAuth {
 	return &cramMD5Auth{username, secret}
 }
 

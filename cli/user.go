@@ -50,12 +50,12 @@ var User = cgCli.Command{
 				cliDieOk()
 			},
 		},
-		{
+		/*{
 			Name:        "list",
 			Usage:       "Return a list of users (users who can send mail after authentification)",
 			Description: "",
 			Action: func(c *cgCli.Context) {
-				users, err := api.SmtpdGetAllowedUsers()
+				users, err := api.GetUsers()
 				cliHandleErr(err)
 				if len(users) == 0 {
 					println("There is no smtpd users yet.")
@@ -66,6 +66,6 @@ var User = cgCli.Command{
 					println(user.Login)
 				}
 			},
-		},
+		},*/
 	},
 }

@@ -1,4 +1,4 @@
-package deliverd
+package core
 
 // Modified version on the standard smtp.go librarie
 
@@ -254,7 +254,7 @@ func (c *Client) Verify(addr string) error {
 // Auth authenticates a client using the provided authentication mechanism.
 // A failed authentication closes the connection.
 // Only servers that advertise the AUTH extension support this function.
-func (c *Client) Auth(a Auth) error {
+func (c *Client) Auth(a DeliverdAuth) error {
 	if err := c.hello(); err != nil {
 		return err
 	}
@@ -357,7 +357,7 @@ var testHookStartTLS func(*tls.Config) // nil, except for tests
 // possible, authenticates with the optional mechanism a if possible,
 // and then sends an email from address from, to addresses to, with
 // message msg.
-func SendMail(addr string, a Auth, from string, to []string, msg []byte) error {
+func SendMail(addr string, a DeliverdAuth, from string, to []string, msg []byte) error {
 	c, err := Dial(addr)
 	if err != nil {
 		return err

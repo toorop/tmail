@@ -1,22 +1,17 @@
-package smtpd
+package core
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
-	"net"
-	//"os/exec"
-	"bytes"
-	"github.com/Toorop/tmail/deliverd"
 	"github.com/Toorop/tmail/logger"
-	"github.com/Toorop/tmail/mailqueue"
 	"github.com/Toorop/tmail/message"
 	"github.com/Toorop/tmail/scanner"
 	"github.com/Toorop/tmail/scope"
-	"github.com/Toorop/tmail/user"
-	"github.com/Toorop/tmail/util"
 	"github.com/jinzhu/gorm"
+	"net"
 	"net/mail"
 	"path"
 	"strings"
@@ -37,7 +32,7 @@ type smtpServerSession struct {
 	timer    *time.Timer // for timeout
 	timeout  time.Duration
 	secured  bool
-	user     *user.User
+	user     *User
 	seenMail bool
 	helo     string
 	envelope message.Envelope
@@ -47,7 +42,7 @@ type smtpServerSession struct {
 // Factory
 func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, err error) {
 	sss = new(smtpServerSession)
-	sss.uuid, err = util.NewUUID()
+	sss.uuid, err = NewUUID()
 	if err != nil {
 		return
 	}
@@ -204,7 +199,7 @@ func (s *smtpServerSession) smtpMailFrom(msg []string) {
 	}
 
 	// Clean <>
-	s.envelope.MailFrom = util.RemoveBrackets(s.envelope.MailFrom)
+	s.envelope.MailFrom = RemoveBrackets(s.envelope.MailFrom)
 
 	l := len(s.envelope.MailFrom)
 	if l > 0 { // 0 -> null reverse path (bounce)
@@ -253,7 +248,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 		s.out("501 5.5.4 Syntax: RCPT TO:<address>")
 		return
 	}
-	rcptto = util.RemoveBrackets(rcptto)
+	rcptto = RemoveBrackets(rcptto)
 
 	// TODO : only local part
 
@@ -276,7 +271,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 
 	// check rcpthost
 	if !relay {
-		rcpthost, err := deliverd.RcpthostGet(t[1])
+		rcpthost, err := RcpthostGet(t[1])
 		if err != nil && err != gorm.RecordNotFound {
 			s.out("454 oops, problem with relay access (#4.3.0)")
 			s.log("ERROR relay access queriyng for rcpthost: " + err.Error())
@@ -290,7 +285,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 			if rcpthost.IsLocal {
 				s.logDebug("Le domaine est local")
 				// check destination
-				exists, err := deliverd.IsValidLocalRcpt(rcptto)
+				exists, err := IsValidLocalRcpt(rcptto)
 				if err != nil {
 					s.out("454 oops, problem with relay access (#4.3.0)")
 					s.log("ERROR relay access checking validity of local rpctto " + err.Error())
@@ -333,7 +328,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 	}
 
 	// Check if there is already this recipient
-	if !util.IsStringInSlice(rcptto, s.envelope.RcptTo) {
+	if !IsStringInSlice(rcptto, s.envelope.RcptTo) {
 		s.envelope.RcptTo = append(s.envelope.RcptTo, rcptto)
 		s.log(fmt.Sprintf("rcpt to: %s", rcptto))
 	}
@@ -608,7 +603,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	if s.user != nil {
 		authUser = s.user.Login
 	}
-	id, err := mailqueue.AddMessage(message, s.envelope, authUser)
+	id, err := QueueAddMessage(message, s.envelope, authUser)
 	if err != nil {
 		s.logError("Unable to put message in queue -", err.Error())
 		s.out("451 temporary queue error")
@@ -632,7 +627,7 @@ func (s *smtpServerSession) smtpStartTls() {
 		return
 	}
 	s.out("220 Ready to start TLS")
-	cert, err := tls.LoadX509KeyPair(path.Join(util.GetBasePath(), "ssl/server.crt"), path.Join(util.GetBasePath(), "ssl/server.key"))
+	cert, err := tls.LoadX509KeyPair(path.Join(GetBasePath(), "ssl/server.crt"), path.Join(GetBasePath(), "ssl/server.key"))
 	if err != nil {
 		s.logError("Unable to load SSL keys:", err.Error())
 		s.out("451 Unable to load SSL keys (#4.5.1)")
@@ -727,7 +722,7 @@ func (s *smtpServerSession) smtpAuth(rawMsg string) {
 	authLogin := string(t[1])
 	authPasswd := string(t[2])
 
-	s.user, err = user.Get(authLogin, authPasswd)
+	s.user, err = UserGet(authLogin, authPasswd)
 	if err != nil {
 		if err == gorm.RecordNotFound {
 			s.out("535 authentication failed - No such user (#5.7.1)")

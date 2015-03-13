@@ -1,4 +1,4 @@
-package deliverd
+package core
 
 // deliverRemote handle local delivery
 func deliverLocal(d *delivery) {

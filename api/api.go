@@ -3,24 +3,21 @@ package api
 // !!! scope doit etre initialisé avant d'utiliser ce package
 
 import (
-	//"github.com/Toorop/tmail/scope"
-	"github.com/Toorop/tmail/deliverd"
-	"github.com/Toorop/tmail/mailqueue"
-	"github.com/Toorop/tmail/smtpd"
-	"github.com/Toorop/tmail/user"
+	"github.com/Toorop/tmail/core"
 )
 
 // USER
 // UserAdd add a new usere
 func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
-	return user.Add(login, passwd, haveMailbox, authRelay)
+	return core.UserAdd(login, passwd, haveMailbox, authRelay)
 }
 
 // UserDel delete an user (keep his mailboxe)
 func UserDel(login string) error {
-	return user.Del(login)
+	return core.UserDel(login)
 }
 
+/*
 // SmtpdGetAllowedUsers returns users who are allowed to relay trought smtp
 func SmtpdGetAllowedUsers() (users []smtpd.SmtpUser, err error) {
 	return smtpd.GetAllowedUsers()
@@ -35,16 +32,17 @@ func SmtpdAddUser(login, passwd string, authRelay bool) error {
 func SmtpdDelUser(login string) error {
 	return smtpd.DelUser(login)
 }
+*/
 
 // Queue
 // QueueGetMessages returns all message in queue
-func QueueGetMessages() ([]mailqueue.QMessage, error) {
-	return mailqueue.ListMessages()
+func QueueGetMessages() ([]core.QMessage, error) {
+	return core.QueueListMessages()
 }
 
 // QueueDiscardMsgByKey discard a message (delete without bouncing) by his id
 func QueueDiscardMsg(id int64) error {
-	m, err := mailqueue.GetMessageById(id)
+	m, err := core.QueueGetMessageById(id)
 	if err != nil {
 		return err
 	}
@@ -53,7 +51,7 @@ func QueueDiscardMsg(id int64) error {
 
 // QueueBounceMsgByKey bounce a message by his key
 func QueueBounceMsg(id int64) error {
-	m, err := mailqueue.GetMessageById(id)
+	m, err := core.QueueGetMessageById(id)
 	if err != nil {
 		return err
 	}
@@ -62,49 +60,49 @@ func QueueBounceMsg(id int64) error {
 
 // ROUTES
 // RoutesGet returns all routes
-func RoutesGet() ([]deliverd.Route, error) {
-	return deliverd.GetAllRoutes()
+func RoutesGet() ([]core.Route, error) {
+	return core.GetAllRoutes()
 }
 
 // RoutesAdd adds en new route
 func RoutesAdd(host, localIp, remoteHost string, remotePort, priority int, user, mailFrom, smtpAuthLogin, smtpAuthPasswd string) error {
-	return deliverd.AddRoute(host, localIp, remoteHost, remotePort, priority, user, mailFrom, smtpAuthLogin, smtpAuthPasswd)
+	return core.AddRoute(host, localIp, remoteHost, remotePort, priority, user, mailFrom, smtpAuthLogin, smtpAuthPasswd)
 }
 
 // RoutesDel delete route routeId
 func RoutesDel(routeId int64) error {
-	return deliverd.DelRoute(routeId)
+	return core.DelRoute(routeId)
 }
 
 // RCPTHOSTS ie locals domains
 
 // RcptHostAdd add a rcpthost
 func RcpthostAdd(host string, isLocal bool) error {
-	return deliverd.RcpthostAdd(host, isLocal)
+	return core.RcpthostAdd(host, isLocal)
 }
 
 // RcpthostDel delete a rcpthost
 func RcpthostDel(host string) error {
-	return deliverd.RcpthostDel(host)
+	return core.RcpthostDel(host)
 }
 
 // RcpthostList returns all rcpthosts
-func RcpthostList() (hosts []deliverd.RcptHost, err error) {
-	return deliverd.RcpthostGetAll()
+func RcpthostList() (hosts []core.RcptHost, err error) {
+	return core.RcpthostGetAll()
 }
 
 // MAILBOXES
 // MailboxAdd create a new mailbox
 func MailboxAdd(mailbox string) error {
-	return deliverd.MailboxAdd(mailbox)
+	return core.MailboxAdd(mailbox)
 }
 
 // MailboxDel delete a mailbox
 func MailboxDel(mailbox string) error {
-	return deliverd.MailboxDel(mailbox)
+	return core.MailboxDel(mailbox)
 }
 
 // MailboxList return all mailboxes
-func MailboxList() (mailboxes []deliverd.Mailbox, err error) {
-	return deliverd.MailboxList()
+func MailboxList() (mailboxes []core.Mailbox, err error) {
+	return core.MailboxList()
 }

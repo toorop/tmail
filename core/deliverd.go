@@ -1,4 +1,4 @@
-package deliverd
+package core
 
 import (
 	"github.com/Toorop/tmail/scope"
@@ -17,7 +17,7 @@ func New() *deliverd {
 }*/
 
 // Run
-func Run() {
+func LaunchDeliverd() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	cfg := nsq.NewConfig()

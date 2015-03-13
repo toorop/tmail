@@ -1,4 +1,4 @@
-package deliverd
+package core
 
 import (
 	"bytes"
@@ -52,7 +52,7 @@ func deliverRemote(d *delivery) {
 
 	// SMTP AUTH
 	if r.SmtpAuthLogin.Valid && r.SmtpAuthPasswd.Valid && len(r.SmtpAuthLogin.String) != 0 && len(r.SmtpAuthLogin.String) != 0 {
-		var auth Auth
+		var auth DeliverdAuth
 		_, auths := c.Extension("AUTH")
 		if strings.Contains(auths, "CRAM-MD5") {
 			auth = CRAMMD5Auth(r.SmtpAuthLogin.String, r.SmtpAuthPasswd.String)

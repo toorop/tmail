@@ -1,4 +1,4 @@
-package deliverd
+package core
 
 import (
 	"errors"

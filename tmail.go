@@ -3,11 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/Toorop/tmail/deliverd"
+	"github.com/Toorop/tmail/core"
+	//"github.com/Toorop/tmail/deliverd"
 	"github.com/Toorop/tmail/scanner"
 	"github.com/Toorop/tmail/scope"
-	"github.com/Toorop/tmail/smtpd"
-	"github.com/Toorop/tmail/util"
+	//"github.com/Toorop/tmail/smtpd"
+	//"github.com/Toorop/tmail/util"
 	"github.com/bitly/nsq/nsqd"
 	"github.com/codegangsta/cli"
 	"io/ioutil"
@@ -39,8 +40,8 @@ func init() {
 	// Check base path structure
 	requiredPaths := []string{"db", "nsq", "ssl"}
 	for _, p := range requiredPaths {
-		if err = os.MkdirAll(path.Join(util.GetBasePath(), p), 0700); err != nil {
-			log.Fatalln("Unable to create path "+path.Join(util.GetBasePath(), p), " - ", err.Error())
+		if err = os.MkdirAll(path.Join(core.GetBasePath(), p), 0700); err != nil {
+			log.Fatalln("Unable to create path "+path.Join(core.GetBasePath(), p), " - ", err.Error())
 		}
 	}
 
@@ -108,7 +109,7 @@ func main() {
 				opts.Logger = log.New(os.Stdout, hostname+"(127.0.0.1) - NSQD :", log.Ldate|log.Ltime|log.Lmicroseconds)
 			}
 			opts.Verbose = scope.Cfg.GetDebugEnabled() // verbosity
-			opts.DataPath = util.GetBasePath() + "/nsq"
+			opts.DataPath = core.GetBasePath() + "/nsq"
 			// if cluster get lookupd addresses
 			if scope.Cfg.GetClusterModeEnabled() {
 				opts.NSQLookupdTCPAddresses = scope.Cfg.GetNSQLookupdTcpAddresses()
@@ -154,19 +155,19 @@ func main() {
 					}
 				}
 
-				smtpdDsns, err := smtpd.GetDsnsFromString(scope.Cfg.GetSmtpdDsns())
+				smtpdDsns, err := core.GetDsnsFromString(scope.Cfg.GetSmtpdDsns())
 				if err != nil {
 					log.Fatalln("unable to parse smtpd dsn -", err)
 				}
 				for _, dsn := range smtpdDsns {
-					go smtpd.New(dsn).ListenAndServe()
+					go core.NewSmtpd(dsn).ListenAndServe()
 					scope.Log.Info("smtpd " + dsn.String() + " launched.")
 				}
 			}
 
 			// deliverd
 			//deliverd.Scope = scope
-			go deliverd.Run()
+			go core.LaunchDeliverd()
 
 			<-sigChan
 			scope.Log.Info("Exiting...")
