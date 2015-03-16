@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Toorop/tmail/cli"
+	"github.com/toorop/tmail/cli"
 	cgCli "github.com/codegangsta/cli"
 )
 

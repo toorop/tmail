@@ -4,7 +4,7 @@ import (
 	//"errors"
 	"database/sql"
 	"errors"
-	"github.com/Toorop/tmail/scope"
+	"github.com/toorop/tmail/scope"
 	"net"
 	"strings"
 )

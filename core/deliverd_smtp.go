@@ -18,7 +18,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/Toorop/tmail/scope"
+	"github.com/toorop/tmail/scope"
 	"io"
 	"net"
 	"net/textproto"

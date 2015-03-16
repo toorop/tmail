@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Toorop/tmail/message"
-	"github.com/Toorop/tmail/scope"
-	"github.com/Toorop/tmail/store"
 	"github.com/bitly/go-nsq"
 	"github.com/jinzhu/gorm"
+	"github.com/toorop/tmail/message"
+	"github.com/toorop/tmail/scope"
+	"github.com/toorop/tmail/store"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -132,8 +132,7 @@ func (d *delivery) processMsg() {
 	}
 
 	if local {
-		scope.Log.Info(fmt.Sprintf("delivery-local %s: starting new local delivery from %s to %s (msg id: %s)", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.Key))
-		d.dieOk()
+		deliverLocal(d)
 	} else {
 		deliverRemote(d)
 	}
@@ -270,14 +269,14 @@ func (d *delivery) processMsg() {
 func (d *delivery) dieOk() {
 	scope.Log.Info("deliverd-remote " + d.id + ": success.")
 	if err := d.qMsg.Delete(); err != nil {
-		scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+		scope.Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
 	}
 	d.nsqMsg.Finish()
 }
 
 // dieTemp die when a 4** error occured
 func (d *delivery) dieTemp(msg string) {
-	scope.Log.Info("deliverd-remote " + d.id + ": temp failure - " + msg)
+	scope.Log.Info("deliverd " + d.id + ": temp failure - " + msg)
 	if time.Since(d.qMsg.AddedAt) < time.Duration(scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
 		d.requeue()
 		return
@@ -288,7 +287,7 @@ func (d *delivery) dieTemp(msg string) {
 
 // diePerm when a 5** error occured
 func (d *delivery) diePerm(msg string) {
-	scope.Log.Info("deliverd-remote " + d.id + ": perm failure - " + msg)
+	scope.Log.Info("deliverd " + d.id + ": perm failure - " + msg)
 	// bounce message
 	d.bounce(msg)
 	return
@@ -296,9 +295,9 @@ func (d *delivery) diePerm(msg string) {
 
 // discard remove a message from queue
 func (d *delivery) discard() {
-	scope.Log.Info("deliverd-remote " + d.id + " discard message " + d.qMsg.Key)
+	scope.Log.Info("deliverd " + d.id + " discard message " + d.qMsg.Key)
 	if err := d.qMsg.Delete(); err != nil {
-		scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+		scope.Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
 		d.requeue(1)
 	} else {
 		d.nsqMsg.Finish()
@@ -312,7 +311,7 @@ func (d *delivery) bounce(errMsg string) {
 	if d.qMsg.ReturnPath == "" {
 		scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " double bounce: discarding")
 		if err := d.qMsg.Delete(); err != nil {
-			scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+			scope.Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
 			d.requeue(1)
 		} else {
 			d.nsqMsg.Finish()
@@ -324,7 +323,7 @@ func (d *delivery) bounce(errMsg string) {
 	if d.qMsg.ReturnPath == "#@[]" {
 		scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " triple bounce: discarding")
 		if err := d.qMsg.Delete(); err != nil {
-			scope.Log.Error("deliverd-remote " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+			scope.Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
 			d.requeue(1)
 		} else {
 			d.nsqMsg.Finish()
@@ -350,7 +349,7 @@ func (d *delivery) bounce(errMsg string) {
 	tData := templateData{time.Now().Format(scope.Time822), scope.Cfg.GetMe(), d.qMsg.MailFrom, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
 	t, err := template.ParseFiles(path.Join(GetBasePath(), "tpl/bounce.tpl"))
 	if err != nil {
-		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		scope.Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)
 		return
 	}
@@ -358,13 +357,13 @@ func (d *delivery) bounce(errMsg string) {
 	bouncedMailBuf := new(bytes.Buffer)
 	err = t.Execute(bouncedMailBuf, tData)
 	if err != nil {
-		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		scope.Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)
 		return
 	}
 	b, err := ioutil.ReadAll(bouncedMailBuf)
 	if err != nil {
-		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		scope.Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)
 		return
 	}
@@ -372,19 +371,19 @@ func (d *delivery) bounce(errMsg string) {
 	envelope := message.Envelope{"", []string{d.qMsg.ReturnPath}}
 	message, err := message.New(&b)
 	if err != nil {
-		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		scope.Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)
 		return
 	}
 	id, err := QueueAddMessage(message, envelope, "")
 	if err != nil {
-		scope.Log.Error("deliverd-remote " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		scope.Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)
 		return
 	}
 
 	if err := d.qMsg.Delete(); err != nil {
-		scope.Log.Error("deliverd-remote " + d.id + ": unable remove bounced message " + d.qMsg.Key + " from queue. " + err.Error())
+		scope.Log.Error("deliverd " + d.id + ": unable remove bounced message " + d.qMsg.Key + " from queue. " + err.Error())
 		d.requeue(1)
 	} else {
 		d.nsqMsg.Finish()

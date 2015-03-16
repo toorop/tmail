@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/Toorop/tmail/api"
+	"github.com/toorop/tmail/api"
 	cgCli "github.com/codegangsta/cli"
 )
 

@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/Toorop/tmail/scope"
+	"github.com/toorop/tmail/scope"
 	"github.com/jinzhu/gorm"
 	"net"
 	"strings"

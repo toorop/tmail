@@ -3,7 +3,7 @@ package message
 import (
 	"bytes"
 	//"fmt"
-	//"github.com/Toorop/tmail/scope"
+	//"github.com/toorop/tmail/scope"
 	"io/ioutil"
 	"net/mail"
 	"net/textproto"

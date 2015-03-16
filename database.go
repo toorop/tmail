@@ -2,11 +2,11 @@ package main
 
 import (
 	"errors"
-	"github.com/Toorop/tmail/core"
-	/*"github.com/Toorop/tmail/deliverd"
-	"github.com/Toorop/tmail/mailqueue"
-	"github.com/Toorop/tmail/smtpd"
-	"github.com/Toorop/tmail/user"*/
+	"github.com/toorop/tmail/core"
+	/*"github.com/toorop/tmail/deliverd"
+	"github.com/toorop/tmail/mailqueue"
+	"github.com/toorop/tmail/smtpd"
+	"github.com/toorop/tmail/user"*/
 	"github.com/jinzhu/gorm"
 )
 

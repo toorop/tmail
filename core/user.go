@@ -2,8 +2,9 @@ package core
 
 import (
 	"errors"
-	"github.com/Toorop/tmail/scope"
 	"github.com/jinzhu/gorm"
+	"github.com/kless/osutil/user/crypt/sha512_crypt"
+	"github.com/toorop/tmail/scope"
 	"golang.org/x/crypto/bcrypt"
 	"net/mail"
 	"strings"
@@ -13,6 +14,7 @@ type User struct {
 	Id          int64
 	Login       string `sql:"unique"`
 	Passwd      string `sql:"not null"`
+	DovePasswd  string `sql:"null"`                     // SHA512 passwd workaround (glibc on most linux flavor doesn't have bcrypt support)
 	Active      string `sql:"type:char(1);default:'Y'"` //rune `sql:"type:char(1);not null;default:'Y'`
 	AuthRelay   bool   `sql:"default:false"`            // authorization of relaying
 	HaveMailbox bool   `sql:"default:false"`
@@ -85,7 +87,6 @@ func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 		}
 
 		// hostname must be in rcpthost && must be local
-		// to avoid import cycle
 		var isLocal bool
 		err := scope.DB.Where("hostname = ? ", t[1]).Find(&RcptHost{}).Error
 		if err != nil && err != gorm.RecordNotFound {
@@ -106,14 +107,28 @@ func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 		home = scope.Cfg.GetUsersHomeBase() + "/" + string(t[1][0]) + "/" + t[1] + "/" + string(t[0][0]) + "/" + t[0]
 	}
 
+	// blowfish
 	hashed, err := bcrypt.GenerateFromPassword([]byte(passwd), 10)
 	if err != nil {
 		return err
 	}
 
+	// sha512 for dovecot compatibility
+	// {SHA512-CRYPT}$6$iW6KmxlZL56A1raN$4DjgXTUzFZlGQgq61YnBMF2AYWKdY5ZanOUWTDBhuvBYVzkdNjqrmpYnLlQ3M0kU1joUH0Bb2aJcPhUF0xlSq/
+	salt, err := NewUUID()
+	if err != nil {
+		return err
+	}
+	salt = "$6$" + salt[:16]
+	c := sha512_crypt.New()
+	dovePasswd, err := c.Generate([]byte(passwd), []byte(salt))
+	if err != nil {
+		return err
+	}
 	user := User{
 		Login:       login,
 		Passwd:      string(hashed[:]),
+		DovePasswd:  dovePasswd,
 		Active:      "Y",
 		AuthRelay:   authRelay,
 		HaveMailbox: haveMailbox,

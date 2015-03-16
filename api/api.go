@@ -3,7 +3,7 @@ package api
 // !!! scope doit etre initialisé avant d'utiliser ce package
 
 import (
-	"github.com/Toorop/tmail/core"
+	"github.com/toorop/tmail/core"
 )
 
 // USER

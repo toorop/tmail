@@ -49,6 +49,7 @@ type Config struct {
 		DeliverdMaxInFlight   int    `name:"deliverd_max_in_flight" default:"5"`
 		DeliverdRemoteTimeout int    `name:"deliverd_remote_timeout" default:"60"`
 		DeliverdQueueLifetime int    `name:"deliverd_queue_lifetime" default:"10080"`
+		DovecotLda            string `name:"dovecot_lda" default:"/usr/lib/dovecot/dovecot-lda"`
 
 		UsersHomeBase string `name:"users_home_base" default:"/home"`
 	}
@@ -358,6 +359,13 @@ func (c *Config) GetDeliverdQueueLifetime() int {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.DeliverdQueueLifetime
+}
+
+// GetDovecotLda returns path to dovecot-lda binary
+func (c *Config) GetDovecotLda() string {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.DovecotLda
 }
 
 // GetUserHomeBase returns users home base

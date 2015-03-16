@@ -3,12 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/Toorop/tmail/core"
-	//"github.com/Toorop/tmail/deliverd"
-	"github.com/Toorop/tmail/scanner"
-	"github.com/Toorop/tmail/scope"
-	//"github.com/Toorop/tmail/smtpd"
-	//"github.com/Toorop/tmail/util"
+	"github.com/toorop/tmail/core"
+	//"github.com/toorop/tmail/deliverd"
+	"github.com/toorop/tmail/scanner"
+	"github.com/toorop/tmail/scope"
+	//"github.com/toorop/tmail/smtpd"
+	//"github.com/toorop/tmail/util"
 	"github.com/bitly/nsq/nsqd"
 	"github.com/codegangsta/cli"
 	"io/ioutil"
@@ -79,7 +79,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "tmail"
 	app.Usage = "smtp server... and a little more"
-	app.Author = "Stéphane Depierrepont aka Toorop"
+	app.Author = "Stéphane Depierrepont aka toorop"
 	app.Email = "toorop@toorop.fr"
 	app.Version = TMAIL_VERSION
 	app.Commands = cliCommands

@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/Toorop/tmail/scope"
+	"github.com/toorop/tmail/scope"
 	"io"
 	"net"
 	"strings"

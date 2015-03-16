@@ -2,8 +2,8 @@ package scope
 
 import (
 	"errors"
-	"github.com/Toorop/tmail/config"
-	"github.com/Toorop/tmail/logger"
+	"github.com/toorop/tmail/config"
+	"github.com/toorop/tmail/logger"
 	"github.com/bitly/go-nsq"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
