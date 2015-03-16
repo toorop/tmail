@@ -5,10 +5,10 @@ import (
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"github.com/toorop/tmail/message"
 	"github.com/toorop/tmail/scope"
 	"github.com/toorop/tmail/store"
-	"github.com/jinzhu/gorm"
 	"strings"
 	//"github.com/bitly/go-nsq"
 	"errors"
@@ -45,7 +45,7 @@ func (q *QMessage) Delete() error {
 
 	// If there is no other reference in DB, remove raw message from store
 	var c uint
-	if err = scope.DB.Model(QMessage{}).Where("'key' = ?", q.Key).Count(&c).Error; err != nil {
+	if err = scope.DB.Model(QMessage{}).Where("key = ?", q.Key).Count(&c).Error; err != nil {
 		return err
 	}
 	if c != 0 {
@@ -157,6 +157,7 @@ func QueueAddMessage(msg *message.Message, envelope message.Envelope, authUser s
 	//defer producer.Stop()
 
 	cloop := 0
+	qmessages := []QMessage{}
 	for _, rcptTo := range envelope.RcptTo {
 		qm := QMessage{
 			Key:                 key,
@@ -179,27 +180,30 @@ func QueueAddMessage(msg *message.Message, envelope message.Envelope, authUser s
 			}
 			return
 		}
+		cloop++
+		qmessages = append(qmessages, qm)
+	}
 
+	for _, qmsg := range qmessages {
 		// publish
 		var jMsg []byte
-		jMsg, err = json.Marshal(qm)
+		jMsg, err = json.Marshal(qmsg)
 		if err != nil {
-			if cloop == 0 {
+			if cloop == 1 {
 				qStore.Del(key)
 			}
-			scope.DB.Delete(&qm)
+			scope.DB.Delete(&qmsg)
 			return
 		}
 		// queue local  | queue remote
 		err = scope.NsqQueueProducer.Publish("todeliver", jMsg)
 		if err != nil {
-			if cloop == 0 {
+			if cloop == 1 {
 				qStore.Del(key)
 			}
-			scope.DB.Delete(&qm)
+			scope.DB.Delete(&qmsg)
 			return
 		}
-		cloop++
 	}
 	return
 }
