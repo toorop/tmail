@@ -6,11 +6,11 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"github.com/toorop/tmail/logger"
 	"github.com/toorop/tmail/message"
 	"github.com/toorop/tmail/scanner"
 	"github.com/toorop/tmail/scope"
-	"github.com/jinzhu/gorm"
 	"net"
 	"net/mail"
 	"path"
@@ -309,7 +309,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 
 	// Remote IP authorized
 	if !relay {
-		relay, err = remoteIpCanUseSmtp(s.conn.RemoteAddr())
+		relay, err = IpCanRelay(s.conn.RemoteAddr())
 		if err != nil {
 			s.out("454 oops, problem with relay access (#4.3.0)")
 			s.log("ERROR relay access: " + err.Error())

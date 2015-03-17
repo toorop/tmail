@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/toorop/tmail/cli"
 	cgCli "github.com/codegangsta/cli"
+	"github.com/toorop/tmail/cli"
 )
 
 var cliCommands = []cgCli.Command{
@@ -10,5 +10,6 @@ var cliCommands = []cgCli.Command{
 	cli.Routes,
 	cli.User,
 	cli.Rcpthost,
+	cli.RelayIP,
 	cli.Mailbox,
 }

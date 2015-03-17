@@ -22,6 +22,38 @@ func UserGetAll() (users []core.User, err error) {
 	return core.UserList()
 }
 
+// MAILBOXES
+// MailboxAdd create a new mailbox
+func MailboxAdd(mailbox string) error {
+	return core.MailboxAdd(mailbox)
+}
+
+// MailboxDel delete a mailbox
+func MailboxDel(mailbox string) error {
+	return core.MailboxDel(mailbox)
+}
+
+// MailboxList return all mailboxes
+func MailboxList() (mailboxes []core.Mailbox, err error) {
+	return core.MailboxList()
+}
+
+// RELAY IP
+// RelayIpAdd add an IP authozed to relay through tmail
+func RelayIpAdd(ip string) error {
+	return core.RelayIpAdd(ip)
+}
+
+// RelayIpDel remove an ip from authorized IP
+func RelayIpDel(ip string) error {
+	return core.RelayIpDel(ip)
+}
+
+// RelayIpGetAll returns all IPs which are authorized to relay through tmail
+func RelayIpGetAll() (ips []core.RelayIpOk, err error) {
+	return core.RelayIpGetAll()
+}
+
 // Queue
 // QueueGetMessages returns all message in queue
 func QueueGetMessages() ([]core.QMessage, error) {
@@ -77,20 +109,4 @@ func RcpthostDel(host string) error {
 // RcpthostList returns all rcpthosts
 func RcpthostList() (hosts []core.RcptHost, err error) {
 	return core.RcpthostGetAll()
-}
-
-// MAILBOXES
-// MailboxAdd create a new mailbox
-func MailboxAdd(mailbox string) error {
-	return core.MailboxAdd(mailbox)
-}
-
-// MailboxDel delete a mailbox
-func MailboxDel(mailbox string) error {
-	return core.MailboxDel(mailbox)
-}
-
-// MailboxList return all mailboxes
-func MailboxList() (mailboxes []core.Mailbox, err error) {
-	return core.MailboxList()
 }
