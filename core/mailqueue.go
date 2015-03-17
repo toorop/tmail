@@ -121,7 +121,8 @@ func QueueAddMessage(msg *message.Message, envelope message.Envelope, authUser s
 	}
 
 	// Retun Path
-	returnPath := ""
+	returnPath = envelope.MailFrom
+	/*returnPath := ""
 	// Exist ?
 	if msg.HaveHeader("return-path") {
 		t, err := mail.ParseAddress(msg.GetHeader("return-path"))
@@ -132,7 +133,7 @@ func QueueAddMessage(msg *message.Message, envelope message.Envelope, authUser s
 	} else {
 		returnPath = envelope.MailFrom
 
-	}
+	}*/
 
 	// generate key
 	hasher := sha1.New()
