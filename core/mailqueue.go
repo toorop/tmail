@@ -13,18 +13,18 @@ import (
 	//"github.com/bitly/go-nsq"
 	"errors"
 	"io"
-	"net/mail"
+	//"net/mail"
 	"sync"
 	"time"
 )
 
 type QMessage struct {
 	sync.Mutex
-	Id                      int64
-	Key                     string // identifier  -> store.Get(key)
-	MailFrom                string
-	AuthUser                string // Si il y a eu authetification SMTP contier le login/user sert pour le routage
-	ReturnPath              string
+	Id       int64
+	Key      string // identifier  -> store.Get(key)
+	MailFrom string
+	AuthUser string // Si il y a eu authetification SMTP contier le login/user sert pour le routage
+	//ReturnPath              string
 	RcptTo                  string
 	Host                    string
 	AddedAt                 time.Time
@@ -121,7 +121,7 @@ func QueueAddMessage(msg *message.Message, envelope message.Envelope, authUser s
 	}
 
 	// Retun Path
-	returnPath = envelope.MailFrom
+	//returnPath = envelope.MailFrom
 	/*returnPath := ""
 	// Exist ?
 	if msg.HaveHeader("return-path") {
@@ -161,10 +161,10 @@ func QueueAddMessage(msg *message.Message, envelope message.Envelope, authUser s
 	qmessages := []QMessage{}
 	for _, rcptTo := range envelope.RcptTo {
 		qm := QMessage{
-			Key:                 key,
-			AuthUser:            authUser,
-			MailFrom:            envelope.MailFrom,
-			ReturnPath:          returnPath,
+			Key:      key,
+			AuthUser: authUser,
+			MailFrom: envelope.MailFrom,
+			//ReturnPath:          returnPath,
 			RcptTo:              rcptTo,
 			Host:                message.GetHostFromAddress(rcptTo),
 			AddedAt:             time.Now(),

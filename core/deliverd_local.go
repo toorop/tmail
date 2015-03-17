@@ -24,12 +24,21 @@ func deliverLocal(d *delivery) {
 
 	msg.SetHeader("x-tmail-deliverd-id", d.id)
 	msg.SetHeader("x-tmail-msg-id", d.qMsg.Key)
+
+	// HERE Remove return path
+	msg.DelHeader("return-path")
+
 	*d.rawData, err = msg.GetRaw()
 	if err != nil {
 		d.dieTemp("unable to get raw message: " + err.Error())
 		return
 	}
+	// Recieved
 	*d.rawData = append([]byte("Received: tmail deliverd; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
+
+	// Return path
+	*d.rawData = append([]byte("Return-Path: "+d.qMsg.MailFrom+"\r\n"), *d.rawData...)
+
 	dataBuf := bytes.NewBuffer(*d.rawData)
 
 	cmd := exec.Command(scope.Cfg.GetDovecotLda(), "-d", d.qMsg.RcptTo)

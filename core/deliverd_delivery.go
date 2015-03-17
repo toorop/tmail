@@ -308,7 +308,7 @@ func (d *delivery) discard() {
 // bounce creates & enqueues a bounce message
 func (d *delivery) bounce(errMsg string) {
 	// If returnPath =="" -> double bounce -> discard
-	if d.qMsg.ReturnPath == "" {
+	if d.qMsg.MailFrom == "" {
 		scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " double bounce: discarding")
 		if err := d.qMsg.Delete(); err != nil {
 			scope.Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
@@ -320,7 +320,7 @@ func (d *delivery) bounce(errMsg string) {
 	}
 
 	// triple bounce
-	if d.qMsg.ReturnPath == "#@[]" {
+	if d.qMsg.MailFrom == "#@[]" {
 		scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " triple bounce: discarding")
 		if err := d.qMsg.Delete(); err != nil {
 			scope.Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
@@ -368,7 +368,7 @@ func (d *delivery) bounce(errMsg string) {
 		return
 	}
 	// enqueue
-	envelope := message.Envelope{"", []string{d.qMsg.ReturnPath}}
+	envelope := message.Envelope{"", []string{d.qMsg.MailFrom}}
 	message, err := message.New(&b)
 	if err != nil {
 		scope.Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
