@@ -21,42 +21,6 @@ type User struct {
 	Home        string // used by dovecot for soraing mailbox
 }
 
-// Get return an user by is login/passwd
-func UserGet(login, passwd string) (user *User, err error) {
-	user = &User{}
-	// check input
-	if len(login) == 0 || len(passwd) == 0 {
-		err := errors.New("login or passwd is empty")
-		return nil, err
-	}
-
-	err = scope.DB.Where("login = ?", login).Find(user).Error
-	if err != nil {
-		return nil, err
-	}
-	// Encoding passwd
-	//hashed, err := bcrypt.GenerateFromPassword([]byte(passwd), 10)
-	//log.Println(string(hashed), err)
-
-	// Check passwd
-	err = bcrypt.CompareHashAndPassword([]byte(user.Passwd), []byte(passwd))
-	return
-}
-
-// GetByLogin return an user from his login
-func UserGetByLogin(login string) (user *User, err error) {
-	user = &User{}
-	err = scope.DB.Where("login = ?", strings.ToLower(login)).Find(user).Error
-	return
-}
-
-// UserList return all user
-func UserList() (users []User, err error) {
-	users = []User{}
-	err = scope.DB.Find(&users).Error
-	return
-}
-
 // UserAdd add an user
 func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 	home := ""
@@ -77,6 +41,11 @@ func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 
 	// if we have to create mailbox, login must be a valid email address
 	if haveMailbox {
+		// check if dovecot is available
+		if !scope.Cfg.GetDovecotSupportEnabled() {
+			return errors.New("you must enable (and install) Dovecot support")
+		}
+
 		if _, err := mail.ParseAddress(login); err != nil {
 			return errors.New("'login' must be a valid email address")
 		}
@@ -136,6 +105,42 @@ func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 	}
 
 	return scope.DB.Save(&user).Error
+}
+
+// Get return an user by is login/passwd
+func UserGet(login, passwd string) (user *User, err error) {
+	user = &User{}
+	// check input
+	if len(login) == 0 || len(passwd) == 0 {
+		err := errors.New("login or passwd is empty")
+		return nil, err
+	}
+
+	err = scope.DB.Where("login = ?", login).Find(user).Error
+	if err != nil {
+		return nil, err
+	}
+	// Encoding passwd
+	//hashed, err := bcrypt.GenerateFromPassword([]byte(passwd), 10)
+	//log.Println(string(hashed), err)
+
+	// Check passwd
+	err = bcrypt.CompareHashAndPassword([]byte(user.Passwd), []byte(passwd))
+	return
+}
+
+// GetByLogin return an user from his login
+func UserGetByLogin(login string) (user *User, err error) {
+	user = &User{}
+	err = scope.DB.Where("login = ?", strings.ToLower(login)).Find(user).Error
+	return
+}
+
+// UserList return all user
+func UserList() (users []User, err error) {
+	users = []User{}
+	err = scope.DB.Find(&users).Error
+	return
 }
 
 // Del delete an user
