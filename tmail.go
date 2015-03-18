@@ -15,6 +15,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path"
 	"syscall"
@@ -65,6 +66,16 @@ func init() {
 			log.Fatalln("See you soon...")
 		}
 	}
+
+	// Dovecot support
+	if scope.Cfg.GetDovecotSupportEnabled() {
+		_, err := exec.LookPath(scope.Cfg.GetDovecotLda())
+		if err != nil {
+			log.Fatalln("Unable to find Dovecot LDA binary, checks your config poarameter TMAIL_DOVECOT_LDA ", err)
+		}
+
+	}
+
 }
 
 // MAIN

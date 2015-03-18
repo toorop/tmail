@@ -154,5 +154,11 @@ export TMAIL_DELIVERD_QUEUE_LIFETIME=168
 # Base path for users "home". Currently ysed to store mailboxes
 export TMAIL_USERS_HOME_BASE="/home/tmail/mailboxes"
 
+##
+# Dovecot
+
+# Enabled dovecot for local deliveries
+export TMAIL_DOVECOT_SUPPORT_ENABLED=false
+
 # Dovecot LDA path
 export TMAIL_DOVECOT_LDA="/usr/lib/dovecot/dovecot-lda"
