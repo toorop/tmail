@@ -19,10 +19,9 @@ var Rcpthost = cgCli.Command{
 			Usage:       "Add a rcpthost",
 			Description: "tmail rcpthost add HOSTNAME",
 			Flags: []cgCli.Flag{
-				cgCli.StringFlag{
+				cgCli.BoolFlag{
 					Name:  "local, l",
-					Value: "false",
-					Usage: "Set it to true if it's a remote host.",
+					Usage: "Set this flag if it's a remote host.",
 				},
 			},
 			Action: func(c *cgCli.Context) {

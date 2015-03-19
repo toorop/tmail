@@ -150,9 +150,10 @@ func FoldHeader(header string) string {
 		// espace
 		if c == 32 {
 			// si ce n'est pas l'espace qui suit le header
-			if spacesSeen != 1 {
+			if spacesSeen != 0 {
 				lastSpace = i
 			}
+			spacesSeen++
 		}
 		if headerLenght > 77 {
 			//if strings.HasPrefix(string(h), "Reference") {

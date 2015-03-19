@@ -55,12 +55,10 @@ func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 			return errors.New("'login' must be a valid email address")
 		}
 
-		// hostname must be in rcpthost && must be local
+		// rcptohost must be in rcpthost && must be local
 
 		// HERE
-
-		//var isLocal bool
-		err := scope.DB.Where("hostname = ? ", t[1]).Find(&RcptHost{}).Error
+		rcpthost, err := RcpthostGet(t[1])
 		if err != nil && err != gorm.RecordNotFound {
 			return err
 		}
@@ -73,8 +71,9 @@ func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 			if err != nil {
 				return err
 			}
+		} else if !rcpthost.IsLocal {
+			return errors.New("rcpthost " + t[1] + " is already handled by tmail but declared as remote destination")
 		}
-
 		// home = base/d/domain/u/user
 		home = scope.Cfg.GetUsersHomeBase() + "/" + string(t[1][0]) + "/" + t[1] + "/" + string(t[0][0]) + "/" + t[0]
 	}

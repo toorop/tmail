@@ -2,8 +2,8 @@ package core
 
 import (
 	"errors"
-	"github.com/toorop/tmail/scope"
 	"github.com/jinzhu/gorm"
+	"github.com/toorop/tmail/scope"
 	"strings"
 )
 
@@ -59,16 +59,16 @@ func RcpthostAdd(hostname string, isLocal bool) error {
 
 // DelRcptHost delete a hostname from rcpthosts list
 func RcpthostDel(hostname string) error {
-	var err error
+	//var err error
 	hostname = strings.ToLower(hostname)
 	// hostname exits ?
-	var count int
+	/*var count int
 	if err = scope.DB.Model(RcptHost{}).Where("hostname = ?", hostname).Count(&count).Error; err != nil {
 		return err
 	}
 	if count == 0 {
 		return errors.New("Hostname " + hostname + " doesn't exists.")
-	}
+	}*/
 	return scope.DB.Where("hostname = ?", hostname).Delete(&RcptHost{}).Error
 }
 
