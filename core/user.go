@@ -56,7 +56,10 @@ func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 		}
 
 		// hostname must be in rcpthost && must be local
-		var isLocal bool
+
+		// HERE
+
+		//var isLocal bool
 		err := scope.DB.Where("hostname = ? ", t[1]).Find(&RcptHost{}).Error
 		if err != nil && err != gorm.RecordNotFound {
 			return err
@@ -65,7 +68,7 @@ func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 		if !exists {
 			err = scope.DB.Save(&RcptHost{
 				Hostname: t[1],
-				IsLocal:  isLocal,
+				IsLocal:  true,
 			}).Error
 			if err != nil {
 				return err

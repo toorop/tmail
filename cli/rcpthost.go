@@ -6,8 +6,8 @@ package cli
 
 import (
 	"fmt"
-	"github.com/toorop/tmail/api"
 	cgCli "github.com/codegangsta/cli"
+	"github.com/toorop/tmail/api"
 )
 
 var Rcpthost = cgCli.Command{
@@ -21,8 +21,8 @@ var Rcpthost = cgCli.Command{
 			Flags: []cgCli.Flag{
 				cgCli.StringFlag{
 					Name:  "local, l",
-					Value: "true",
-					Usage: "Set it to false if it's a remote host.",
+					Value: "false",
+					Usage: "Set it to true if it's a remote host.",
 				},
 			},
 			Action: func(c *cgCli.Context) {

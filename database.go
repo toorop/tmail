@@ -73,7 +73,7 @@ func initDB(DB gorm.DB) error {
 			return errors.New("Unable to create relay_ok_ips - " + err.Error())
 		}
 		// Index
-		if err = DB.Model(&core.RelayIpOk{}).AddIndex("idx_relay_ok_ips_addr", "addr").Error; err != nil {
+		if err = DB.Model(&core.RelayIpOk{}).AddIndex("idx_relay_ok_ips_ip", "ip").Error; err != nil {
 			return errors.New("Unable to add index idx_rcpthots_domain on table relay_ok_ips - " + err.Error())
 		}
 	}

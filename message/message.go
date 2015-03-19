@@ -134,19 +134,25 @@ func FoldHeader(header string) string {
 	// remove \r & \n
 	header = strings.Replace(header, "\r", "", -1)
 	header = strings.Replace(header, "\n", "", -1)
+	header = strings.Replace(header, "\t", " ", -1)
 	if len(header) < 78 {
 		return header
 	}
 	lastCut := 0
 	lastSpace := 0
 	headerLenght := 0
+	spacesSeen := 0
 	h := []byte{}
 	bHeader := []byte(header)
+
 	for i, c := range bHeader {
 		headerLenght++
 		// espace
-		if c == 32 || c == 9 {
-			lastSpace = i
+		if c == 32 {
+			// si ce n'est pas l'espace qui suit le header
+			if spacesSeen != 1 {
+				lastSpace = i
+			}
 		}
 		if headerLenght > 77 {
 			//if strings.HasPrefix(string(h), "Reference") {
