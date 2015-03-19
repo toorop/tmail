@@ -50,7 +50,8 @@ type Config struct {
 		DeliverdRemoteTimeout int    `name:"deliverd_remote_timeout" default:"60"`
 		DeliverdQueueLifetime int    `name:"deliverd_queue_lifetime" default:"10080"`
 
-		UsersHomeBase string `name:"users_home_base" default:"/home"`
+		UsersHomeBase           string `name:"users_home_base" default:"/home"`
+		UserMailboxDefaultQuota string `name:"users_mailbox_default_quota" default:""`
 
 		DovecotLda            string `name:"dovecot_lda" default:""`
 		DovecotSupportEnabled bool   `name:"dovecot_support_enabled" default:"false"`
@@ -368,6 +369,13 @@ func (c *Config) GetUsersHomeBase() string {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.UsersHomeBase
+}
+
+// func GetUserMailboxDefaultQuota return the default mailbox quota
+func (c *Config) GetUserMailboxDefaultQuota() string {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.UserMailboxDefaultQuota
 }
 
 // GetDovecotSupportEnabled returns DovecotSupportEnabled

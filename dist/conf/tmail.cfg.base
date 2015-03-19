@@ -154,6 +154,10 @@ export TMAIL_DELIVERD_QUEUE_LIFETIME=168
 # Base path for users "home". Currently ysed to store mailboxes
 export TMAIL_USERS_HOME_BASE="/home/tmail/dist/mailboxes"
 
+# Default quota for user mailboxes in bytes (not bit)
+# eg: 1G, 100M, 100K, 10000000
+export TMAIL_USER_DEFAULT_MAILBOX_QUOTA="200M"
+
 ##
 # Dovecot
 

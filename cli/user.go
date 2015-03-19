@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"github.com/toorop/tmail/api"
 	cgCli "github.com/codegangsta/cli"
+	"github.com/toorop/tmail/api"
 )
 
 var User = cgCli.Command{
@@ -25,13 +25,18 @@ var User = cgCli.Command{
 					Name:  "relay, r",
 					Usage: "Authorise user to use server as SMTP relay.",
 				},
+				cgCli.StringFlag{
+					Name:  "quota, q",
+					Value: "",
+					Usage: "Mailbox quota in bytes (not bits). You can use K,M,G as unit. Eg: 10G mean a quota of 10GB",
+				},
 			},
 			Action: func(c *cgCli.Context) {
 				var err error
 				if len(c.Args()) < 2 {
 					cliDieBadArgs(c)
 				}
-				err = api.UserAdd(c.Args()[0], c.Args()[1], c.Bool("m"), c.Bool("r"))
+				err = api.UserAdd(c.Args()[0], c.Args()[1], c.String("q"), c.Bool("m"), c.Bool("r"))
 				cliHandleErr(err)
 				cliDieOk()
 			},

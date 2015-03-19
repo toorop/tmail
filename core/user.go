@@ -11,18 +11,19 @@ import (
 )
 
 type User struct {
-	Id          int64
-	Login       string `sql:"unique"`
-	Passwd      string `sql:"not null"`
-	DovePasswd  string `sql:"null"`                     // SHA512 passwd workaround (glibc on most linux flavor doesn't have bcrypt support)
-	Active      string `sql:"type:char(1);default:'Y'"` //rune `sql:"type:char(1);not null;default:'Y'`
-	AuthRelay   bool   `sql:"default:false"`            // authorization of relaying
-	HaveMailbox bool   `sql:"default:false"`
-	Home        string // used by dovecot for soraing mailbox
+	Id           int64
+	Login        string `sql:"unique"`
+	Passwd       string `sql:"not null"`
+	DovePasswd   string `sql:"null"`                     // SHA512 passwd workaround (glibc on most linux flavor doesn't have bcrypt support)
+	Active       string `sql:"type:char(1);default:'Y'"` //rune `sql:"type:char(1);not null;default:'Y'`
+	AuthRelay    bool   `sql:"default:false"`            // authorization of relaying
+	HaveMailbox  bool   `sql:"default:false"`
+	MailboxQuota string `sql:"null"`
+	Home         string // used by dovecot for soraing mailbox
 }
 
 // UserAdd add an user
-func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
+func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
 	home := ""
 	login = strings.ToLower(login)
 	// login must be < 257 char
@@ -55,9 +56,13 @@ func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 			return errors.New("'login' must be a valid email address")
 		}
 
-		// rcptohost must be in rcpthost && must be local
+		// Quota
+		if mbQuota == "" {
+			// get default
+			mbQuota = scope.Cfg.GetUserMailboxDefaultQuota()
+		}
 
-		// HERE
+		// rcptohost must be in rcpthost && must be local
 		rcpthost, err := RcpthostGet(t[1])
 		if err != nil && err != gorm.RecordNotFound {
 			return err
@@ -97,13 +102,14 @@ func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
 		return err
 	}
 	user := User{
-		Login:       login,
-		Passwd:      string(hashed[:]),
-		DovePasswd:  dovePasswd,
-		Active:      "Y",
-		AuthRelay:   authRelay,
-		HaveMailbox: haveMailbox,
-		Home:        home,
+		Login:        login,
+		Passwd:       string(hashed[:]),
+		DovePasswd:   dovePasswd,
+		Active:       "Y",
+		AuthRelay:    authRelay,
+		HaveMailbox:  haveMailbox,
+		MailboxQuota: mbQuota,
+		Home:         home,
 	}
 
 	return scope.DB.Save(&user).Error

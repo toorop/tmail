@@ -8,8 +8,8 @@ import (
 
 // USER
 // UserAdd add a new usere
-func UserAdd(login, passwd string, haveMailbox, authRelay bool) error {
-	return core.UserAdd(login, passwd, haveMailbox, authRelay)
+func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
+	return core.UserAdd(login, passwd, mbQuota, haveMailbox, authRelay)
 }
 
 // UserDel delete an user (keep his mailboxe)
