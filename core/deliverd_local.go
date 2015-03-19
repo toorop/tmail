@@ -36,6 +36,9 @@ func deliverLocal(d *delivery) {
 	// Recieved
 	*d.rawData = append([]byte("Received: tmail deliverd; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
 
+	// Delivered-To
+	*d.rawData = append([]byte("Delivered-To: "+d.qMsg.RcptTo+"\r\n"), *d.rawData...)
+
 	// Return path
 	*d.rawData = append([]byte("Return-Path: "+d.qMsg.MailFrom+"\r\n"), *d.rawData...)
 
