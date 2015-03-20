@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	"github.com/toorop/tmail/message"
+	//"github.com/toorop/tmail/message"
 	"github.com/toorop/tmail/scope"
 	"io"
 	"strings"
@@ -98,13 +98,13 @@ func deliverRemote(d *delivery) {
 	// - x-tmail-msg-id
 	// - received
 
-	msg, err := message.New(d.rawData)
+	/*msg, err := message.New(d.rawData)
 	if err != nil {
 		d.dieTemp(err.Error())
 		return
-	}
+	}*/
 
-	msg.SetHeader("x-tmail-deliverd-id", d.id)
+	/*msg.SetHeader("x-tmail-deliverd-id", d.id)
 	msg.SetHeader("x-tmail-msg-id", d.qMsg.Key)
 	*d.rawData, err = msg.GetRaw()
 	if err != nil {
@@ -112,6 +112,12 @@ func deliverRemote(d *delivery) {
 		return
 	}
 	*d.rawData = append([]byte("Received: tmail deliverd; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
+	*/
+
+	// Received
+	*d.rawData = append([]byte("Received: tmail deliverd remote "+d.id+"; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
+	*d.rawData = append([]byte("X-Tmail-MsgId: "+d.qMsg.Key+"\r\n"), *d.rawData...)
+
 	dataBuf := bytes.NewBuffer(*d.rawData)
 	_, err = io.Copy(dataPipe, dataBuf)
 	if err != nil {

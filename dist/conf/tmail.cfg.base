@@ -156,7 +156,7 @@ export TMAIL_USERS_HOME_BASE="/home/tmail/dist/mailboxes"
 
 # Default quota for user mailboxes in bytes (not bit)
 # eg: 1G, 100M, 100K, 10000000
-export TMAIL_USER_DEFAULT_MAILBOX_QUOTA="200M"
+export TMAIL_USERS_MAILBOX_DEFAULT_QUOTA="200M"
 
 ##
 # Dovecot

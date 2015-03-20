@@ -3,7 +3,7 @@ package core
 import (
 	"bytes"
 	"fmt"
-	"github.com/toorop/tmail/message"
+	//"github.com/toorop/tmail/message"
 	"github.com/toorop/tmail/scope"
 	"io"
 	"os/exec"
@@ -16,25 +16,18 @@ import (
 func deliverLocal(d *delivery) {
 	scope.Log.Info(fmt.Sprintf("delivery-local %s: starting new local delivery from %s to %s (msg id: %s)", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.Key))
 
-	msg, err := message.New(d.rawData)
-	if err != nil {
-		d.dieTemp(err.Error())
-		return
-	}
+	// Todo Remove return path
+	//msg.DelHeader("return-path")
 
-	msg.SetHeader("x-tmail-deliverd-id", d.id)
-	msg.SetHeader("x-tmail-msg-id", d.qMsg.Key)
-
-	// HERE Remove return path
-	msg.DelHeader("return-path")
-
-	*d.rawData, err = msg.GetRaw()
+	/**d.rawData, err = msg.GetRaw()
 	if err != nil {
 		d.dieTemp("unable to get raw message: " + err.Error())
 		return
-	}
-	// Recieved
-	*d.rawData = append([]byte("Received: tmail deliverd; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
+	}*/
+	// Received
+	*d.rawData = append([]byte("Received: tmail deliverd "+d.id+"; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
+
+	*d.rawData = append([]byte("X-Tmail-MsgId: "+d.qMsg.Key+"\r\n"), *d.rawData...)
 
 	// Delivered-To
 	*d.rawData = append([]byte("Delivered-To: "+d.qMsg.RcptTo+"\r\n"), *d.rawData...)

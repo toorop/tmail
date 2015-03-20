@@ -110,52 +110,26 @@ func QueueGetMessageById(id int64) (msg *QMessage, err error) {
 }
 
 // Add add a new mail in queue
-func QueueAddMessage(msg *message.Message, envelope message.Envelope, authUser string) (key string, err error) {
+func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string) (key string, err error) {
 	qStore, err := store.New(scope.Cfg.GetStoreDriver(), scope.Cfg.GetStoreSource())
 	if err != nil {
 		return
 	}
-	rawMess, err := msg.GetRaw()
+	/*rawMess, err := msg.GetRaw()
 	if err != nil {
 		return
-	}
-
-	// Retun Path
-	//returnPath = envelope.MailFrom
-	/*returnPath := ""
-	// Exist ?
-	if msg.HaveHeader("return-path") {
-		t, err := mail.ParseAddress(msg.GetHeader("return-path"))
-		if err != nil {
-			return "", err
-		}
-		returnPath = t.Address
-	} else {
-		returnPath = envelope.MailFrom
-
 	}*/
 
 	// generate key
 	hasher := sha1.New()
-	if _, err = io.Copy(hasher, bytes.NewReader(rawMess)); err != nil {
+	if _, err = io.Copy(hasher, bytes.NewReader(*rawMess)); err != nil {
 		return
 	}
 	key = fmt.Sprintf("%x", hasher.Sum(nil))
-	err = qStore.Put(key, bytes.NewReader(rawMess))
+	err = qStore.Put(key, bytes.NewReader(*rawMess))
 	if err != nil {
 		return
 	}
-
-	// init new producer
-	/*var producer *nsq.Producer
-	nsqCfg := nsq.NewConfig()
-	nsqCfg.UserAgent = "tmail.smtpd"
-
-	producer, err = nsq.NewProducer("127.0.0.1:4150", nsqCfg)
-	if err != nil {
-		return
-	}*/
-	//defer producer.Stop()
 
 	cloop := 0
 	qmessages := []QMessage{}

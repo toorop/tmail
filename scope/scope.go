@@ -2,13 +2,13 @@ package scope
 
 import (
 	"errors"
-	"github.com/toorop/tmail/config"
-	"github.com/toorop/tmail/logger"
 	"github.com/bitly/go-nsq"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/toorop/tmail/config"
+	"github.com/toorop/tmail/logger"
 )
 
 const (
@@ -16,6 +16,7 @@ const (
 )
 
 var (
+	Version          string
 	Cfg              *config.Config
 	DB               gorm.DB
 	Log              *logger.Logger

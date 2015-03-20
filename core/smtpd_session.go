@@ -573,7 +573,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	recieved += time.Now().Format(scope.Time822)
 
 	// tmail
-	recieved += fmt.Sprintf("; tmail\r\n")
+	recieved += fmt.Sprintf("; tmail " + scope.Version + "\r\n")
 	rawMessage = append([]byte(recieved), rawMessage...)
 	recieved = ""
 
@@ -581,7 +581,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 
 	// Transformer le mail en objet
 	//println(string(rawMessage))
-	message, err := message.New(&rawMessage)
+	/*message, err := message.New(&rawMessage)
 	if err != nil {
 		return
 	}
@@ -589,21 +589,23 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	// si pas de from
 	if !message.HaveHeader("from") {
 		message.AddHeader("from", s.envelope.MailFrom)
-	}
+	}*/
 
 	// On ajoute le uuid
 	//message.SetHeader("x-tmail-smtpd-sess-uuid", s.uuid)
-	message.AddHeader("X-Tmail-SmtpdSess-Uuid", s.uuid)
+	//message.AddHeader("X-Tmail-SmtpdSess-Uuid", s.uuid)
+	rawMessage = append([]byte("X-Tmail-SmtpdSess-Uuid: "+s.uuid+"\r\n"), rawMessage...)
 
 	// x-env-from
-	message.SetHeader("x-env-from", s.envelope.MailFrom)
+	//message.SetHeader("x-env-from", s.envelope.MailFrom)
+	rawMessage = append([]byte("X-Env-From: "+s.envelope.MailFrom+"\r\n"), rawMessage...)
 
 	// put message in queue
 	authUser := ""
 	if s.user != nil {
 		authUser = s.user.Login
 	}
-	id, err := QueueAddMessage(message, s.envelope, authUser)
+	id, err := QueueAddMessage(&rawMessage, s.envelope, authUser)
 	if err != nil {
 		s.logError("Unable to put message in queue -", err.Error())
 		s.out("451 temporary queue error")

@@ -33,6 +33,8 @@ func init() {
 		log.Fatalln(err)
 	}
 
+	scope.Version = TMAIL_VERSION
+
 	// Check local ip
 	/*if _, err = scope.Cfg.GetLocalIps(); err != nil {
 		log.Fatalln("bad config parameter TMAIL_DELIVERD_LOCAL_IPS", err.Error())
