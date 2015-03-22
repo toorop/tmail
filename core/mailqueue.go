@@ -45,7 +45,7 @@ func (q *QMessage) Delete() error {
 
 	// If there is no other reference in DB, remove raw message from store
 	var c uint
-	if err = scope.DB.Model(QMessage{}).Where("key = ?", q.Key).Count(&c).Error; err != nil {
+	if err = scope.DB.Model(QMessage{}).Where("`key` = ?", q.Key).Count(&c).Error; err != nil {
 		return err
 	}
 	if c != 0 {

@@ -25,7 +25,7 @@ func deliverLocal(d *delivery) {
 		return
 	}*/
 	// Received
-	*d.rawData = append([]byte("Received: tmail deliverd "+d.id+"; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
+	*d.rawData = append([]byte("Received: tmail deliverd local "+d.id+"; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
 
 	*d.rawData = append([]byte("X-Tmail-MsgId: "+d.qMsg.Key+"\r\n"), *d.rawData...)
 
