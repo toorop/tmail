@@ -1,8 +1,8 @@
 package core
 
 import (
-	"github.com/toorop/tmail/scope"
 	"github.com/bitly/go-nsq"
+	"github.com/toorop/tmail/scope"
 	"log"
 	"os"
 	"os/signal"
@@ -33,6 +33,11 @@ func LaunchDeliverd() {
 	consumer, err := nsq.NewConsumer("todeliver", "deliverd", cfg)
 	if err != nil {
 		log.Fatalln(err)
+	}
+	if scope.Cfg.GetDebugEnabled() {
+		consumer.SetLogger(scope.Log, 0)
+	} else {
+		consumer.SetLogger(scope.Log, 4)
 	}
 
 	// Bind handler

@@ -19,6 +19,9 @@ export TMAIL_CLUSTER_MODE_ENABLED=false
 # RAMDISK recommended
 export TMAIL_TEMPDIR="/dev/shm"
 
+# Where to log
+# "stdout" for logging toi stdout otherwise set a path to an *existing* directory
+export TMAIL_LOGPATH="stdout"
 
 ###
 # nsqd

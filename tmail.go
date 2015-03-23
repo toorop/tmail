@@ -116,10 +116,9 @@ func main() {
 			opts := nsqd.NewNSQDOptions()
 			// logs
 			//opts.Logger = log.New(os.Stderr, "[nsqd] ", log.Ldate|log.Ltime|log.Lmicroseconds)
-			hostname, err := os.Hostname()
 			opts.Logger = log.New(ioutil.Discard, "", 0)
-			if scope.Cfg.GetNsqdEnableLogging() {
-				opts.Logger = log.New(os.Stdout, hostname+"(127.0.0.1) - NSQD :", log.Ldate|log.Ltime|log.Lmicroseconds)
+			if scope.Cfg.GetDebugEnabled() {
+				opts.Logger = scope.Log
 			}
 			opts.Verbose = scope.Cfg.GetDebugEnabled() // verbosity
 			opts.DataPath = core.GetBasePath() + "/nsq"
@@ -153,7 +152,7 @@ func main() {
 
 			nsqd := nsqd.NewNSQD(opts)
 			nsqd.LoadMetadata()
-			err = nsqd.PersistMetadata()
+			err := nsqd.PersistMetadata()
 			if err != nil {
 				log.Fatalf("ERROR: failed to persist metadata - %s", err.Error())
 			}

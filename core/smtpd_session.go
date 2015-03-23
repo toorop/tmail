@@ -47,7 +47,8 @@ func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, 
 		return
 	}
 	sss.conn = conn
-	sss.logger = logger.New(scope.Cfg.GetDebugEnabled())
+	sss.logger = scope.Log
+	//sss.logger = logger.New(scope.Cfg.GetDebugEnabled())
 	sss.secured = secured
 	// timeout
 	sss.exitasap = make(chan int, 1)

@@ -2,8 +2,10 @@ package logger
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"path"
 	"runtime/debug"
 )
 
@@ -17,16 +19,27 @@ type Logger struct {
 	trace        *log.Logger
 }
 
-func New(debugEnabled bool) *Logger {
-	hostname, _ := os.Hostname()
+func New(logPath string, debugEnabled bool) (*Logger, error) {
+	var err error
+	var out io.Writer
+	if logPath == "stdout" {
+		out = os.Stdout
+	} else {
+		file := path.Join(logPath, "current.log")
+		out, err = os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			return nil, err
+		}
+	}
 
+	hostname, _ := os.Hostname()
 	return &Logger{
 		debugEnabled: debugEnabled,
-		debug:        log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lmicroseconds),
-		info:         log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lmicroseconds),
-		err:          log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lmicroseconds),
-		trace:        log.New(os.Stdout, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lshortfile),
-	}
+		debug:        log.New(out, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lmicroseconds),
+		info:         log.New(out, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lmicroseconds),
+		err:          log.New(out, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lmicroseconds),
+		trace:        log.New(out, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lshortfile),
+	}, nil
 }
 
 func (l *Logger) Debug(v ...interface{}) {
@@ -64,4 +77,15 @@ func (l *Logger) Trace(v ...interface{}) {
 	}
 	msg += "\r\nStack: \r\n" + fmt.Sprintf("%s", stack)
 	l.trace.Println(msg)
+}
+
+// nsq interface
+func (l *Logger) Output(calldepth int, s string) error {
+	l.Debug(s)
+	return nil
+}
+
+// gorm insterface
+func (l *Logger) Print(v ...interface{}) {
+	l.Debug(v)
 }

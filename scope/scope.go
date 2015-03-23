@@ -33,7 +33,10 @@ func Init() (err error) {
 
 	// logger
 	// Logger
-	Log = logger.New(Cfg.GetDebugEnabled())
+	Log, err = logger.New(Cfg.GetLogPath(), Cfg.GetDebugEnabled())
+	if err != nil {
+		return
+	}
 
 	// Init DB
 	// Init DB
@@ -41,6 +44,7 @@ func Init() (err error) {
 	if err != nil {
 		return
 	}
+	DB.SetLogger(Log)
 	DB.LogMode(Cfg.GetDebugEnabled())
 
 	// ping
