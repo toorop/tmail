@@ -38,13 +38,13 @@ func (d *delivery) processMsg() {
 	// Recover on panic
 	defer func() {
 		if err := recover(); err != nil {
-			scope.Log.Error(fmt.Sprintf("deliverd-remote %s : PANIC \r\n %s \r\n %s", d.id, err, debug.Stack()))
+			scope.Log.Error(fmt.Sprintf("deliverd %s : PANIC \r\n %s \r\n %s", d.id, err, debug.Stack()))
 		}
 	}()
 
 	// decode message from json
 	if err = json.Unmarshal([]byte(d.nsqMsg.Body), d.qMsg); err != nil {
-		scope.Log.Error("deliverd-remote: unable to parse nsq message - " + err.Error())
+		scope.Log.Error("deliverd: unable to parse nsq message - " + err.Error())
 		// TODO
 		// in this case :
 		// on expire le message de la queue par contre on ne
@@ -140,7 +140,7 @@ func (d *delivery) processMsg() {
 }
 
 func (d *delivery) dieOk() {
-	scope.Log.Info("deliverd-remote " + d.id + ": success.")
+	scope.Log.Info("deliverd " + d.id + ": success.")
 	if err := d.qMsg.Delete(); err != nil {
 		scope.Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
 	}
