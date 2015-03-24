@@ -19,5 +19,5 @@ zip -r tmail.zip dist/tmail
 zip -r tmail.zip dist/tmail32
 
 # Sync
-rsync -vvv tmail.zip root@toorop.fr:/srv/ftp/softs/tmail/
+rsync -vvv tmail.zip root@toorop.fr:/srv/ftp/softs/tmailDev/
 

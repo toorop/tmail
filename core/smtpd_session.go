@@ -429,6 +429,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 			}
 			if ch[0] == CR {
 				state = 4
+				rawMessage = append(rawMessage, ch[0])
+				dataBytes++
 				continue
 			}
 
@@ -446,6 +448,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 			// "\r"
 			if ch[0] == CR {
 				state = 4
+				rawMessage = append(rawMessage, ch[0])
+				dataBytes++
 				continue
 			}
 			state = 0
@@ -458,6 +462,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 			}
 			if ch[0] == CR {
 				state = 3
+				rawMessage = append(rawMessage, ch[0])
+				dataBytes++
 				continue
 			}
 			state = 0
@@ -466,13 +472,17 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		case 3:
 			if ch[0] == LF {
 				doLoop = false
+				rawMessage = append(rawMessage, ch[0])
+				dataBytes++
 				continue
 			}
-			rawMessage = append(rawMessage, 46)
-			rawMessage = append(rawMessage, 10)
+			//rawMessage = append(rawMessage, 46)
+			//rawMessage = append(rawMessage, 10)
 
 			if ch[0] == CR {
 				state = 4
+				rawMessage = append(rawMessage, ch[0])
+				dataBytes++
 				continue
 			}
 			state = 0
@@ -532,10 +542,17 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 			return err
 		}
 	}
+
+	// Message-ID
+	HeaderMessageId := message.RawGetMessageId(&rawMessage)
+	if len(HeaderMessageId) == 0 {
+		HeaderMessageId = []byte(fmt.Sprintf("%d.%s@%s", time.Now().UnixNano(), s.uuid, scope.Cfg.GetMe()))
+		rawMessage = append([]byte(fmt.Sprintf("Message-ID: %s\r\n", HeaderMessageId)), rawMessage...)
+
+	}
+	s.log("Message-ID:", string(HeaderMessageId))
 	// recieved
 	// Add recieved header
-	// Received: from 4.mxout.protecmail.com (91.121.228.128)
-	// by mail.protecmail.com with ESMTPS (RC4-SHA encrypted); 18 Sep 2014 05:50:17 -0000
 	remoteIp := strings.Split(s.conn.RemoteAddr().String(), ":")[0]
 	remoteHost := "no reverse"
 	remoteHosts, err := net.LookupAddr(remoteIp)
