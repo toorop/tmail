@@ -93,12 +93,12 @@ func (s *smtpServerSession) out(msg string) {
 
 // log helper for INFO log
 func (s *smtpServerSession) log(msg ...string) {
-	s.logger.Info(s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "), "-", s.uuid)
+	s.logger.Info("smtpd ", s.uuid, "-", s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
 
 // logError is a log helper for ERROR logs
 func (s *smtpServerSession) logError(msg ...string) {
-	s.logger.Error(s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "), "-", s.uuid)
+	s.logger.Error("smtpd ", s.uuid, "-", s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
 
 // logError is a log helper for error logs
@@ -106,7 +106,7 @@ func (s *smtpServerSession) logDebug(msg ...string) {
 	if !scope.Cfg.GetDebugEnabled() {
 		return
 	}
-	s.logger.Debug(s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "), "-", s.uuid)
+	s.logger.Debug("smtpd -", s.uuid, "-", s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
 
 // LF withour CR
@@ -135,21 +135,29 @@ func (s *smtpServerSession) smtpGreeting() {
 	// Todo AS: verifier si il y a des data dans le buffer
 	// Todo desactiver server signature en option
 	// dans le cas ou l'on refuse la transaction on doit répondre par un 554 et attendre le quit
-	s.out(fmt.Sprintf("220 %s  tmail ESMTP %s", scope.Cfg.GetMe(), s.uuid))
+	s.log("starting new transaction")
+	s.out(fmt.Sprintf("220 %s  tmail V %s ESMTP %s", scope.Cfg.GetMe(), scope.Version, s.uuid))
 	//fmt.Println(s.conn.clientProtocol)
 }
 
 // HELO
 func (s *smtpServerSession) smtpHelo(msg []string) {
 	// Todo Verifier si il y a des data dans le buffer
-	s.helo = strings.Join(msg, " ")
+	s.helo = ""
+	if len(msg) > 1 {
+		s.helo = strings.Join(msg[1:], " ")
+	}
 	s.out(fmt.Sprintf("250 %s", scope.Cfg.GetMe()))
+	s.log("remote greets as", s.helo)
 }
 
 // EHLO
 func (s *smtpServerSession) smtpEhlo(msg []string) {
 	// verifier le buffer
-	s.helo = strings.Join(msg, " ")
+	s.helo = ""
+	if len(msg) > 1 {
+		s.helo = strings.Join(msg[1:], " ")
+	}
 	s.out(fmt.Sprintf("250-%s", scope.Cfg.GetMe()))
 
 	// Extensions
@@ -161,6 +169,8 @@ func (s *smtpServerSession) smtpEhlo(msg []string) {
 
 	// STARTTLS
 	s.out("250 STARTTLS")
+
+	s.log("remote greets as", s.helo)
 
 }
 
@@ -176,7 +186,7 @@ func (s *smtpServerSession) smtpMailFrom(msg []string) {
 	s.reset()
 
 	// from ?
-	if len(msg) == 1 || !strings.HasPrefix(msg[1], "from:") {
+	if len(msg) == 1 || !strings.HasPrefix(strings.ToLower(msg[1]), "from:") {
 		s.log(fmt.Sprintf("MAIL FROM - Bad syntax : %s ", strings.Join(msg, " ")))
 		s.out("501 5.5.4 Syntax: MAIL FROM:<address>")
 		return
@@ -204,7 +214,6 @@ func (s *smtpServerSession) smtpMailFrom(msg []string) {
 
 	l := len(s.envelope.MailFrom)
 	if l > 0 { // 0 -> null reverse path (bounce)
-
 		if l > 254 { // semi arbitrary (local part must/should be < 64 & domain < 255)
 			s.log(fmt.Sprintf("MAIL FROM - Reverse path too long : %s ", strings.Join(msg, " ")))
 			s.out(fmt.Sprintf("550 email %s must be less than 255 char", s.envelope.MailFrom))
@@ -232,7 +241,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 		return
 	}
 
-	if len(msg) == 1 || !strings.HasPrefix(msg[1], "to:") {
+	if len(msg) == 1 || !strings.HasPrefix(strings.ToLower(msg[1]), "to:") {
 		s.log(fmt.Sprintf("RCPT TO - Bad syntax : %s ", strings.Join(msg, " ")))
 		s.out("501 5.5.4 Syntax: RCPT TO:<address>")
 		return
@@ -269,10 +278,12 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 		s.out("501 5.5.4 Bad email format")
 		return
 	}
-
+	localPart := t[0]
+	domainPart := strings.ToLower(t[1])
+	rcptto = localPart + "@" + domainPart
 	// check rcpthost
 	if !relay {
-		rcpthost, err := RcpthostGet(t[1])
+		rcpthost, err := RcpthostGet(domainPart)
 		if err != nil && err != gorm.RecordNotFound {
 			s.out("454 oops, problem with relay access (#4.3.0)")
 			s.log("ERROR relay access queriyng for rcpthost: " + err.Error())
@@ -286,7 +297,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 			if rcpthost.IsLocal {
 				s.logDebug("Le domaine est local")
 				// check destination
-				exists, err := IsValidLocalRcpt(rcptto)
+				exists, err := IsValidLocalRcpt(strings.ToLower(strings.ToLower(rcptto)))
 				if err != nil {
 					s.out("454 oops, problem with relay access (#4.3.0)")
 					s.log("ERROR relay access checking validity of local rpctto " + err.Error())
@@ -294,7 +305,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 				}
 				if !exists {
 					s.out("551 Sorry, no mailbox here by that name. (#5.1.1)")
-					s.log("No mailbox here by that name: " + rcptto + " IP: " + s.conn.RemoteAddr().String() + " MAIL FROM: " + s.envelope.MailFrom + " RCPT TO: " + rcptto)
+					s.log("No mailbox here by that name: " + rcptto)
 					s.exitAsap()
 					return
 				}
@@ -629,7 +640,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		s.out("451 temporary queue error")
 		return nil
 	}
-	s.log("message queued as ", id)
+	s.log("message queued as", id)
 	s.out(fmt.Sprintf("250 2.0.0 Ok: queued %s", id))
 	return
 }
@@ -794,7 +805,7 @@ func (s *smtpServerSession) handle() {
 			_, error := s.conn.Read(buffer)
 			if error != nil {
 				if error.Error() == "EOF" {
-					s.log(s.conn.RemoteAddr().String(), "- Client send EOF")
+					s.logDebug(s.conn.RemoteAddr().String(), "- Client send EOF")
 				} else if !strings.Contains(error.Error(), "use of closed network connection") { // timeout
 					s.logError("Client s.connection error: ", error.Error())
 				}
@@ -814,10 +825,10 @@ func (s *smtpServerSession) handle() {
 				var rmsg string
 				strMsg := strings.TrimSpace(string(msg))
 				s.logDebug("<", strMsg)
-				splittedMsg := strings.Split(strings.ToLower(strMsg), " ")
+				splittedMsg := strings.Split(strMsg, " ")
 				//TRACE.Println(splittedMsg)
 				// get command, first word
-				verb := splittedMsg[0]
+				verb := strings.ToLower(splittedMsg[0])
 				switch verb {
 
 				default:

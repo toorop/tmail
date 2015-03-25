@@ -54,7 +54,7 @@ func (d *delivery) processMsg() {
 		return
 	}
 
-	scope.Log.Info(fmt.Sprintf("deliverd %s: starting new delivery from %s to %s (msg id: %s)", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.Key))
+	scope.Log.Info(fmt.Sprintf("deliverd %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
 
 	// Update qMessage from db (check if exist)
 	if err = d.qMsg.UpdateFromDb(); err != nil {
@@ -140,7 +140,7 @@ func (d *delivery) processMsg() {
 }
 
 func (d *delivery) dieOk() {
-	scope.Log.Info("deliverd " + d.id + ": success.")
+	scope.Log.Info("deliverd " + d.id + ": success")
 	if err := d.qMsg.Delete(); err != nil {
 		scope.Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
 	}

@@ -20,12 +20,13 @@ import (
 
 type QMessage struct {
 	sync.Mutex
-	Id       int64
-	Key      string // identifier  -> store.Get(key)
-	MailFrom string
-	AuthUser string // Si il y a eu authetification SMTP contier le login/user sert pour le routage
-	//ReturnPath              string
+	Id                      int64
+	Uuid                    string
+	Key                     string // identifier  -> store.Get(key) - hash of msg
+	MailFrom                string
+	AuthUser                string // Si il y a eu authetification SMTP contier le login/user sert pour le routage
 	RcptTo                  string
+	MessageId               string
 	Host                    string
 	AddedAt                 time.Time
 	NextDeliveryScheduledAt time.Time
@@ -110,7 +111,7 @@ func QueueGetMessageById(id int64) (msg *QMessage, err error) {
 }
 
 // Add add a new mail in queue
-func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string) (key string, err error) {
+func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string) (uuid string, err error) {
 	qStore, err := store.New(scope.Cfg.GetStoreDriver(), scope.Cfg.GetStoreSource())
 	if err != nil {
 		return
@@ -125,21 +126,29 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 	if _, err = io.Copy(hasher, bytes.NewReader(*rawMess)); err != nil {
 		return
 	}
-	key = fmt.Sprintf("%x", hasher.Sum(nil))
+	key := fmt.Sprintf("%x", hasher.Sum(nil))
 	err = qStore.Put(key, bytes.NewReader(*rawMess))
 	if err != nil {
 		return
 	}
 
+	uuid, err = NewUUID()
+	if err != nil {
+		return
+	}
+
+	messageId := message.RawGetMessageId(rawMess)
+
 	cloop := 0
 	qmessages := []QMessage{}
 	for _, rcptTo := range envelope.RcptTo {
 		qm := QMessage{
-			Key:      key,
-			AuthUser: authUser,
-			MailFrom: envelope.MailFrom,
-			//ReturnPath:          returnPath,
+			Uuid:                uuid,
+			Key:                 key,
+			AuthUser:            authUser,
+			MailFrom:            envelope.MailFrom,
 			RcptTo:              rcptTo,
+			MessageId:           string(messageId),
 			Host:                message.GetHostFromAddress(rcptTo),
 			AddedAt:             time.Now(),
 			Status:              0,
@@ -156,6 +165,7 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 			return
 		}
 		cloop++
+		fmt.Println(qm.Id)
 		qmessages = append(qmessages, qm)
 	}
 

@@ -116,7 +116,7 @@ func deliverRemote(d *delivery) {
 
 	// Received
 	*d.rawData = append([]byte("Received: tmail deliverd remote "+d.id+"; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
-	*d.rawData = append([]byte("X-Tmail-MsgId: "+d.qMsg.Key+"\r\n"), *d.rawData...)
+	//*d.rawData = append([]byte("X-Tmail-MsgId: "+d.qMsg.Key+"\r\n"), *d.rawData...)
 
 	dataBuf := bytes.NewBuffer(*d.rawData)
 	_, err = io.Copy(dataPipe, dataBuf)
