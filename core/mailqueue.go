@@ -165,7 +165,6 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 			return
 		}
 		cloop++
-		fmt.Println(qm.Id)
 		qmessages = append(qmessages, qm)
 	}
 

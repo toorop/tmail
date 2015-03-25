@@ -64,6 +64,12 @@ func Init() (err error) {
 func initMailQueueProducer() (err error) {
 	nsqCfg := nsq.NewConfig()
 	nsqCfg.UserAgent = "tmail.queue"
+
 	NsqQueueProducer, err = nsq.NewProducer("127.0.0.1:4150", nsqCfg)
+	if Cfg.GetDebugEnabled() {
+		NsqQueueProducer.SetLogger(Log, 0)
+	} else {
+		NsqQueueProducer.SetLogger(Log, 4)
+	}
 	return err
 }

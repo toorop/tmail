@@ -14,7 +14,7 @@ import (
 
 // deliverLocal handle local delivery
 func deliverLocal(d *delivery) {
-	scope.Log.Info(fmt.Sprintf("delivery-local %s: starting new local delivery from %s to %s (msg id: %s)", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.Key))
+	scope.Log.Info(fmt.Sprintf("delivery-local %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
 
 	// Todo Remove return path
 	//msg.DelHeader("return-path")
@@ -27,7 +27,7 @@ func deliverLocal(d *delivery) {
 	// Received
 	*d.rawData = append([]byte("Received: tmail deliverd local "+d.id+"; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
 
-	*d.rawData = append([]byte("X-Tmail-MsgId: "+d.qMsg.Key+"\r\n"), *d.rawData...)
+	//*d.rawData = append([]byte("X-Tmail-MsgId: "+d.qMsg.Key+"\r\n"), *d.rawData...)
 
 	// Delivered-To
 	*d.rawData = append([]byte("Delivered-To: "+d.qMsg.RcptTo+"\r\n"), *d.rawData...)

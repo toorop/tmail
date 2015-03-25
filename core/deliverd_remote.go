@@ -12,6 +12,8 @@ import (
 )
 
 func deliverRemote(d *delivery) {
+	scope.Log.Info(fmt.Sprintf("delivery-remote %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
+
 	// Get route
 	routes, err := getRoutes(d.qMsg.MailFrom, d.qMsg.Host, d.qMsg.AuthUser)
 	scope.Log.Debug("deliverd-remote: ", routes, err)
@@ -80,7 +82,7 @@ func deliverRemote(d *delivery) {
 
 	// RCPT TO
 	if err = c.Rcpt(d.qMsg.RcptTo); err != nil {
-		d.handleSmtpError(err.Error())
+		d.handleSmtpError(err.Error(), c.RemoteIP)
 		return
 	}
 
@@ -88,7 +90,7 @@ func deliverRemote(d *delivery) {
 	dataPipe, err := c.Data()
 
 	if err != nil {
-		d.handleSmtpError(err.Error())
+		d.handleSmtpError(err.Error(), c.RemoteIP)
 		return
 	}
 	// TODO one day: check if the size returned by copy is the same as mail size
@@ -138,7 +140,7 @@ func deliverRemote(d *delivery) {
 	// Bye
 	err = c.Close()
 	if err != nil {
-		d.handleSmtpError(err.Error())
+		d.handleSmtpError(err.Error(), c.RemoteIP)
 		return
 	}
 	d.dieOk()

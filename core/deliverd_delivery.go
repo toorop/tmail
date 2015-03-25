@@ -54,8 +54,6 @@ func (d *delivery) processMsg() {
 		return
 	}
 
-	scope.Log.Info(fmt.Sprintf("deliverd %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
-
 	// Update qMessage from db (check if exist)
 	if err = d.qMsg.UpdateFromDb(); err != nil {
 		// si on ne le trouve pas en DB il y a de forte chance pour que le message ait déja
@@ -291,15 +289,15 @@ func (d *delivery) requeue(newStatus ...uint32) {
 }
 
 // handleSmtpError handles SMTP error response
-func (d *delivery) handleSmtpError(smtpErr string) {
+func (d *delivery) handleSmtpError(smtpErr, remoteIp string) {
 	smtpResponse, err := parseSmtpResponse(smtpErr)
 	if err != nil { // invalid smtp response
 		d.dieTemp(err.Error())
 	}
 	if smtpResponse.Code > 499 {
-		d.diePerm(smtpResponse.Msg)
+		d.diePerm("remote " + remoteIp + " reply: " + smtpResponse.Msg)
 	} else {
-		d.dieTemp(smtpResponse.Msg)
+		d.dieTemp("remote " + remoteIp + " reply: " + smtpResponse.Msg)
 	}
 }
 
