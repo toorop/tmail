@@ -589,7 +589,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	}
 
 	// local
-	recieved += fmt.Sprintf("\n  by %s (%s)", localIp, localHost)
+	recieved += fmt.Sprintf("\n\t  by %s (%s)", localIp, localHost)
 
 	// Proto
 	if s.secured {
@@ -602,7 +602,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	recieved += time.Now().Format(scope.Time822)
 
 	// tmail
-	recieved += fmt.Sprintf("; tmail " + scope.Version + "\r\n")
+	recieved += "; tmail " + scope.Version
+	recieved += "\n\t; " + s.uuid + "\r\n"
 	rawMessage = append([]byte(recieved), rawMessage...)
 	recieved = ""
 
@@ -623,7 +624,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	// On ajoute le uuid
 	//message.SetHeader("x-tmail-smtpd-sess-uuid", s.uuid)
 	//message.AddHeader("X-Tmail-SmtpdSess-Uuid", s.uuid)
-	rawMessage = append([]byte("X-Tmail-SmtpdSess-Uuid: "+s.uuid+"\r\n"), rawMessage...)
+	//rawMessage = append([]byte("X-Tmail-SmtpdSess-Uuid: "+s.uuid+"\r\n"), rawMessage...)
 
 	// x-env-from
 	//message.SetHeader("x-env-from", s.envelope.MailFrom)
@@ -777,7 +778,17 @@ func (s *smtpServerSession) smtpAuth(rawMsg string) {
 	s.out("235 ok, go ahead (#2.0.0)")
 }
 
-// RELAY AUTH
+// RSET SMTP ahandler
+func (s *smtpServerSession) rset() {
+	s.reset()
+	s.out("250 2.0.0 ok")
+}
+
+// NOOP SMTP handler
+func (s *smtpServerSession) noop() {
+	s.resetTimeout()
+	s.out("250 2.0.0 ok")
+}
 
 // Handle SMTP session
 func (s *smtpServerSession) handle() {
@@ -862,6 +873,8 @@ func (s *smtpServerSession) handle() {
 					s.smtpAuth(strMsg)
 				case "rset":
 					s.reset()
+				case "noop":
+					s.noop()
 				case "quit":
 					s.smtpQuit()
 				}
