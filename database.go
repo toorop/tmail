@@ -88,9 +88,9 @@ func initDB(DB gorm.DB) error {
 			return errors.New("Unable to add index idx_rcpthots_domain on table queued_messages - " + err.Error())
 		}*/
 
-		if err = DB.Model(&core.QMessage{}).AddUniqueIndex("uidx_key", "key").Error; err != nil {
-			return errors.New("Unable to add unique index uidx_key on table queued_messages - " + err.Error())
-		}
+		/*if err = DB.Model(&core.QMessage{}).AddIndex("uidx_key", "key").Error; err != nil {
+			return errors.New("Unable to add index uidx_key on table queued_messages - " + err.Error())
+		}*/
 	}
 	// deliverd.route
 	if !DB.HasTable(&core.Route{}) {

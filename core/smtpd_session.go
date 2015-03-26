@@ -833,7 +833,7 @@ func (s *smtpServerSession) handle() {
 
 				default:
 					rmsg = "502 unimplemented (#5.5.1)"
-					s.logError("Unimplemented command from client:", rmsg)
+					s.logError("Unimplemented command from client:", strMsg)
 					s.out(rmsg)
 				case "helo":
 					s.smtpHelo(splittedMsg)
@@ -860,6 +860,8 @@ func (s *smtpServerSession) handle() {
 					s.smtpStartTls()
 				case "auth":
 					s.smtpAuth(strMsg)
+				case "rset":
+					s.reset()
 				case "quit":
 					s.smtpQuit()
 				}
