@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/toorop/tmail/core"
 	//"github.com/toorop/tmail/deliverd"
+	"github.com/toorop/tmail/rest"
 	"github.com/toorop/tmail/scanner"
 	"github.com/toorop/tmail/scope"
 	//"github.com/toorop/tmail/smtpd"
@@ -180,6 +181,9 @@ func main() {
 			// deliverd
 			//deliverd.Scope = scope
 			go core.LaunchDeliverd()
+
+			// HTTP REST server
+			go rest.LanchServer()
 
 			<-sigChan
 			scope.Log.Info("Exiting...")

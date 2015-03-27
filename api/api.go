@@ -7,6 +7,12 @@ import (
 )
 
 // USER
+
+// UserGetByLoging returns an User by his login
+func UserGetByLogin(login string) (user *core.User, err error) {
+	return core.UserGetByLogin(login)
+}
+
 // UserAdd add a new usere
 func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
 	return core.UserAdd(login, passwd, mbQuota, haveMailbox, authRelay)

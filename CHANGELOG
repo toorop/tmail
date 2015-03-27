@@ -1,3 +1,13 @@
+V 0.0.5
+	- Log to file
+	- Improve log
+	- Case sensitivity on local part
+	- add RSET and NOOP SMTP verbs
+
+v 0.0.4
+	- Local deliveries
+	- Dovecot support
+
 v 0.0.3
 	- Bugfix: MySQL Datetime to Golang time.Time
 	- BugFix: Optimise/fix queries for Mysql
