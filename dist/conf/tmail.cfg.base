@@ -20,7 +20,7 @@ export TMAIL_CLUSTER_MODE_ENABLED=false
 export TMAIL_TEMPDIR="/dev/shm"
 
 # Where to log
-# "stdout" for logging toi stdout otherwise set a path to an *existing* directory
+# "stdout" for logging too stdout otherwise set a path to an *existing* directory
 export TMAIL_LOGPATH="stdout"
 
 ###
@@ -160,6 +160,16 @@ export TMAIL_USERS_HOME_BASE="/home/tmail/dist/mailboxes"
 # Default quota for user mailboxes in bytes (not bit)
 # eg: 1G, 100M, 100K, 10000000
 export TMAIL_USERS_MAILBOX_DEFAULT_QUOTA="200M"
+
+##
+# HTTP REST server
+
+# Launch REST server
+export TMAIL_REST_SERVER_LAUNCH=false
+
+# REST server port
+export TMAIL_REST_SERVER_PORT=8080
+
 
 ##
 # Dovecot

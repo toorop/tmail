@@ -25,7 +25,7 @@ import (
 
 const (
 	// TMAIL_VERSION version of tmail
-	TMAIL_VERSION = "0.0.4"
+	TMAIL_VERSION = "0.0.5"
 )
 
 func init() {
@@ -183,7 +183,9 @@ func main() {
 			go core.LaunchDeliverd()
 
 			// HTTP REST server
-			go rest.LanchServer()
+			if scope.Cfg.GetRestServerLaunch() {
+				go rest.LanchServer()
+			}
 
 			<-sigChan
 			scope.Log.Info("Exiting...")

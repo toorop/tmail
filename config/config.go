@@ -51,6 +51,10 @@ type Config struct {
 		DeliverdRemoteTimeout int    `name:"deliverd_remote_timeout" default:"60"`
 		DeliverdQueueLifetime int    `name:"deliverd_queue_lifetime" default:"10080"`
 
+		LaunchRestServer bool   `name:"rest_server_launch" default:"false"`
+		RestServerIp     string `name:"rest_server_ip" default:"127.0.0.1"`
+		RestServerPort   int    `name:"rest_server_port" default:"8080"`
+
 		UsersHomeBase           string `name:"users_home_base" default:"/home"`
 		UserMailboxDefaultQuota string `name:"users_mailbox_default_quota" default:""`
 
@@ -307,6 +311,29 @@ func (c *Config) GetNSQLookupdHttpAddresses() (addr []string) {
 		addr = append(addr, a)
 	}
 	return
+}
+
+// REST server
+
+// GetRestServerLaunch return true if REST server must be launched
+func (c *Config) GetRestServerLaunch() bool {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.LaunchRestServer
+}
+
+// GetRestServerIP return the ip that the REST server should listen on
+func (c *Config) GetRestServerIp() string {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.RestServerIp
+}
+
+// GetRestServerPort return the port that the REST server should listen on
+func (c *Config) GetRestServerPort() int {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.RestServerPort
 }
 
 // deliverd

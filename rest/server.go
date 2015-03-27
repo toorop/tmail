@@ -6,6 +6,7 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"github.com/toorop/tmail/api"
+	"github.com/toorop/tmail/scope"
 	"net/http"
 )
 
@@ -55,5 +56,5 @@ func LanchServer() {
 
 	n := negroni.New(negroni.NewRecovery(), NewLogger())
 	n.UseHandler(router)
-	n.Run(":8080")
+	n.Run(fmt.Sprintf("%s:%d", scope.Cfg.GetRestServerIp(), scope.Cfg.GetRestServerPort()))
 }
