@@ -54,6 +54,9 @@ type Config struct {
 		LaunchRestServer bool   `name:"rest_server_launch" default:"false"`
 		RestServerIp     string `name:"rest_server_ip" default:"127.0.0.1"`
 		RestServerPort   int    `name:"rest_server_port" default:"8080"`
+		RestServerIsTls  bool   `name:"rest_server_is_tls" default:"false"`
+		RestServerLogin  string `name:"rest_server_login" default:""`
+		RestServerPasswd string `name:"rest_server_passwd" default:""`
 
 		UsersHomeBase           string `name:"users_home_base" default:"/home"`
 		UserMailboxDefaultQuota string `name:"users_mailbox_default_quota" default:""`
@@ -334,6 +337,27 @@ func (c *Config) GetRestServerPort() int {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.RestServerPort
+}
+
+// GetRestServerIsTls return RestServerIsTls
+func (c *Config) GetRestServerIsTls() bool {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.RestServerIsTls
+}
+
+// GetRestServerLogin return RestServerLogin
+func (c *Config) GetRestServerLogin() string {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.RestServerLogin
+}
+
+// GetRestServerPasswd return RestServerPasswd
+func (c *Config) GetRestServerPasswd() string {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.RestServerPasswd
 }
 
 // deliverd

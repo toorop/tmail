@@ -9,9 +9,15 @@ import (
 	"github.com/toorop/tmail/scope"
 	"log"
 	"net/http"
+	"os"
+	"path"
+	"path/filepath"
 )
 
 func userGetAll(w http.ResponseWriter, r *http.Request) {
+	if !isAuthorized(w, r) {
+		return
+	}
 	users, err := api.UserGetAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -51,14 +57,30 @@ func LaunchServer() {
 
 	// User
 	// all
-	router.HandleFunc("/users", userGetAll).Methods("GET")
-	// one
-	router.HandleFunc("/user/{user}", userGet).Methods("GET")
 
+	//http.Handle("/users", HttpAuthBasic("toorop", "test")(router))
+	router.HandleFunc("/users", userGetAll).Methods("GET")
+
+	// one
+	router.HandleFunc("/users/{user}", userGet).Methods("GET")
+
+	// Server
 	n := negroni.New(negroni.NewRecovery(), NewLogger())
 	n.UseHandler(router)
 	//n.Run(fmt.Sprintf("%s:%d", scope.Cfg.GetRestServerIp(), scope.Cfg.GetRestServerPort()))
 	addr := fmt.Sprintf("%s:%d", scope.Cfg.GetRestServerIp(), scope.Cfg.GetRestServerPort())
-	scope.Log.Info("http (REST server) " + addr + " launched")
-	log.Fatalln(http.ListenAndServe(addr, n))
+
+	// TLS
+	if scope.Cfg.GetRestServerIsTls() {
+		scope.Log.Info("httpd " + addr + " TLS launched")
+		log.Fatalln(http.ListenAndServeTLS(addr, path.Join(getBasePath(), "ssl/server.crt"), path.Join(getBasePath(), "ssl/server.key"), n))
+	} else {
+		scope.Log.Info("httpd " + addr + " launched")
+		log.Fatalln(http.ListenAndServe(addr, n))
+	}
+}
+
+func getBasePath() string {
+	p, _ := filepath.Abs(filepath.Dir(os.Args[0]))
+	return p
 }
