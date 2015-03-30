@@ -8,7 +8,7 @@ import (
 )
 
 // ServeHTTP implementation of interface
-func isAuthorized(w http.ResponseWriter, r *http.Request) bool {
+func authorized(w http.ResponseWriter, r *http.Request) bool {
 
 	logDebug(r, "test de log debug")
 	// Headers Authorization found ?

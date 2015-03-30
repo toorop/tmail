@@ -1,11 +1,9 @@
 package rest
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
-	"github.com/toorop/tmail/api"
 	"github.com/toorop/tmail/scope"
 	"log"
 	"net/http"
@@ -14,40 +12,12 @@ import (
 	"path/filepath"
 )
 
-func userGetAll(w http.ResponseWriter, r *http.Request) {
-	if !isAuthorized(w, r) {
-		return
-	}
-	users, err := api.UserGetAll()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	js, err := json.Marshal(users)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
-}
+const (
+	// Max size of the posted body
+	body_read_limit = 1048576
+)
 
-func userGet(w http.ResponseWriter, r *http.Request) {
-	user, err := api.UserGetByLogin(mux.Vars(r)["user"])
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	js, err := json.Marshal(user)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
-
-}
-
+// LaunchServer launches HTTP server
 func LaunchServer() {
 	router := mux.NewRouter()
 	//router.HandleFunc("/", HomeHandler)
@@ -55,14 +25,8 @@ func LaunchServer() {
 		fmt.Fprintf(w, "Welcome to the home page!")
 	})
 
-	// User
-	// all
-
-	//http.Handle("/users", HttpAuthBasic("toorop", "test")(router))
-	router.HandleFunc("/users", userGetAll).Methods("GET")
-
-	// one
-	router.HandleFunc("/users/{user}", userGet).Methods("GET")
+	// Users handlers
+	addUsersHandlers(router)
 
 	// Server
 	n := negroni.New(negroni.NewRecovery(), NewLogger())
@@ -80,6 +44,7 @@ func LaunchServer() {
 	}
 }
 
+// getBasePath is a helper for retrieving app path
 func getBasePath() string {
 	p, _ := filepath.Abs(filepath.Dir(os.Args[0]))
 	return p
