@@ -184,7 +184,7 @@ func main() {
 
 			// HTTP REST server
 			if scope.Cfg.GetRestServerLaunch() {
-				go rest.LanchServer()
+				go rest.LaunchServer()
 			}
 
 			<-sigChan

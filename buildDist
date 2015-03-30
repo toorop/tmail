@@ -11,6 +11,7 @@
 GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o  dist/tmail
 
 # zip
+
 zip -r tmail.zip dist/conf/tmail.cfg.base
 zip -r tmail.zip dist/ssl
 zip -r tmail.zip dist/tpl

@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/toorop/tmail/api"
 	"github.com/toorop/tmail/scope"
+	"log"
 	"net/http"
 )
 
@@ -41,7 +42,7 @@ func userGet(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func LanchServer() {
+func LaunchServer() {
 	router := mux.NewRouter()
 	//router.HandleFunc("/", HomeHandler)
 	router.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
@@ -56,5 +57,8 @@ func LanchServer() {
 
 	n := negroni.New(negroni.NewRecovery(), NewLogger())
 	n.UseHandler(router)
-	n.Run(fmt.Sprintf("%s:%d", scope.Cfg.GetRestServerIp(), scope.Cfg.GetRestServerPort()))
+	//n.Run(fmt.Sprintf("%s:%d", scope.Cfg.GetRestServerIp(), scope.Cfg.GetRestServerPort()))
+	addr := fmt.Sprintf("%s:%d", scope.Cfg.GetRestServerIp(), scope.Cfg.GetRestServerPort())
+	scope.Log.Info("http (REST server) " + addr + " launched")
+	log.Fatalln(http.ListenAndServe(addr, n))
 }
