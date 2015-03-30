@@ -136,7 +136,6 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 	if err != nil {
 		return
 	}
-
 	messageId := message.RawGetMessageId(rawMess)
 
 	cloop := 0

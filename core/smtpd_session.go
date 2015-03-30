@@ -585,7 +585,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 
 	// Authentified
 	if s.user != nil {
-		recieved += fmt.Sprintf(" (authentificated as %s)", s.user.Login)
+		recieved += fmt.Sprintf(" (authenticated as %s)", s.user.Login)
 	}
 
 	// local
