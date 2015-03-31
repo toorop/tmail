@@ -32,9 +32,21 @@ func usersAdd(w http.ResponseWriter, r *http.Request) {
 		httpWriteErrorJson(w, 422, "unable to create new user", err.Error())
 		return
 	}
+	logInfo(r, "user added "+mux.Vars(r)["user"])
 	w.Header().Set("Location", httpGetScheme()+"://"+r.Host+"/users/"+mux.Vars(r)["user"])
 	w.WriteHeader(201)
 	return
+}
+
+// usersDel delete an user
+func usersDel(w http.ResponseWriter, r *http.Request) {
+	if !authorized(w, r) {
+		return
+	}
+	err := api.UserDel(mux.Vars(r)["user"])
+	if err != nil {
+		httpWriteErrorJson(w, 500, "unable to delete user "+mux.Vars(r)["user"], err.Error())
+	}
 }
 
 // usersGetAll return all users
@@ -89,5 +101,5 @@ func addUsersHandlers(router *mux.Router) {
 	router.HandleFunc("/users/{user}", usersGetOne).Methods("GET")
 
 	// del an user
-	router.HandleFunc("/users/{user}", userDel).Methods("DELETE")
+	router.HandleFunc("/users/{user}", usersDel).Methods("DELETE")
 }
