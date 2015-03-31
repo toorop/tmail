@@ -22,7 +22,7 @@ func LaunchServer() {
 	router := mux.NewRouter()
 	//router.HandleFunc("/", HomeHandler)
 	router.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		fmt.Fprintf(w, "Welcome to the home page!")
+		fmt.Fprintf(w, "coucou")
 	})
 
 	// Users handlers

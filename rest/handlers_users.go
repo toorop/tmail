@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/toorop/tmail/api"
-	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -14,37 +12,29 @@ func usersAdd(w http.ResponseWriter, r *http.Request) {
 	if !authorized(w, r) {
 		return
 	}
-
-	type payload struct {
-		Passwd string `json: "passwd"`
-		//AuthRelay    bool
-		//HaveMailbox  bool
-		//MailboxQuota string
-	}
-
-	p := &payload{}
-
-	// get
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, body_read_limit))
+	// parse body
+	p := struct {
+		Passwd       string `json: "passwd"`
+		AuthRelay    bool
+		HaveMailbox  bool
+		MailboxQuota string
+	}{}
+	body, err := httpGetBody(r)
 	if err != nil {
-		panic(err)
-	}
-	if err := r.Body.Close(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpErrorJson(w, 500, "unable to get JSON body", err.Error())
 		return
 	}
-	logDebug(r, string(body))
-	if err := json.Unmarshal(body, p); err != nil {
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.WriteHeader(422) // unprocessable entity
-		if err := json.NewEncoder(w).Encode(err); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	if err = json.Unmarshal(body, &p); err != nil {
+		httpErrorJson(w, 422, "unable to decode JSON body", err.Error())
+		return
 	}
-
-	logDebug(r, p.Passwd)
-
+	if err = api.UserAdd(mux.Vars(r)["user"], p.Passwd, p.MailboxQuota, p.HaveMailbox, p.AuthRelay); err != nil {
+		httpErrorJson(w, 422, "unable to create new user", err.Error())
+		return
+	}
+	w.Header().Set("Location", httpGetScheme()+"://"+r.Host+"/users/"+mux.Vars(r)["user"])
+	w.WriteHeader(201)
+	return
 }
 
 // usersGetAll return all users

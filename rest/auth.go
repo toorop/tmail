@@ -9,8 +9,6 @@ import (
 
 // ServeHTTP implementation of interface
 func authorized(w http.ResponseWriter, r *http.Request) bool {
-
-	logDebug(r, "test de log debug")
 	// Headers Authorization found ?
 	hAuth := r.Header.Get("authorization")
 	if hAuth == "" {
@@ -18,13 +16,11 @@ func authorized(w http.ResponseWriter, r *http.Request) bool {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return false
 	}
-
 	// check credential
 	if hAuth[:5] != "Basic" {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return false
 	}
-
 	decoded, err := base64.StdEncoding.DecodeString(hAuth[6:])
 	if err != nil {
 		logError(r, "on decoding http auth credentials:", err.Error())
