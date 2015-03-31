@@ -16,8 +16,14 @@ func httpGetBody(r *http.Request) ([]byte, error) {
 	return body, r.Body.Close()
 }
 
+// httpWriteJson send a json response
+func httpWriteJson(w http.ResponseWriter, out []byte) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Write(out)
+}
+
 // httpErrorJson send and json formated error
-func httpErrorJson(w http.ResponseWriter, httpStatus int, msg, raw string) {
+func httpWriteErrorJson(w http.ResponseWriter, httpStatus int, msg, raw string) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(httpStatus)
 	w.Write([]byte(`{"message":"` + msg + `","raw":"` + raw + `"}`))
