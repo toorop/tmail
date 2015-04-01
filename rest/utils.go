@@ -15,7 +15,7 @@ func httpWriteJson(w http.ResponseWriter, out []byte) {
 func httpWriteErrorJson(w http.ResponseWriter, httpStatus int, msg, raw string) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(httpStatus)
-	w.Write([]byte(`{"message":"` + msg + `","raw":"` + raw + `"}`))
+	w.Write([]byte(`{"msg":"` + msg + `","raw":"` + raw + `"}`))
 }
 
 // httpGetScheme returns http ou https

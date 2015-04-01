@@ -37,7 +37,7 @@ func LaunchServer() {
 	// TLS
 	if scope.Cfg.GetRestServerIsTls() {
 		scope.Log.Info("httpd " + addr + " TLS launched")
-		log.Fatalln(http.ListenAndServeTLS(addr, path.Join(getBasePath(), "ssl/server.crt"), path.Join(getBasePath(), "ssl/server.key"), n))
+		log.Fatalln(http.ListenAndServeTLS(addr, path.Join(getBasePath(), "ssl/web_server.crt"), path.Join(getBasePath(), "ssl/web_server.key"), n))
 	} else {
 		scope.Log.Info("httpd " + addr + " launched")
 		log.Fatalln(http.ListenAndServe(addr, n))
