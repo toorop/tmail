@@ -21,8 +21,8 @@ const (
 func LaunchServer() {
 	router := mux.NewRouter()
 	//router.HandleFunc("/", HomeHandler)
-	router.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		fmt.Fprintf(w, "coucou")
+	router.HandleFunc("/ping", func(w http.ResponseWriter, req *http.Request) {
+		httpWriteJson(w, []byte(`{"msg": "pong"}`))
 	})
 
 	// Users handlers
