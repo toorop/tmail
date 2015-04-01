@@ -15,20 +15,17 @@ func usersAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	p := struct {
 		Passwd       string `json: "passwd"`
-		AuthRelay    bool
-		HaveMailbox  bool
-		MailboxQuota string
+		AuthRelay    bool   `json: "authRelay"`
+		HaveMailbox  bool   `json: "haveMailbox"`
+		MailboxQuota string `json: "mailboxQuota"`
 	}{}
-	body, err := httpGetBody(r)
-	if err != nil {
+
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
 		httpWriteErrorJson(w, 500, "unable to get JSON body", err.Error())
 		return
 	}
-	if err = json.Unmarshal(body, &p); err != nil {
-		httpWriteErrorJson(w, 422, "unable to decode JSON body", err.Error())
-		return
-	}
-	if err = api.UserAdd(mux.Vars(r)["user"], p.Passwd, p.MailboxQuota, p.HaveMailbox, p.AuthRelay); err != nil {
+
+	if err := api.UserAdd(mux.Vars(r)["user"], p.Passwd, p.MailboxQuota, p.HaveMailbox, p.AuthRelay); err != nil {
 		httpWriteErrorJson(w, 422, "unable to create new user", err.Error())
 		return
 	}
@@ -43,8 +40,7 @@ func usersDel(w http.ResponseWriter, r *http.Request) {
 	if !authorized(w, r) {
 		return
 	}
-	err := api.UserDel(mux.Vars(r)["user"])
-	if err != nil {
+	if err := api.UserDel(mux.Vars(r)["user"]); err != nil {
 		httpWriteErrorJson(w, 500, "unable to delete user "+mux.Vars(r)["user"], err.Error())
 	}
 }

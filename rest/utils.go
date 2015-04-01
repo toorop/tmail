@@ -2,19 +2,8 @@ package rest
 
 import (
 	"github.com/toorop/tmail/scope"
-	"io"
-	"io/ioutil"
 	"net/http"
 )
-
-// httpGetBody returns http body as string
-func httpGetBody(r *http.Request) ([]byte, error) {
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, body_read_limit))
-	if err != nil {
-		return []byte{}, err
-	}
-	return body, r.Body.Close()
-}
 
 // httpWriteJson send a json response
 func httpWriteJson(w http.ResponseWriter, out []byte) {
