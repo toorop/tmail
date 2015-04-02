@@ -2,8 +2,9 @@ package rest
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
+	"github.com/julienschmidt/httprouter"
+	"github.com/nbio/httpcontext"
 	"github.com/toorop/tmail/api"
 	"net/http"
 )
@@ -25,12 +26,12 @@ func usersAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := api.UserAdd(mux.Vars(r)["user"], p.Passwd, p.MailboxQuota, p.HaveMailbox, p.AuthRelay); err != nil {
+	if err := api.UserAdd(httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), p.Passwd, p.MailboxQuota, p.HaveMailbox, p.AuthRelay); err != nil {
 		httpWriteErrorJson(w, 422, "unable to create new user", err.Error())
 		return
 	}
-	logInfo(r, "user added "+mux.Vars(r)["user"])
-	w.Header().Set("Location", httpGetScheme()+"://"+r.Host+"/users/"+mux.Vars(r)["user"])
+	logInfo(r, "user added "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"))
+	w.Header().Set("Location", httpGetScheme()+"://"+r.Host+"/users/"+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"))
 	w.WriteHeader(201)
 	return
 }
@@ -40,8 +41,8 @@ func usersDel(w http.ResponseWriter, r *http.Request) {
 	if !authorized(w, r) {
 		return
 	}
-	if err := api.UserDel(mux.Vars(r)["user"]); err != nil {
-		httpWriteErrorJson(w, 500, "unable to delete user "+mux.Vars(r)["user"], err.Error())
+	if err := api.UserDel(httpcontext.Get(r, "params").(httprouter.Params).ByName("user")); err != nil {
+		httpWriteErrorJson(w, 500, "unable to delete user "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), err.Error())
 	}
 }
 
@@ -68,34 +69,34 @@ func usersGetOne(w http.ResponseWriter, r *http.Request) {
 	if !authorized(w, r) {
 		return
 	}
-	user, err := api.UserGetByLogin(mux.Vars(r)["user"])
+	user, err := api.UserGetByLogin(httpcontext.Get(r, "params").(httprouter.Params).ByName("user"))
 	if err == gorm.RecordNotFound {
-		httpWriteErrorJson(w, 404, "no such user "+mux.Vars(r)["user"], "")
+		httpWriteErrorJson(w, 404, "no such user "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), "")
 		return
 	}
 	if err != nil {
-		httpWriteErrorJson(w, 500, "unable to get user "+mux.Vars(r)["user"], err.Error())
+		httpWriteErrorJson(w, 500, "unable to get user "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), err.Error())
 		return
 	}
 	js, err := json.Marshal(user)
 	if err != nil {
-		httpWriteErrorJson(w, 500, "unable to get user "+mux.Vars(r)["user"], err.Error())
+		httpWriteErrorJson(w, 500, "unable to get user "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), err.Error())
 		return
 	}
 	httpWriteJson(w, js)
 }
 
 // addUsersHandlers add Users handler to router
-func addUsersHandlers(router *mux.Router) {
+func addUsersHandlers(router *httprouter.Router) {
 	// add user
-	router.HandleFunc("/users/{user}", usersAdd).Methods("POST")
+	router.POST("/users/:user", wrapHandler(usersAdd))
 
 	// get all users
-	router.HandleFunc("/users", usersGetAll).Methods("GET")
+	router.GET("/users", wrapHandler(usersGetAll))
 
 	// get one user
-	router.HandleFunc("/users/{user}", usersGetOne).Methods("GET")
+	router.GET("/users/:user", wrapHandler(usersGetOne))
 
 	// del an user
-	router.HandleFunc("/users/{user}", usersDel).Methods("DELETE")
+	router.DELETE("/users/:user", wrapHandler(usersDel))
 }

@@ -3,7 +3,8 @@ package rest
 import (
 	"fmt"
 	"github.com/codegangsta/negroni"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
+	"github.com/nbio/httpcontext"
 	"github.com/toorop/tmail/scope"
 	"log"
 	"net/http"
@@ -19,9 +20,8 @@ const (
 
 // LaunchServer launches HTTP server
 func LaunchServer() {
-	router := mux.NewRouter()
-	//router.HandleFunc("/", HomeHandler)
-	router.HandleFunc("/ping", func(w http.ResponseWriter, req *http.Request) {
+	router := httprouter.New()
+	router.HandlerFunc("GET", "/ping", func(w http.ResponseWriter, req *http.Request) {
 		httpWriteJson(w, []byte(`{"msg": "pong"}`))
 	})
 
@@ -31,7 +31,6 @@ func LaunchServer() {
 	// Server
 	n := negroni.New(negroni.NewRecovery(), NewLogger())
 	n.UseHandler(router)
-	//n.Run(fmt.Sprintf("%s:%d", scope.Cfg.GetRestServerIp(), scope.Cfg.GetRestServerPort()))
 	addr := fmt.Sprintf("%s:%d", scope.Cfg.GetRestServerIp(), scope.Cfg.GetRestServerPort())
 
 	// TLS
@@ -41,6 +40,15 @@ func LaunchServer() {
 	} else {
 		scope.Log.Info("httpd " + addr + " launched")
 		log.Fatalln(http.ListenAndServe(addr, n))
+	}
+}
+
+// wrapHandler puts httprouter.Params in query context
+// in order to keep compatibily with http.Handler
+func wrapHandler(h func(http.ResponseWriter, *http.Request)) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		httpcontext.Set(r, "params", ps)
+		h(w, r)
 	}
 }
 
