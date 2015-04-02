@@ -1,3 +1,7 @@
+V 0.0.6
+	- REST API base
+	- REST API /users
+
 V 0.0.5
 	- Log to file
 	- Improve log
