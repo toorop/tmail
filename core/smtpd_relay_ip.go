@@ -16,7 +16,7 @@ type RelayIpOk struct {
 
 // remoteIpCanUseSmtp checks if an IP can relay
 func IpCanRelay(ip net.Addr) (bool, error) {
-	err := scope.DB.Where("addr = ?", ip.String()[:strings.Index(ip.String(), ":")]).Find(&RelayIpOk{}).Error
+	err := scope.DB.Where("ip = ?", ip.String()[:strings.Index(ip.String(), ":")]).Find(&RelayIpOk{}).Error
 	if err == nil {
 		return true, nil
 	}
