@@ -100,22 +100,6 @@ func deliverRemote(d *delivery) {
 	// - x-tmail-msg-id
 	// - received
 
-	/*msg, err := message.New(d.rawData)
-	if err != nil {
-		d.dieTemp(err.Error())
-		return
-	}*/
-
-	/*msg.SetHeader("x-tmail-deliverd-id", d.id)
-	msg.SetHeader("x-tmail-msg-id", d.qMsg.Key)
-	*d.rawData, err = msg.GetRaw()
-	if err != nil {
-		d.dieTemp(err.Error())
-		return
-	}
-	*d.rawData = append([]byte("Received: tmail deliverd; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
-	*/
-
 	// Received
 	*d.rawData = append([]byte("Received: tmail deliverd remote "+d.id+"; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
 	//*d.rawData = append([]byte("X-Tmail-MsgId: "+d.qMsg.Key+"\r\n"), *d.rawData...)
