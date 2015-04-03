@@ -131,8 +131,6 @@ func deliverRemote(d *delivery) {
 	// err existe toujours car c'est ce qui nous permet de récuperer la reponse du serveur distant
 	// on parse err
 
-	println(err.Error())
-
 	parts := strings.Split(err.Error(), "é")
 
 	scope.Log.Info(fmt.Sprintf("deliverd-remote %s: remote server %s reply to data cmd: %s - %s", d.id, c.RemoteIP, parts[0], parts[1]))
