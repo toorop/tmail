@@ -557,8 +557,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	// Message-ID
 	HeaderMessageId := message.RawGetMessageId(&rawMessage)
 	if len(HeaderMessageId) == 0 {
-		HeaderMessageId = []byte(fmt.Sprintf("%d.%s@%s", time.Now().UnixNano(), s.uuid, strings.ToLower(strings.Split(s.envelope.MailFrom, "@")[1])))
-		rawMessage = append([]byte(fmt.Sprintf("Message-ID: %s\r\n", HeaderMessageId)), rawMessage...)
+		HeaderMessageId = []byte(fmt.Sprintf("%d.%s@%s", time.Now().Unix(), s.uuid, strings.ToLower(strings.Split(s.envelope.MailFrom, "@")[1])))
+		rawMessage = append([]byte(fmt.Sprintf("Message-ID: <%s>\r\n", HeaderMessageId)), rawMessage...)
 
 	}
 	s.log("Message-ID:", string(HeaderMessageId))
