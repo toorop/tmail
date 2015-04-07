@@ -30,9 +30,9 @@ func RawHaveHeader(raw *[]byte, header string) bool {
 
 // RawGetMessageId return Message-ID or empty string if to found
 func RawGetMessageId(raw *[]byte) []byte {
-	bHeader := []byte("Message-ID")
+	bHeader := []byte("message-id")
 	for _, line := range bytes.Split(RawGetHeaders(raw), []byte{13, 10}) {
-		if bytes.HasPrefix(line, bHeader) {
+		if bytes.HasPrefix(bytes.ToLower(line), bHeader) {
 			// strip <>
 			return bytes.TrimPrefix(bytes.TrimSuffix(line[12:], []byte{62}), []byte{60})
 		}
