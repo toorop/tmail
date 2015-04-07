@@ -2,10 +2,10 @@
 
 
 # rm 
-#rm tmail.zip
+rm tmail.zip
 
 # Linux 32
-#GOOS=linux GOARCH=386 CGO_ENABLED=1 go build -o  dist/tmail32
+GOOS=linux GOARCH=386 CGO_ENABLED=1 go build -o  dist/tmail32
 
 # Linux 64
 GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o  dist/tmail
