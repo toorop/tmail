@@ -353,11 +353,24 @@ func (c *Config) GetRestServerLogin() string {
 	return c.cfg.RestServerLogin
 }
 
+func (c *Config) SetRestServerLogin(login string) {
+	c.Lock()
+	defer c.Unlock()
+	c.cfg.RestServerLogin = login
+}
+
 // GetRestServerPasswd return RestServerPasswd
 func (c *Config) GetRestServerPasswd() string {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.RestServerPasswd
+}
+
+// SetRestServerPasswd set RestServerPasswd
+func (c *Config) SetRestServerPasswd(passwd string) {
+	c.Lock()
+	defer c.Unlock()
+	c.cfg.RestServerPasswd = passwd
 }
 
 // deliverd

@@ -3,6 +3,7 @@ package logger
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -24,6 +25,8 @@ func New(logPath string, debugEnabled bool) (*Logger, error) {
 	var out io.Writer
 	if logPath == "stdout" {
 		out = os.Stdout
+	} else if logPath == "discard" {
+		out = ioutil.Discard
 	} else {
 		file := path.Join(logPath, "current.log")
 		out, err = os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
