@@ -9,6 +9,10 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/toorop/tmail/config"
 	"github.com/toorop/tmail/logger"
+	"io"
+	"io/ioutil"
+	"os"
+	"path"
 )
 
 const (
@@ -32,8 +36,20 @@ func Init() (err error) {
 	}
 
 	// logger
-	// Logger
-	Log, err = logger.New(Cfg.GetLogPath(), Cfg.GetDebugEnabled())
+	var out io.Writer
+	logPath := Cfg.GetLogPath()
+	if logPath == "stdout" {
+		out = os.Stdout
+	} else if logPath == "discard" {
+		out = ioutil.Discard
+	} else {
+		file := path.Join(logPath, "current.log")
+		out, err = os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			return
+		}
+	}
+	Log, err = logger.New(out, Cfg.GetDebugEnabled())
 	if err != nil {
 		return
 	}

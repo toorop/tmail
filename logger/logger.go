@@ -3,10 +3,10 @@ package logger
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
+	//"io/ioutil"
 	"log"
 	"os"
-	"path"
+	//"path"
 	"runtime/debug"
 )
 
@@ -20,21 +20,7 @@ type Logger struct {
 	trace        *log.Logger
 }
 
-func New(logPath string, debugEnabled bool) (*Logger, error) {
-	var err error
-	var out io.Writer
-	if logPath == "stdout" {
-		out = os.Stdout
-	} else if logPath == "discard" {
-		out = ioutil.Discard
-	} else {
-		file := path.Join(logPath, "current.log")
-		out, err = os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			return nil, err
-		}
-	}
-
+func New(out io.Writer, debugEnabled bool) (*Logger, error) {
 	hostname, _ := os.Hostname()
 	return &Logger{
 		debugEnabled: debugEnabled,

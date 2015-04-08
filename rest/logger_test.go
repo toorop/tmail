@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	//"net/http/httptest"
+	"io/ioutil"
 	"testing"
 
 	"github.com/toorop/tmail/config"
@@ -14,7 +15,7 @@ import (
 func Test_init(t *testing.T) {
 	var err error
 	scope.Cfg = new(config.Config)
-	scope.Log, err = logger.New("discard", false)
+	scope.Log, err = logger.New(ioutil.Discard, false)
 	assert.NoError(t, err)
 
 }

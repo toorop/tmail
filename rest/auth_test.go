@@ -2,6 +2,7 @@ package rest
 
 import (
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,7 +16,7 @@ func Test_authorized(t *testing.T) {
 	var err error
 	assert := assert.New(t)
 	scope.Cfg = new(config.Config)
-	scope.Log, err = logger.New("discard", false)
+	scope.Log, err = logger.New(ioutil.Discard, false)
 	assert.NoError(err)
 	scope.Cfg.SetRestServerLogin("good")
 	scope.Cfg.SetRestServerPasswd("good")
