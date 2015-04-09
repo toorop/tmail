@@ -47,9 +47,16 @@ func usersDel(w http.ResponseWriter, r *http.Request) {
 	if !authorized(w, r) {
 		return
 	}
-	if err := api.UserDel(httpcontext.Get(r, "params").(httprouter.Params).ByName("user")); err != nil {
-		httpWriteErrorJson(w, 500, "unable to delete user "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), err.Error())
+	err := api.UserDel(httpcontext.Get(r, "params").(httprouter.Params).ByName("user"))
+	if err == gorm.RecordNotFound {
+		httpWriteErrorJson(w, 404, "no such user "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), err.Error())
+		return
 	}
+	if err != nil {
+		httpWriteErrorJson(w, 500, "unable to del user "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), err.Error())
+		return
+	}
+
 }
 
 // usersGetAll return all users

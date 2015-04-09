@@ -66,6 +66,11 @@ func QueueGetMessages() ([]core.QMessage, error) {
 	return core.QueueListMessages()
 }
 
+// QueueGetMessage return a message by its id
+func QueueGetMessage(id int64) (core.QMessage, error) {
+	return core.QueueGetMessageById(id)
+}
+
 // QueueDiscardMsgByKey discard a message (delete without bouncing) by his id
 func QueueDiscardMsg(id int64) error {
 	m, err := core.QueueGetMessageById(id)

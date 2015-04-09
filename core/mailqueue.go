@@ -101,9 +101,9 @@ func (q *QMessage) Bounce() error {
 }
 
 // GetMessageByKey return a message from is key
-func QueueGetMessageById(id int64) (msg *QMessage, err error) {
-	msg = &QMessage{}
-	err = scope.DB.Where("id = ?", id).First(msg).Error
+func QueueGetMessageById(id int64) (msg QMessage, err error) {
+	msg = QMessage{}
+	err = scope.DB.Where("id = ?", id).First(&msg).Error
 	if err != nil && err == gorm.RecordNotFound {
 		err = errors.New("not found")
 	}
