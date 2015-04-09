@@ -1,0 +1,7 @@
+#!/bin/sh
+
+. dist/conf/TestTmail.cfg
+
+# Rest
+echo "Testing rest server\n"
+go test  -cover github.com/toorop/tmail/rest

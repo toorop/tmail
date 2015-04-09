@@ -12,7 +12,7 @@ import (
 	"github.com/toorop/tmail/scope"
 )
 
-func Test_init(t *testing.T) {
+func Test_log_init(t *testing.T) {
 	var err error
 	scope.Cfg = new(config.Config)
 	scope.Log, err = logger.New(ioutil.Discard, false)

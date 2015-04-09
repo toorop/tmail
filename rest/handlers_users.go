@@ -21,6 +21,12 @@ func usersAdd(w http.ResponseWriter, r *http.Request) {
 		MailboxQuota string `json: "mailboxQuota"`
 	}{}
 
+	// nil body
+	if r.Body == nil {
+		httpWriteErrorJson(w, 422, "empty body", "")
+		return
+	}
+
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
 		httpWriteErrorJson(w, 500, "unable to get JSON body", err.Error())
 		return
