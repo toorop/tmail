@@ -5,7 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
-	"github.com/jinzhu/gorm"
+	//"github.com/jinzhu/gorm"
 	"github.com/toorop/tmail/message"
 	"github.com/toorop/tmail/scope"
 	"github.com/toorop/tmail/store"
@@ -104,9 +104,9 @@ func (q *QMessage) Bounce() error {
 func QueueGetMessageById(id int64) (msg QMessage, err error) {
 	msg = QMessage{}
 	err = scope.DB.Where("id = ?", id).First(&msg).Error
-	if err != nil && err == gorm.RecordNotFound {
+	/*if err != nil && err == gorm.RecordNotFound {
 		err = errors.New("not found")
-	}
+	}*/
 	return
 }
 

@@ -4,7 +4,7 @@
 
 # Build
 
-go build -race -o dist/tmail && \
+go build -o dist/tmail && \
 dist/tmail
 #dist/tmail user del toorop@tmail.io 
 #dist/tmail user add toorop@tmail.io murphy25 -r -m

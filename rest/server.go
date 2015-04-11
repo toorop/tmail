@@ -27,6 +27,8 @@ func LaunchServer() {
 
 	// Users handlers
 	addUsersHandlers(router)
+	// Queue
+	addQueueHandlers(router)
 
 	// Server
 	n := negroni.New(negroni.NewRecovery(), NewLogger())
