@@ -1,3 +1,7 @@
+V 0.0.7
+	- BugFix message-id
+	- REST /queue
+
 V 0.0.6
 	- REST API base
 	- REST API /users

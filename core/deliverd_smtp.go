@@ -64,7 +64,7 @@ func Dial(addr string) (*Client, error) {
 
 // Dialz returns a new Client connected to an SMTP server at addr.
 // The diff
-func Dialz(addr *net.TCPAddr, lIp string, heloHost string, timeout int) (*Client, error) {
+func Dialz(addr net.TCPAddr, lIp string, heloHost string, timeout int) (*Client, error) {
 	var laddr *net.TCPAddr
 	var conn *net.TCPConn
 	var err error
@@ -77,7 +77,7 @@ func Dialz(addr *net.TCPAddr, lIp string, heloHost string, timeout int) (*Client
 	connectTimer := time.NewTimer(time.Duration(timeout) * time.Second)
 	done := make(chan error, 1)
 	go func() {
-		conn, err = net.DialTCP("tcp", laddr, addr)
+		conn, err = net.DialTCP("tcp", laddr, &addr)
 		done <- err
 	}()
 

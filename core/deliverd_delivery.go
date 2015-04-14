@@ -383,7 +383,7 @@ func getSmtpClient(routes *[]Route) (*Client, *Route, error) {
 					continue
 				}
 				// TODO timeout en config
-				c, err := Dialz(&remoteAddr, lIp.String(), scope.Cfg.GetMe(), 30)
+				c, err := Dialz(remoteAddr, lIp.String(), scope.Cfg.GetMe(), 30)
 				if err == nil {
 					return c, &route, nil
 				} else {
