@@ -109,7 +109,7 @@ export TMAIL_SMTPD_MAX_HOPS=50
 
 # Number of simultaneous incoming SMTP sessions
 # Default 20
-export TMAIL_SMTPD_CONCURRENCY_INCOMING=2
+export TMAIL_SMTPD_CONCURRENCY_INCOMING=20
 
 ### Filters
 # Clamav
