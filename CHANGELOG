@@ -1,6 +1,8 @@
 V 0.0.7
 	- BugFix message-id
 	- REST /queue
+	- Bugfix: race condition on deliverd
+	- Add concurrency limits on smtpd
 
 V 0.0.6
 	- REST API base
