@@ -37,13 +37,14 @@ type Config struct {
 		NSQLookupdTcpAddresses  string `name:"nsq_lookupd_tcp_addresses" default:"_"`
 		NSQLookupdHttpAddresses string `name:"nsq_lookupd_http_addresses" default:"_"`
 
-		LaunchSmtpd             bool   `name:"smtpd_launch" default:"false"`
-		SmtpdDsns               string `name:"smtpd_dsns" default:""`
-		SmtpdTransactionTimeout int    `name:"smtpd_transaction_timeout" default:"60"`
-		SmtpdMaxDataBytes       int    `name:"smtpd_max_databytes" default:"60"`
-		SmtpdMaxHops            int    `name:"smtpd_max_hops" default:"10"`
-		SmtpdClamavEnabled      bool   `name:"smtpd_scan_clamav_enabled" default:"false"`
-		SmtpdClamavDsns         string `name:"smtpd_scan_clamav_dsns" default:""`
+		LaunchSmtpd              bool   `name:"smtpd_launch" default:"false"`
+		SmtpdDsns                string `name:"smtpd_dsns" default:""`
+		SmtpdTransactionTimeout  int    `name:"smtpd_transaction_timeout" default:"60"`
+		SmtpdMaxDataBytes        int    `name:"smtpd_max_databytes" default:"60"`
+		SmtpdMaxHops             int    `name:"smtpd_max_hops" default:"10"`
+		SmtpdClamavEnabled       bool   `name:"smtpd_scan_clamav_enabled" default:"false"`
+		SmtpdClamavDsns          string `name:"smtpd_scan_clamav_dsns" default:""`
+		SmtpdConcurrencyIncoming int    `name:"smtpd_concurrency_incoming" default:"20"`
 
 		LaunchDeliverd        bool   `name:"deliverd_launch" default:"false"`
 		LocalIps              string `name:"deliverd_local_ips" default:"_"`
@@ -271,6 +272,13 @@ func (c *Config) GetSmtpdClamavDsns() string {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.SmtpdClamavDsns
+}
+
+// GetSmtpdConcurrencyIncoming returns ConcurrencyIncoming
+func (c *Config) GetSmtpdConcurrencyIncoming() int {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.SmtpdConcurrencyIncoming
 }
 
 // GetLaunchDeliverd returns true if deliverd have to be launched

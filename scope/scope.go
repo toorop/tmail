@@ -20,15 +20,17 @@ const (
 )
 
 var (
-	Version          string
-	Cfg              *config.Config
-	DB               gorm.DB
-	Log              *logger.Logger
-	NsqQueueProducer *nsq.Producer
+	Version             string
+	Cfg                 *config.Config
+	DB                  gorm.DB
+	Log                 *logger.Logger
+	NsqQueueProducer    *nsq.Producer
+	SmtpSessionsCount   int
+	ChSmtpSessionsCount chan int
 )
 
 // TODO check validity de chaque élément
-func Init() (err error) {
+func Bootstrap() (err error) {
 	// Load config
 	Cfg, err = config.Init("tmail")
 	if err != nil {
@@ -73,6 +75,15 @@ func Init() (err error) {
 	if Cfg.GetLaunchSmtpd() {
 		err = initMailQueueProducer()
 	}
+
+	// SMTP in sessions counter
+	SmtpSessionsCount = 0
+	ChSmtpSessionsCount = make(chan int)
+	go func() {
+		for {
+			SmtpSessionsCount += <-ChSmtpSessionsCount
+		}
+	}()
 	return
 }
 

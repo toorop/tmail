@@ -6,6 +6,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/toorop/tmail/scope"
 	"log"
 	"net"
 	"path"
@@ -52,6 +53,8 @@ func (s *Smtpd) ListenAndServe() {
 				log.Println("Client error: ", error)
 			} else {
 				go func(conn net.Conn) {
+					scope.ChSmtpSessionsCount <- 1
+					defer func() { scope.ChSmtpSessionsCount <- -1 }()
 					sss, err := NewSmtpServerSession(conn, secured)
 					if err != nil {
 						log.Println("unable to get new SmtpServerSession")

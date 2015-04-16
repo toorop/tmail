@@ -68,7 +68,6 @@ func (s *smtpServerSession) raiseTimeout() {
 // exit asap
 func (s *smtpServerSession) exitAsap() {
 	s.timer.Stop()
-
 	s.exitasap <- 1
 }
 
@@ -135,7 +134,14 @@ func (s *smtpServerSession) smtpGreeting() {
 	// Todo AS: verifier si il y a des data dans le buffer
 	// Todo desactiver server signature en option
 	// dans le cas ou l'on refuse la transaction on doit répondre par un 554 et attendre le quit
-	s.log("starting new transaction")
+	time.Sleep(100 * time.Nanosecond)
+	if scope.SmtpSessionsCount > scope.Cfg.GetSmtpdConcurrencyIncoming() {
+		s.log(fmt.Sprintf("max connections reached %d/%d", scope.SmtpSessionsCount, scope.Cfg.GetSmtpdConcurrencyIncoming()))
+		s.out(fmt.Sprintf("421 sorry, the maximum number of connections has been reached, try again later %s", s.uuid))
+		s.exitAsap()
+		return
+	}
+	s.log(fmt.Sprintf("starting new transaction %d/%d", scope.SmtpSessionsCount, scope.Cfg.GetSmtpdConcurrencyIncoming()))
 	s.out(fmt.Sprintf("220 %s  tmail V %s ESMTP %s", scope.Cfg.GetMe(), scope.Version, s.uuid))
 	//fmt.Println(s.conn.clientProtocol)
 }

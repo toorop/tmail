@@ -107,6 +107,10 @@ export TMAIL_SMTPD_MAX_DATABYTES=50000000
 # default 30
 export TMAIL_SMTPD_MAX_HOPS=50
 
+# Number of simultaneous incoming SMTP sessions
+# Default 20
+export TMAIL_SMTPD_CONCURRENCY_INCOMING=2
+
 ### Filters
 # Clamav
 export TMAIL_SMTPD_SCAN_CLAMAV_ENABLED=true

@@ -30,7 +30,7 @@ const (
 
 func init() {
 	var err error
-	if err = scope.Init(); err != nil {
+	if err = scope.Bootstrap(); err != nil {
 		log.Fatalln(err)
 	}
 
@@ -76,7 +76,6 @@ func init() {
 		if err != nil {
 			log.Fatalln("Unable to find Dovecot LDA binary, checks your config poarameter TMAIL_DOVECOT_LDA ", err)
 		}
-
 	}
 
 }
