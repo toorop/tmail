@@ -51,6 +51,7 @@ type Config struct {
 		DeliverdMaxInFlight   int    `name:"deliverd_max_in_flight" default:"5"`
 		DeliverdRemoteTimeout int    `name:"deliverd_remote_timeout" default:"60"`
 		DeliverdQueueLifetime int    `name:"deliverd_queue_lifetime" default:"10080"`
+		DeliverdDkimSign      bool   `name:"deliverd_dkim_sign" default:"false"`
 
 		LaunchRestServer bool   `name:"rest_server_launch" default:"false"`
 		RestServerIp     string `name:"rest_server_ip" default:"127.0.0.1"`
@@ -442,6 +443,13 @@ func (c *Config) GetDeliverdQueueLifetime() int {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.DeliverdQueueLifetime
+}
+
+// GetDeliverdDkimSign wheras deliverd must sign outgoing (remote) email
+func (c *Config) GetDeliverdDkimSign() bool {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.DeliverdDkimSign
 }
 
 // GetUserHomeBase returns users home base

@@ -19,16 +19,18 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
+	"runtime"
 	"syscall"
 	"time"
 )
 
 const (
 	// TMAIL_VERSION version of tmail
-	TMAIL_VERSION = "0.0.7"
+	TMAIL_VERSION = "0.0.8"
 )
 
 func init() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	var err error
 	if err = scope.Bootstrap(); err != nil {
 		log.Fatalln(err)

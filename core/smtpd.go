@@ -33,6 +33,7 @@ func (s *Smtpd) ListenAndServe() {
 		if err != nil {
 			log.Fatalln("unable to load SSL keys for smtpd.", "dsn:", s.dsn.tcpAddr, "ssl", s.dsn.ssl, "err:", err)
 		}
+		// TODO: http://fastah.blackbuck.mobi/blog/securing-https-in-go/
 		tlsConfig := tls.Config{
 			Certificates:       []tls.Certificate{cert},
 			InsecureSkipVerify: true,

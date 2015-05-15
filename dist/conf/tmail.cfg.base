@@ -155,6 +155,9 @@ export TMAIL_DELIVERD_MAX_IN_FLIGHT=5
 # discard if bounce failed
 export TMAIL_DELIVERD_QUEUE_LIFETIME=168
 
+# DKIM sign outgoing (remote) emails
+export TMAIL_DELIVERD_DKIM_SIGN=false
+
 ##
 # users
 
