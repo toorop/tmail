@@ -113,7 +113,7 @@ export TMAIL_SMTPD_CONCURRENCY_INCOMING=20
 
 ### Filters
 # Clamav
-export TMAIL_SMTPD_SCAN_CLAMAV_ENABLED=true
+export TMAIL_SMTPD_SCAN_CLAMAV_ENABLED=false
 
 # Clamd DSNS
 # name:ip:port
@@ -189,6 +189,12 @@ export TMAIL_REST_SERVER_LOGIN="login"
 # Passwd for HTTP auth
 export TMAIL_REST_SERVER_PASSWD="passwd"
 
+
+##
+# Micorservices
+
+# Call on new SMTP connection from client
+export TMAIL_MS_SMTPD_NEWCLIENT=""
 
 ##
 # Dovecot

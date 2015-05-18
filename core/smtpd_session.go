@@ -6,16 +6,20 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
-	"github.com/jinzhu/gorm"
-	"github.com/toorop/tmail/logger"
-	"github.com/toorop/tmail/message"
-	"github.com/toorop/tmail/scanner"
-	"github.com/toorop/tmail/scope"
 	"net"
 	"net/mail"
 	"path"
+	"runtime/debug"
 	"strings"
 	"time"
+
+	"github.com/jinzhu/gorm"
+
+	"github.com/toorop/tmail/logger"
+	"github.com/toorop/tmail/message"
+
+	"github.com/toorop/tmail/scanner"
+	"github.com/toorop/tmail/scope"
 )
 
 const (
@@ -142,8 +146,12 @@ func (s *smtpServerSession) smtpGreeting() {
 		return
 	}
 	s.log(fmt.Sprintf("starting new transaction %d/%d", scope.SmtpSessionsCount, scope.Cfg.GetSmtpdConcurrencyIncoming()))
-	s.out(fmt.Sprintf("220 %s  tmail V %s ESMTP %s", scope.Cfg.GetMe(), scope.Version, s.uuid))
-	//fmt.Println(s.conn.clientProtocol)
+
+	// Microservices
+	if msSmtptdCall("smtpdNewClient", s) {
+		return
+	}
+	s.out(fmt.Sprintf("220 %s tmail V %s ESMTP %s", scope.Cfg.GetMe(), scope.Version, s.uuid))
 }
 
 // HELO
@@ -159,6 +167,7 @@ func (s *smtpServerSession) smtpHelo(msg []string) {
 
 // EHLO
 func (s *smtpServerSession) smtpEhlo(msg []string) {
+
 	// verifier le buffer
 	s.helo = ""
 	if len(msg) > 1 {
@@ -396,7 +405,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		if !doLoop {
 			break
 		}
-		s.timer.Reset(time.Duration(scope.Cfg.GetSmtpdTransactionTimeout()) * time.Second)
+		s.resetTimeout()
 		_, err := s.conn.Read(ch)
 		s.timer.Stop()
 		if err != nil {
@@ -802,7 +811,7 @@ func (s *smtpServerSession) handle() {
 	// Recover on panic
 	defer func() {
 		if err := recover(); err != nil {
-			s.logError("PANIC")
+			s.logError(fmt.Sprintf("PANIC: %s - Stack: %s", err.(error).Error(), debug.Stack()))
 			s.conn.Close()
 		}
 	}()

@@ -53,6 +53,9 @@ type Config struct {
 		DeliverdQueueLifetime int    `name:"deliverd_queue_lifetime" default:"10080"`
 		DeliverdDkimSign      bool   `name:"deliverd_dkim_sign" default:"false"`
 
+		// microservices
+		MsUriSmtpdNewClient string `name:"ms_smtpd_newclient" default:"_"`
+
 		LaunchRestServer bool   `name:"rest_server_launch" default:"false"`
 		RestServerIp     string `name:"rest_server_ip" default:"127.0.0.1"`
 		RestServerPort   int    `name:"rest_server_port" default:"8080"`
@@ -323,6 +326,22 @@ func (c *Config) GetNSQLookupdHttpAddresses() (addr []string) {
 		addr = append(addr, a)
 	}
 	return
+}
+
+// microservices
+
+// getMicroservicesUri returns defined URI for a hookId
+func (c *Config) GetMicroservicesUri(hookId string) []string {
+	c.Lock()
+	defer c.Unlock()
+	switch hookId {
+	case "smtpdnewclient":
+		if c.cfg.MsUriSmtpdNewClient != "_" {
+			return strings.Split(c.cfg.MsUriSmtpdNewClient, ";")
+		}
+	}
+	return []string{}
+
 }
 
 // REST server

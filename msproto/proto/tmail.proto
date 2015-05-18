@@ -1,0 +1,21 @@
+package msproto;
+
+message SmtpdResponse {
+	required int32 smtp_code = 1; 	// SMTP code
+	required string smtp_msg = 2; 	// SMTP message
+
+	optional bool drop = 16;		// if true connection is droped
+	optional string data_link = 17; // link for downloading additional - large - data (ie raw mail)
+	repeated string extra_headers = 18; // headers to add 
+}
+
+
+message SmtpdNewClientMsg {
+	required string session_id = 1; // smtpd session ID
+	required string remote_ip = 2; 	// remote (client) IP
+}
+
+message SmtpdHeloMsg {
+	required string session_id = 1;
+	required string helo = 2;
+}
