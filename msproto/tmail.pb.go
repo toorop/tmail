@@ -25,7 +25,7 @@ var _ = math.Inf
 type SmtpdResponse struct {
 	SmtpCode         *int32   `protobuf:"varint,1,req,name=smtp_code" json:"smtp_code,omitempty"`
 	SmtpMsg          *string  `protobuf:"bytes,2,req,name=smtp_msg" json:"smtp_msg,omitempty"`
-	Drop             *bool    `protobuf:"varint,16,opt,name=drop" json:"drop,omitempty"`
+	CloseConnection  *bool    `protobuf:"varint,16,opt,name=close_connection" json:"close_connection,omitempty"`
 	DataLink         *string  `protobuf:"bytes,17,opt,name=data_link" json:"data_link,omitempty"`
 	ExtraHeaders     []string `protobuf:"bytes,18,rep,name=extra_headers" json:"extra_headers,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
@@ -49,9 +49,9 @@ func (m *SmtpdResponse) GetSmtpMsg() string {
 	return ""
 }
 
-func (m *SmtpdResponse) GetDrop() bool {
-	if m != nil && m.Drop != nil {
-		return *m.Drop
+func (m *SmtpdResponse) GetCloseConnection() bool {
+	if m != nil && m.CloseConnection != nil {
+		return *m.CloseConnection
 	}
 	return false
 }

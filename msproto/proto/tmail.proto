@@ -1,12 +1,12 @@
 package msproto;
 
 message SmtpdResponse {
-	required int32 smtp_code = 1; 	// SMTP code
-	required string smtp_msg = 2; 	// SMTP message
+	required int32 smtp_code = 1; 			// SMTP code (ignored if eq 0)
+	required string smtp_msg = 2; 			// SMTP message (ignored if eq "")
 
-	optional bool drop = 16;		// if true connection is droped
-	optional string data_link = 17; // link for downloading additional - large - data (ie raw mail)
-	repeated string extra_headers = 18; // headers to add 
+	optional bool close_connection = 16;	// if true connection is closed 
+	optional string data_link = 17; 		// link for downloading additional (large) data 
+	repeated string extra_headers = 18; 	// headers to add 
 }
 
 
