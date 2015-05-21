@@ -148,11 +148,11 @@ func (s *smtpServerSession) smtpGreeting() {
 	s.log(fmt.Sprintf("starting new transaction %d/%d", scope.SmtpSessionsCount, scope.Cfg.GetSmtpdConcurrencyIncoming()))
 
 	// Microservices
-	stop, sendDefaultReply := msSmtptdCall("smtpdNewClient", s)
+	//stop, sendDefaultReply := msSmtptdCall("smtpdNewClient", s)
+	stop, sendDefaultReply := smtpdNewClient(s)
 	if stop {
 		return
 	}
-
 	if sendDefaultReply {
 		s.out(fmt.Sprintf("220 %s tmail V %s ESMTP %s", scope.Cfg.GetMe(), scope.Version, s.uuid))
 	}
@@ -166,7 +166,7 @@ func (s *smtpServerSession) smtpHelo(msg []string) {
 		s.helo = strings.Join(msg[1:], " ")
 	}
 	s.out(fmt.Sprintf("250 %s", scope.Cfg.GetMe()))
-	s.log("remote greets as", s.helo)
+	//s.log("remote greets as", s.helo)
 }
 
 // EHLO
@@ -189,7 +189,7 @@ func (s *smtpServerSession) smtpEhlo(msg []string) {
 	// STARTTLS
 	s.out("250 STARTTLS")
 
-	s.log("remote greets as", s.helo)
+	//s.log("remote greets as", s.helo)
 
 }
 
@@ -581,6 +581,16 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 
 	}
 	s.log("Message-ID:", string(HeaderMessageId))
+
+	// Microservice
+	stop, extraHeader := smtpdData(s, &rawMessage)
+	if stop {
+		return
+	}
+	for _, header2add := range *extraHeader {
+		rawMessage = append([]byte(fmt.Sprintf("%s\r\n", header2add)), rawMessage...)
+	}
+
 	// recieved
 	// Add recieved header
 	remoteIp := strings.Split(s.conn.RemoteAddr().String(), ":")[0]

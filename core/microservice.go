@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	//"path"
 	"strconv"
 	"strings"
 	"time"
@@ -28,17 +30,19 @@ const (
 
 // microservice represents a microservice
 type microservice struct {
-	url           string
-	fireAndForget bool
-	timeout       uint64
-	onFailure     onfailure
+	url                  string
+	skipAuthentifiedUser bool
+	fireAndForget        bool
+	timeout              uint64
+	onFailure            onfailure
 }
 
 // newMicroservice retuns a microservice parsing URI
 func newMicroservice(uri string) (*microservice, error) {
 	ms := &microservice{
-		onFailure: CONTINUE,
-		timeout:   30,
+		skipAuthentifiedUser: false,
+		onFailure:            CONTINUE,
+		timeout:              30,
 	}
 	t := strings.Split(uri, "?")
 	ms.url = t[0]
@@ -46,6 +50,11 @@ func newMicroservice(uri string) (*microservice, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if parsed.Query().Get("skipauthentifieduser") == "true" {
+		ms.skipAuthentifiedUser = true
+	}
+
 	if parsed.Query().Get("fireandforget") == "true" {
 		ms.fireAndForget = true
 	}
@@ -55,6 +64,7 @@ func newMicroservice(uri string) (*microservice, error) {
 			return nil, err
 		}
 	}
+
 	if parsed.Query().Get("onfailure") != "" {
 		switch parsed.Query().Get("onfailure") {
 		case "tempfail":
@@ -146,10 +156,24 @@ func smtpdHandleResponse(resp *msproto.SmtpdResponse, s *smtpServerSession) (sto
 
 // smtpdNewClient execute microservices for smtpdnewclient hook
 func smtpdNewClient(s *smtpServerSession) (stop, sendDefaultReply bool) {
+	if len(scope.Cfg.GetMicroservicesUri("smtpdnewclient")) == 0 {
+		return false, true
+	}
+
 	stop = false
 	sendDefaultReply = true
+
+	// serialize message to send
+	data, err := proto.Marshal(&msproto.SmtpdNewClientMsg{
+		SessionId: proto.String(s.uuid),
+		RemoteIp:  proto.String(s.conn.RemoteAddr().String()),
+	})
+	if err != nil {
+		s.logError("unable to serialize ms data as SmtpdNewClientMsg. " + err.Error())
+		return false, true
+	}
+
 	for _, uri := range scope.Cfg.GetMicroservicesUri("smtpdnewclient") {
-		s.log("call microservice: " + uri)
 		// parse uri
 		ms, err := newMicroservice(uri)
 		if err != nil {
@@ -157,17 +181,12 @@ func smtpdNewClient(s *smtpServerSession) (stop, sendDefaultReply bool) {
 			continue
 		}
 
-		// serialize message to send
-		data, err := proto.Marshal(&msproto.SmtpdNewClientMsg{
-			SessionId: proto.String(s.uuid),
-			RemoteIp:  proto.String(s.conn.RemoteAddr().String()),
-		})
-		if err != nil {
-			s.logError("unable to serialize ms data as SmtpdNewClientMsg. " + err.Error())
+		if s.user != nil && ms.skipAuthentifiedUser {
 			continue
 		}
 
 		// call ms
+		s.log("call ms " + uri)
 		if ms.fireAndForget {
 			go ms.smtpdExec(&data)
 			continue
@@ -189,15 +208,80 @@ func smtpdNewClient(s *smtpServerSession) (stop, sendDefaultReply bool) {
 	return
 }
 
+// smtpdData executes microservices for the smtpdData hook
+func smtpdData(s *smtpServerSession, rawMail *[]byte) (stop bool, extraHeaders *[]string) {
+	extraHeaders = &[]string{}
+
+	if len(scope.Cfg.GetMicroservicesUri("smtpddata")) == 0 {
+		return false, extraHeaders
+	}
+
+	// save data to server throught HTTP
+	f, err := ioutil.TempFile(scope.Cfg.GetTempDir(), "")
+	if err != nil {
+		s.logError("ms - unable to save rawmail in tempfile. " + err.Error())
+		return false, extraHeaders
+	}
+	if _, err = f.Write(*rawMail); err != nil {
+		s.logError("ms - unable to save rawmail in tempfile. " + err.Error())
+		return false, extraHeaders
+	}
+	defer os.Remove(f.Name())
+
+	// HTTP link
+	t := strings.Split(f.Name(), "/")
+	link := fmt.Sprintf("%s:%d/msdata/%s", scope.Cfg.GetRestServerIp(), scope.Cfg.GetRestServerPort(), t[len(t)-1])
+
+	// TLS
+	if scope.Cfg.GetRestServerIsTls() {
+		link = "https://" + link
+	} else {
+		link = "http://" + link
+	}
+
+	// serialize data
+	msg, err := proto.Marshal(&msproto.SmtpdDataMsg{
+		SessionId: proto.String(s.uuid),
+		DataLink:  proto.String(link),
+	})
+
+	for _, uri := range scope.Cfg.GetMicroservicesUri("smtpddata") {
+
+		// parse uri
+		ms, err := newMicroservice(uri)
+		if err != nil {
+			s.logError("unable to parse microservice url " + uri + ". " + err.Error())
+			continue
+		}
+		if s.user != nil && ms.skipAuthentifiedUser {
+			continue
+		}
+		s.log("call ms " + uri)
+
+		resp, err := ms.smtpdExec(&msg)
+
+		// Handle error from MS
+		if ms.smtpdBreakOnExecError(err, s) {
+			return true, nil
+		}
+
+		*extraHeaders = append(*extraHeaders, resp.GetExtraHeaders()...)
+	}
+
+	return false, extraHeaders
+}
+
+/*
 // smtpdFunc map of function corresponding to a hook
-var smtpdFunc = map[string]func(s *smtpServerSession) (stop, sendDefaultReply bool){
+var smtpdFunc = map[string]func(i ...interface{}) (stop, sendDefaultReply bool){
 	"smtpdNewClient": smtpdNewClient,
 }
 
 // msSmtptdCall call a microservice fro smtpd session
-func msSmtptdCall(hookId string, session *smtpServerSession) (stop, sendDefaultReply bool) {
+func msSmtptdCall(hookId string, i ...interface{}) (stop, sendDefaultReply bool) {
 	if fn, ok := smtpdFunc[hookId]; ok {
-		return fn(session)
+		return fn(i)
 	}
 	return false, true
 }
+*/

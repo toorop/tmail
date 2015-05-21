@@ -11,7 +11,7 @@ It is generated from these files:
 It has these top-level messages:
 	SmtpdResponse
 	SmtpdNewClientMsg
-	SmtpdHeloMsg
+	SmtpdDataMsg
 */
 package msproto
 
@@ -94,26 +94,27 @@ func (m *SmtpdNewClientMsg) GetRemoteIp() string {
 	return ""
 }
 
-type SmtpdHeloMsg struct {
+// smtpdDataMsg
+type SmtpdDataMsg struct {
 	SessionId        *string `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
-	Helo             *string `protobuf:"bytes,2,req,name=helo" json:"helo,omitempty"`
+	DataLink         *string `protobuf:"bytes,2,req,name=data_link" json:"data_link,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *SmtpdHeloMsg) Reset()         { *m = SmtpdHeloMsg{} }
-func (m *SmtpdHeloMsg) String() string { return proto.CompactTextString(m) }
-func (*SmtpdHeloMsg) ProtoMessage()    {}
+func (m *SmtpdDataMsg) Reset()         { *m = SmtpdDataMsg{} }
+func (m *SmtpdDataMsg) String() string { return proto.CompactTextString(m) }
+func (*SmtpdDataMsg) ProtoMessage()    {}
 
-func (m *SmtpdHeloMsg) GetSessionId() string {
+func (m *SmtpdDataMsg) GetSessionId() string {
 	if m != nil && m.SessionId != nil {
 		return *m.SessionId
 	}
 	return ""
 }
 
-func (m *SmtpdHeloMsg) GetHelo() string {
-	if m != nil && m.Helo != nil {
-		return *m.Helo
+func (m *SmtpdDataMsg) GetDataLink() string {
+	if m != nil && m.DataLink != nil {
+		return *m.DataLink
 	}
 	return ""
 }

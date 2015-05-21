@@ -15,7 +15,10 @@ message SmtpdNewClientMsg {
 	required string remote_ip = 2; 	// remote (client) IP
 }
 
-message SmtpdHeloMsg {
+
+
+// smtpdDataMsg
+message SmtpdDataMsg {
 	required string session_id = 1;
-	required string helo = 2;
+	required string data_link = 2;
 }

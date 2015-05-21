@@ -30,6 +30,9 @@ func LaunchServer() {
 	// Queue
 	addQueueHandlers(router)
 
+	// Microservice data handler
+	router.Handler("GET", "/msdata/:id", http.StripPrefix("/msdata/", http.FileServer(http.Dir("/dev/shm"))))
+
 	// Server
 	n := negroni.New(negroni.NewRecovery(), NewLogger())
 	n.UseHandler(router)
@@ -44,6 +47,13 @@ func LaunchServer() {
 		log.Fatalln(http.ListenAndServe(addr, n))
 	}
 }
+
+// hGetMsData return extra data for microservices
+/*func hGetMsData(w http.ResponseWriter, r *http.Request) {
+	id := httpcontext.Get(r, "params").(httprouter.Params).ByName("id")
+	file := scope.Cfg.GetTempDir() + "/" + id
+	os.Stat(file)
+}*/
 
 // wrapHandler puts httprouter.Params in query context
 // in order to keep compatibily with http.Handler

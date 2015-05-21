@@ -55,6 +55,7 @@ type Config struct {
 
 		// microservices
 		MsUriSmtpdNewClient string `name:"ms_smtpd_newclient" default:"_"`
+		MsUriSmtpdData      string `name:"ms_smtpd_data" default:"_"`
 
 		LaunchRestServer bool   `name:"rest_server_launch" default:"false"`
 		RestServerIp     string `name:"rest_server_ip" default:"127.0.0.1"`
@@ -338,6 +339,10 @@ func (c *Config) GetMicroservicesUri(hookId string) []string {
 	case "smtpdnewclient":
 		if c.cfg.MsUriSmtpdNewClient != "_" {
 			return strings.Split(c.cfg.MsUriSmtpdNewClient, ";")
+		}
+	case "smtpddata":
+		if c.cfg.MsUriSmtpdData != "_" {
+			return strings.Split(c.cfg.MsUriSmtpdData, ";")
 		}
 	}
 	return []string{}
