@@ -2,11 +2,10 @@ package message
 
 import (
 	"bytes"
-	//"fmt"
-	//"github.com/toorop/tmail/scope"
 	"io/ioutil"
 	"net/mail"
 	"net/textproto"
+	"regexp"
 	//"os"
 	"strings"
 )
@@ -71,7 +70,7 @@ func (m *Message) GetHeaders(key string) []string {
 // some cleanup are made
 // wrap headers line to 999 char max
 func (m *Message) GetRaw() (rawMessage []byte, err error) {
-	rawStr := ""
+	rawMessage = []byte{}
 	// Header
 	for key, hs := range m.Header {
 		// clean key
@@ -94,16 +93,15 @@ func (m *Message) GetRaw() (rawMessage []byte, err error) {
 			// Fold header
 			//t := FoldHeader(key+": "+value) + "\r\n"
 			//println("\nHeaders apres traitement: " + t)
-			rawStr += FoldHeader(key+": "+value) + "\r\n"
+			newHeader := []byte(key + ": " + value)
+			FoldHeader(&newHeader)
+			rawMessage = append(rawMessage, newHeader...)
+			rawMessage = append(rawMessage, []byte{13, 10}...)
+
 		}
 	}
 
-	// sep
-	rawStr += "\r\n"
-
-	// Slice of bytes conversion
-	rawMessage = []byte(rawStr)
-	rawStr = "" // useless
+	rawMessage = append(rawMessage, []byte{13, 10}...)
 
 	// Body
 	b, err := ioutil.ReadAll(m.Body)
@@ -130,22 +128,27 @@ func GetHostFromAddress(address string) string {
 // 998 characters, and SHOULD be no more than 78 characters, excluding
 // the CRLF.
 // TODO: refactor Foldheader
-func FoldHeader(header string) string {
+func FoldHeader(header *[]byte) {
+
+	raw := *header
+
+	rxReduceWS := regexp.MustCompile(`[ \t]+`)
+
 	// remove \r & \n
-	header = strings.Replace(header, "\r", "", -1)
-	header = strings.Replace(header, "\n", "", -1)
-	header = strings.Replace(header, "\t", " ", -1)
-	if len(header) < 78 {
-		return header
+	raw = bytes.Replace(raw, []byte{13}, []byte{}, -1)
+	raw = bytes.Replace(raw, []byte{10}, []byte{}, -1)
+	raw = rxReduceWS.ReplaceAll(raw, []byte(" "))
+	if len(raw) < 78 {
+		*header = raw
+		return
 	}
 	lastCut := 0
 	lastSpace := 0
 	headerLenght := 0
 	spacesSeen := 0
-	h := []byte{}
-	bHeader := []byte(header)
+	*header = []byte{}
 
-	for i, c := range bHeader {
+	for i, c := range raw {
 		headerLenght++
 		// espace
 		if c == 32 {
@@ -156,24 +159,17 @@ func FoldHeader(header string) string {
 			spacesSeen++
 		}
 		if headerLenght > 77 {
-			//if strings.HasPrefix(string(h), "Reference") {
-			//	fmt.Println(h)
-			//		println(string(h))
-			//}
-
-			//if len(h) != 0 && h[len(h)-2] != 13 {
-			if len(h) != 0 {
-				h = append(h, []byte{13, 10}...)
+			if len(*header) != 0 {
+				*header = append(*header, []byte{13, 10, 32, 32}...)
 			}
-			h = append(h, bHeader[lastCut:lastSpace]...)
+			*header = append(*header, raw[lastCut:lastSpace]...)
 			lastCut = lastSpace
 			headerLenght = 0
 		}
 	}
-	if len(h) != 0 && lastCut < len(bHeader) {
-		h = append(h, []byte{13, 10}...)
+	if len(*header) != 0 && lastCut < len(raw) {
+		*header = append(*header, []byte{13, 10, 32, 32}...)
 	}
-	//h = append(h, 32)
-	h = append(h, bHeader[lastCut:]...)
-	return string(h)
+	*header = append(*header, raw[lastCut:]...)
+	return
 }

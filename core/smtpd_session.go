@@ -588,7 +588,9 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		return
 	}
 	for _, header2add := range *extraHeader {
-		rawMessage = append([]byte(fmt.Sprintf("%s\r\n", header2add)), rawMessage...)
+		h := []byte(header2add)
+		message.FoldHeader(&h)
+		rawMessage = append([]byte(fmt.Sprintf("%s\r\n", h)), rawMessage...)
 	}
 
 	// recieved
@@ -618,7 +620,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	}
 
 	// local
-	recieved += fmt.Sprintf("\n\t  by %s (%s)", localIp, localHost)
+	recieved += fmt.Sprintf(" by %s (%s)", localIp, localHost)
 
 	// Proto
 	if s.secured {
@@ -632,8 +634,11 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 
 	// tmail
 	recieved += "; tmail " + scope.Version
-	recieved += "\n\t; " + s.uuid + "\r\n"
-	rawMessage = append([]byte(recieved), rawMessage...)
+	recieved += "; " + s.uuid
+	h := []byte(recieved)
+	message.FoldHeader(&h)
+	h = append(h, []byte{13, 10}...)
+	rawMessage = append(h, rawMessage...)
 	recieved = ""
 
 	//message.AddHeader("recieved", recieved)
