@@ -138,30 +138,27 @@ func (ms *microservice) smtpdBreakOnExecError(err error, s *smtpServerSession) (
 }
 
 // smtpdHandleResponse common handling of msproto.SmtpdResponse
-func smtpdHandleResponse(resp *msproto.SmtpdResponse, s *smtpServerSession) (stop, sendDefaultReply bool) {
+func smtpdReturn(resp *msproto.SmtpdResponse, s *smtpServerSession) (stop bool) {
 	s.logDebug(resp.String())
 	if resp.GetSmtpCode() != 0 && resp.GetSmtpMsg() != "" {
 		outMsg := fmt.Sprintf("%d %s", resp.GetSmtpCode(), resp.GetSmtpMsg())
 		s.log("ms smtp response: " + outMsg)
 		s.out(outMsg)
-		sendDefaultReply = false
 		if resp.GetCloseConnection() {
 			s.exitAsap()
-			return true, false
 		}
-		return false, false
+		return true
 	}
-	return false, true
+	return false
 }
 
 // smtpdNewClient execute microservices for smtpdnewclient hook
-func smtpdNewClient(s *smtpServerSession) (stop, sendDefaultReply bool) {
+func smtpdNewClient(s *smtpServerSession) (stop bool) {
 	if len(scope.Cfg.GetMicroservicesUri("smtpdnewclient")) == 0 {
-		return false, true
+		return false
 	}
 
 	stop = false
-	sendDefaultReply = true
 
 	// serialize message to send
 	data, err := proto.Marshal(&msproto.SmtpdNewClientMsg{
@@ -170,7 +167,7 @@ func smtpdNewClient(s *smtpServerSession) (stop, sendDefaultReply bool) {
 	})
 	if err != nil {
 		s.logError("unable to serialize ms data as SmtpdNewClientMsg. " + err.Error())
-		return false, true
+		return
 	}
 
 	for _, uri := range scope.Cfg.GetMicroservicesUri("smtpdnewclient") {
@@ -196,13 +193,12 @@ func smtpdNewClient(s *smtpServerSession) (stop, sendDefaultReply bool) {
 
 		// Handle error from MS
 		if ms.smtpdBreakOnExecError(err, s) {
-			return true, false
+			return true
 		}
 
 		// Handle response
-		stop, sendDefaultReply = smtpdHandleResponse(resp, s)
-		if stop {
-			return stop, sendDefaultReply
+		if smtpdReturn(resp, s) {
+			return true
 		}
 	}
 	return
@@ -259,13 +255,14 @@ func smtpdData(s *smtpServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 		s.log("call ms " + uri)
 
 		resp, err := ms.smtpdExec(&msg)
-
 		// Handle error from MS
 		if ms.smtpdBreakOnExecError(err, s) {
 			return true, nil
 		}
-
 		*extraHeaders = append(*extraHeaders, resp.GetExtraHeaders()...)
+		if smtpdReturn(resp, s) {
+			return true, extraHeaders
+		}
 	}
 
 	return false, extraHeaders

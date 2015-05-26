@@ -148,14 +148,11 @@ func (s *smtpServerSession) smtpGreeting() {
 	s.log(fmt.Sprintf("starting new transaction %d/%d", scope.SmtpSessionsCount, scope.Cfg.GetSmtpdConcurrencyIncoming()))
 
 	// Microservices
-	//stop, sendDefaultReply := msSmtptdCall("smtpdNewClient", s)
-	stop, sendDefaultReply := smtpdNewClient(s)
-	if stop {
+	if smtpdNewClient(s) {
 		return
 	}
-	if sendDefaultReply {
-		s.out(fmt.Sprintf("220 %s tmail V %s ESMTP %s", scope.Cfg.GetMe(), scope.Version, s.uuid))
-	}
+	s.out(fmt.Sprintf("220 %s tmail V %s ESMTP %s", scope.Cfg.GetMe(), scope.Version, s.uuid))
+
 }
 
 // HELO

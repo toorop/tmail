@@ -90,7 +90,7 @@ export TMAIL_SMTPD_LAUNCH=true;
 # will launch 2 smtpd deamons
 # 	- one listening on 127.0.0.1:2525 without encryption (but upgradable via STARTTLS)
 # 	- one listening on 127.0.0.1:4656 with encryption
-export TMAIL_SMTPD_DSNS="127.0.0.1:2525:false"
+export TMAIL_SMTPD_DSNS="0.0.0.0:2525:false"
 
 # smtp transaction timeout in seconds
 # throw a timeout if smtp client does not show signs of life
@@ -143,17 +143,17 @@ export TMAIL_SMTPD_SCAN_CLAMAV_DSNS="/var/run/clamav/clamd.ctl"
 # If an IP is present X time this will increase its priority
 #
 # You must define at least one local addresse
-export TMAIL_DELIVERD_LOCAL_IPS="127.0.0.1"
+export TMAIL_DELIVERD_LOCAL_IPS="0.0.0.0"
 
 
 # maxInFlight: the number of concurrent deliverd process
-export TMAIL_DELIVERD_MAX_IN_FLIGHT=5
+export TMAIL_DELIVERD_MAX_IN_FLIGHT=20
 
 # Default queue lifetime in minutes
 # After this delay
 # Bounce on temp failure
 # discard if bounce failed
-export TMAIL_DELIVERD_QUEUE_LIFETIME=168
+export TMAIL_DELIVERD_QUEUE_LIFETIME=60400
 
 # DKIM sign outgoing (remote) emails
 export TMAIL_DELIVERD_DKIM_SIGN=false
@@ -195,6 +195,9 @@ export TMAIL_REST_SERVER_PASSWD="passwd"
 
 # Call on new SMTP connection from client
 export TMAIL_MS_SMTPD_NEWCLIENT=""
+
+# Call after DATA command
+export TMAIL_MS_SMTPD_DATA=""
 
 ##
 # Dovecot
