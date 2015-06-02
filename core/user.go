@@ -19,7 +19,7 @@ type User struct {
 	AuthRelay    bool   `sql:"default:false"`            // authorization of relaying
 	HaveMailbox  bool   `sql:"default:false"`
 	MailboxQuota string `sql:"null"`
-	Home         string // used by dovecot for soraing mailbox
+	Home         string // used by dovecot to store mailbox
 }
 
 // UserAdd add an user

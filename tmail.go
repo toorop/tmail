@@ -3,15 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/toorop/tmail/core"
-	//"github.com/toorop/tmail/deliverd"
-	"github.com/toorop/tmail/rest"
-	"github.com/toorop/tmail/scanner"
-	"github.com/toorop/tmail/scope"
-	//"github.com/toorop/tmail/smtpd"
-	//"github.com/toorop/tmail/util"
-	"github.com/bitly/nsq/nsqd"
-	"github.com/codegangsta/cli"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -22,6 +13,14 @@ import (
 	"runtime"
 	"syscall"
 	"time"
+
+	"github.com/toorop/tmail/core"
+	"github.com/toorop/tmail/rest"
+	"github.com/toorop/tmail/scanner"
+	"github.com/toorop/tmail/scope"
+
+	"github.com/bitly/nsq/nsqd"
+	"github.com/codegangsta/cli"
 )
 
 const (

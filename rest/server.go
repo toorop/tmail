@@ -2,15 +2,16 @@ package rest
 
 import (
 	"fmt"
-	"github.com/codegangsta/negroni"
-	"github.com/julienschmidt/httprouter"
-	"github.com/nbio/httpcontext"
-	"github.com/toorop/tmail/scope"
 	"log"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/codegangsta/negroni"
+	"github.com/julienschmidt/httprouter"
+	"github.com/nbio/httpcontext"
+	"github.com/toorop/tmail/scope"
 )
 
 const (
@@ -31,7 +32,7 @@ func LaunchServer() {
 	addQueueHandlers(router)
 
 	// Microservice data handler
-	router.Handler("GET", "/msdata/:id", http.StripPrefix("/msdata/", http.FileServer(http.Dir("/dev/shm"))))
+	router.Handler("GET", "/msdata/:id", http.StripPrefix("/msdata/", http.FileServer(http.Dir(scope.Cfg.GetTempDir()))))
 
 	// Server
 	n := negroni.New(negroni.NewRecovery(), NewLogger())
@@ -47,13 +48,6 @@ func LaunchServer() {
 		log.Fatalln(http.ListenAndServe(addr, n))
 	}
 }
-
-// hGetMsData return extra data for microservices
-/*func hGetMsData(w http.ResponseWriter, r *http.Request) {
-	id := httpcontext.Get(r, "params").(httprouter.Params).ByName("id")
-	file := scope.Cfg.GetTempDir() + "/" + id
-	os.Stat(file)
-}*/
 
 // wrapHandler puts httprouter.Params in query context
 // in order to keep compatibily with http.Handler

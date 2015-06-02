@@ -43,7 +43,7 @@ type smtpServerSession struct {
 	exitasap chan int
 }
 
-// Factory
+// NewSmtpServerSession returns a new SMTP session
 func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, err error) {
 	sss = new(smtpServerSession)
 	sss.uuid, err = NewUUID()
@@ -503,8 +503,6 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 				dataBytes++
 				continue
 			}
-			//rawMessage = append(rawMessage, 46)
-			//rawMessage = append(rawMessage, 10)
 
 			if ch[0] == CR {
 				state = 4
@@ -546,7 +544,6 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 			s.reset()
 			return err
 		}
-
 	}
 
 	// scan
@@ -638,27 +635,6 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	rawMessage = append(h, rawMessage...)
 	recieved = ""
 
-	//message.AddHeader("recieved", recieved)
-
-	// Transformer le mail en objet
-	//println(string(rawMessage))
-	/*message, err := message.New(&rawMessage)
-	if err != nil {
-		return
-	}
-
-	// si pas de from
-	if !message.HaveHeader("from") {
-		message.AddHeader("from", s.envelope.MailFrom)
-	}*/
-
-	// On ajoute le uuid
-	//message.SetHeader("x-tmail-smtpd-sess-uuid", s.uuid)
-	//message.AddHeader("X-Tmail-SmtpdSess-Uuid", s.uuid)
-	//rawMessage = append([]byte("X-Tmail-SmtpdSess-Uuid: "+s.uuid+"\r\n"), rawMessage...)
-
-	// x-env-from
-	//message.SetHeader("x-env-from", s.envelope.MailFrom)
 	rawMessage = append([]byte("X-Env-From: "+s.envelope.MailFrom+"\r\n"), rawMessage...)
 
 	// put message in queue

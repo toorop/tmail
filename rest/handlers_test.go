@@ -181,5 +181,4 @@ func TestHandlerQueue(t *testing.T) {
 	queueBounceMessage(w, r)
 	b, _ = ioutil.ReadAll(w.Body)
 	assert.Equal(200, w.Code, string(b))
-
 }

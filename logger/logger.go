@@ -74,7 +74,7 @@ func (l *Logger) Output(calldepth int, s string) error {
 	return nil
 }
 
-// gorm insterface
+// gorm interface
 func (l *Logger) Print(v ...interface{}) {
 	l.Debug(v)
 }

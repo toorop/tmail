@@ -2,12 +2,10 @@ package main
 
 import (
 	"errors"
-	"github.com/toorop/tmail/core"
-	/*"github.com/toorop/tmail/deliverd"
-	"github.com/toorop/tmail/mailqueue"
-	"github.com/toorop/tmail/smtpd"
-	"github.com/toorop/tmail/user"*/
+
 	"github.com/jinzhu/gorm"
+
+	"github.com/toorop/tmail/core"
 )
 
 // dbIsOk checks if database is ok
@@ -36,6 +34,7 @@ func dbIsOk(DB gorm.DB) bool {
 }
 
 // initDB create tables if needed and initialize them
+// TODO: SKIP in CLI
 func initDB(DB gorm.DB) error {
 	var err error
 	//users table

@@ -29,5 +29,4 @@ func Test_FoldHeader(t *testing.T) {
 	FoldHeader(&header)
 	println(string(header))
 	assert.NotEmpty(t, header)
-
 }

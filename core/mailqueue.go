@@ -24,7 +24,7 @@ type QMessage struct {
 	Uuid                    string
 	Key                     string // identifier  -> store.Get(key) - hash of msg
 	MailFrom                string
-	AuthUser                string // Si il y a eu authetification SMTP contier le login/user sert pour le routage
+	AuthUser                string // Si il y a eu authentification SMTP contient le login/user sert pour le routage
 	RcptTo                  string
 	MessageId               string
 	Host                    string
