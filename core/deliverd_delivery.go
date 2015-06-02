@@ -5,11 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/bitly/go-nsq"
-	"github.com/jinzhu/gorm"
-	"github.com/toorop/tmail/message"
-	"github.com/toorop/tmail/scope"
-	"github.com/toorop/tmail/store"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -19,6 +14,12 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/bitly/go-nsq"
+	"github.com/jinzhu/gorm"
+	"github.com/toorop/tmail/message"
+	"github.com/toorop/tmail/scope"
+	"github.com/toorop/tmail/store"
 )
 
 type delivery struct {
@@ -35,6 +36,8 @@ type delivery struct {
 // - ajout header tmail-msg-id
 func (d *delivery) processMsg() {
 	var err error
+	flagBounce := false
+
 	// Recover on panic
 	defer func() {
 		if err := recover(); err != nil {
@@ -54,7 +57,7 @@ func (d *delivery) processMsg() {
 		return
 	}
 
-	// Update qMessage from db (check if exist)
+	// Get updated version of qMessage from db (check if exist)
 	if err = d.qMsg.UpdateFromDb(); err != nil {
 		// si on ne le trouve pas en DB il y a de forte chance pour que le message ait déja
 		// été traité
@@ -68,6 +71,18 @@ func (d *delivery) processMsg() {
 		return
 	}
 
+	// Already in delivery ?
+	if d.qMsg.Status == 0 {
+		// if lastupdate is too old, something fails, requeue message
+		if time.Since(d.qMsg.LastUpdate) > 3600*time.Second {
+			scope.Log.Error(fmt.Sprintf("deliverd %s : msg %s is marked as being in delivery for more than one hour. I will try to requeue it.", d.id, d.qMsg.Key))
+			d.requeue(2)
+			return
+		}
+		scope.Log.Info(fmt.Sprintf("deliverd %s : msg %s is marked as being in delivery by another process", d.id, d.qMsg.Key))
+		return
+	}
+
 	// Discard ?
 	if d.qMsg.Status == 1 {
 		d.qMsg.Status = 0
@@ -75,6 +90,15 @@ func (d *delivery) processMsg() {
 		d.discard()
 		return
 	}
+
+	// Bounce  ?
+	if d.qMsg.Status == 3 {
+		flagBounce = true
+	}
+
+	// update status to: delivery in progress
+	d.qMsg.Status = 0
+	d.qMsg.SaveInDb()
 
 	// {"Id":7,"Key":"7f88b72858ae57c17b6f5e89c1579924615d7876","MailFrom":"toorop@toorop.fr",
 	// "RcptTo":"toorop@toorop.fr","Host":"toorop.fr","AddedAt":"2014-12-02T09:05:59.342268145+01:00",
@@ -92,7 +116,6 @@ func (d *delivery) processMsg() {
 		scope.Log.Error(fmt.Sprintf("deliverd %s : unable to get rawmail %s from store - %s", d.id, d.qMsg.Key, err))
 		d.requeue()
 		return
-		//return response, errors.New("unable to get raw mail from store")
 	}
 	//d.qStore = qStore
 	dataReader, err := d.qStore.Get(d.qMsg.Key)
@@ -109,15 +132,11 @@ func (d *delivery) processMsg() {
 	}
 	d.rawData = &t
 
-	// Marked  ?
-	if d.qMsg.Status == 3 {
+	// Bounce  ?
+	if flagBounce {
 		d.bounce("bounced by admin")
 		return
 	}
-
-	// update status to delivery in progress
-	d.qMsg.Status = 0
-	d.qMsg.SaveInDb()
 
 	//
 	// Local or  remote ?

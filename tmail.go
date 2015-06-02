@@ -25,7 +25,7 @@ import (
 
 const (
 	// TMAIL_VERSION version of tmail
-	TMAIL_VERSION = "0.0.8"
+	TMAIL_VERSION = "0.0.8.1"
 )
 
 func init() {
@@ -34,7 +34,6 @@ func init() {
 	if err = scope.Bootstrap(); err != nil {
 		log.Fatalln(err)
 	}
-
 	scope.Version = TMAIL_VERSION
 
 	// Check local ip

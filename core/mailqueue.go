@@ -28,6 +28,7 @@ type QMessage struct {
 	RcptTo                  string
 	MessageId               string
 	Host                    string
+	LastUpdate              time.Time
 	AddedAt                 time.Time
 	NextDeliveryScheduledAt time.Time
 	Status                  uint32 // 0 delivery in progress, 1 to be discarded, 2 scheduled, 3 to be bounced
@@ -68,13 +69,14 @@ func (q *QMessage) Delete() error {
 func (q *QMessage) UpdateFromDb() error {
 	q.Lock()
 	defer q.Unlock()
-	return scope.DB.Find(q).Error
+	return scope.DB.First(q, q.Id).Error
 }
 
 // SaveInDb save qMessage in DB
 func (q *QMessage) SaveInDb() error {
 	q.Lock()
 	defer q.Unlock()
+	q.LastUpdate = time.Now()
 	return scope.DB.Save(q).Error
 }
 
@@ -142,16 +144,18 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 	qmessages := []QMessage{}
 	for _, rcptTo := range envelope.RcptTo {
 		qm := QMessage{
-			Uuid:                uuid,
-			Key:                 key,
-			AuthUser:            authUser,
-			MailFrom:            envelope.MailFrom,
-			RcptTo:              rcptTo,
-			MessageId:           string(messageId),
-			Host:                message.GetHostFromAddress(rcptTo),
-			AddedAt:             time.Now(),
-			Status:              0,
-			DeliveryFailedCount: 0,
+			Uuid:                    uuid,
+			Key:                     key,
+			AuthUser:                authUser,
+			MailFrom:                envelope.MailFrom,
+			RcptTo:                  rcptTo,
+			MessageId:               string(messageId),
+			Host:                    message.GetHostFromAddress(rcptTo),
+			LastUpdate:              time.Now(),
+			AddedAt:                 time.Now(),
+			NextDeliveryScheduledAt: time.Now(),
+			Status:                  2,
+			DeliveryFailedCount:     0,
 		}
 
 		// create record in db
