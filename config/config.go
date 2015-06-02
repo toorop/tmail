@@ -7,7 +7,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	//"net"
 	"os"
 	"reflect"
 	"strconv"
@@ -95,9 +94,6 @@ func (c *Config) stayUpToDate() {
 func (c *Config) loadFromEnv(prefix string) error {
 	// container should be a struct
 	elem := reflect.ValueOf(&c.cfg).Elem()
-	/*if elem.Kind() != reflect.Struct {
-		return errors.New("Your config container must be a struc - " + elem.Kind().String() + " given")
-	}*/
 
 	typ := elem.Type()
 	for i := 0; i < typ.NumField(); i++ {

@@ -24,10 +24,10 @@ func New(out io.Writer, debugEnabled bool) (*Logger, error) {
 	hostname, _ := os.Hostname()
 	return &Logger{
 		debugEnabled: debugEnabled,
-		debug:        log.New(out, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lmicroseconds),
-		info:         log.New(out, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lmicroseconds),
-		err:          log.New(out, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lmicroseconds),
-		trace:        log.New(out, "["+hostname+" - 127.0.0.1] ", log.Ldate|log.Ltime|log.Lshortfile),
+		debug:        log.New(out, "["+hostname+"] ", log.Ldate|log.Ltime|log.Lmicroseconds),
+		info:         log.New(out, "["+hostname+"] ", log.Ldate|log.Ltime|log.Lmicroseconds),
+		err:          log.New(out, "["+hostname+"] ", log.Ldate|log.Ltime|log.Lmicroseconds),
+		trace:        log.New(out, "["+hostname+"] ", log.Ldate|log.Ltime|log.Lshortfile),
 	}, nil
 }
 
