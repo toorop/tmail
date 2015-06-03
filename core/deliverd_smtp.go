@@ -17,14 +17,15 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
-	"fmt"
-	"github.com/toorop/tmail/scope"
+	//"fmt"
 	"io"
 	"net"
 	"net/textproto"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/toorop/tmail/scope"
 )
 
 // A Client represents a client connection to an SMTP server.
@@ -328,8 +329,9 @@ type dataCloser struct {
 	io.WriteCloser
 }
 
-func (d *dataCloser) Close() error {
+/*func (d *dataCloser) Close() error {
 	d.WriteCloser.Close()
+	return nil
 	code, msg, e := d.c.Text.ReadResponse(250)
 	// bad hack
 	errMsg := ""
@@ -337,13 +339,13 @@ func (d *dataCloser) Close() error {
 		errMsg = e.Error()
 	}
 	return errors.New(fmt.Sprintf("%dé%sé%s", code, msg, errMsg))
-}
+}*/
 
 // Data issues a DATA command to the server and returns a writer that
 // can be used to write the data. The caller should close the writer
 // before calling any more methods on c.
 // A call to Data must be preceded by one or more calls to Rcpt.
-func (c *Client) Data() (io.WriteCloser, error) {
+func (c *Client) Data() (*dataCloser, error) {
 	_, _, err := c.cmd(354, "DATA")
 	if err != nil {
 		return nil, err

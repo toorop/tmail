@@ -257,6 +257,15 @@ func (d *delivery) bounce(errMsg string) {
 		d.requeue(3)
 		return
 	}
+
+	// unix2dos it
+	err = Unix2dos(&b)
+	if err != nil {
+		scope.Log.Error("deliverd " + d.id + ": unable to convert bounce from unix to dos. " + err.Error())
+		d.requeue(3)
+		return
+	}
+
 	// enqueue
 	envelope := message.Envelope{"", []string{d.qMsg.MailFrom}}
 	/*message, err := message.New(&b)

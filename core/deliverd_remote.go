@@ -143,16 +143,17 @@ func deliverRemote(d *delivery) {
 		return
 	}
 
-	err = dataPipe.Close()
-	// err existe toujours car c'est ce qui nous permet de récuperer la reponse du serveur distant
-	// on parse err
-
-	parts := strings.Split(err.Error(), "é")
-
-	scope.Log.Info(fmt.Sprintf("deliverd-remote %s: remote server %s reply to data cmd: %s - %s", d.id, c.RemoteIP, parts[0], parts[1]))
-	if len(parts) > 2 && len(parts[2]) != 0 {
+	dataPipe.WriteCloser.Close()
+	code, msg, err := dataPipe.c.Text.ReadResponse(0)
+	scope.Log.Info(fmt.Sprintf("deliverd-remote %s: remote server %s reply to data cmd: %d - %s", d.id, c.RemoteIP, code, msg))
+	if err != nil {
 		//d.dieTemp(parts[2])
-		d.handleSmtpError(parts[2], c.RemoteIP)
+		d.handleSmtpError(err.Error(), c.RemoteIP)
+		return
+	}
+
+	if code != 250 {
+		d.handleSmtpError(fmt.Sprintf("%d - %s", code, msg), c.RemoteIP)
 		return
 	}
 

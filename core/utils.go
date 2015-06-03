@@ -1,6 +1,8 @@
 package core
 
 import (
+	"bytes"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,4 +56,26 @@ func IsIpV4(ip string) bool {
 		return false
 	}
 	return true
+}
+
+// Unix2dos replace all line ending from \n to \r\n
+func Unix2dos(ch *[]byte) (err error) {
+	dos := bytes.NewBuffer([]byte{})
+	var prev byte
+	prev = 0
+	for _, b := range *ch {
+		if b == 10 && prev != 13 {
+			if _, err = dos.Write([]byte{13, 10}); err != nil {
+				return
+			}
+
+		} else {
+			if err = dos.WriteByte(b); err != nil {
+				return
+			}
+		}
+		prev = b
+	}
+	*ch, err = ioutil.ReadAll(dos)
+	return nil
 }
