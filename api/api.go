@@ -121,3 +121,8 @@ func RcpthostDel(host string) error {
 func RcpthostList() (hosts []core.RcptHost, err error) {
 	return core.RcpthostGetAll()
 }
+
+// DKIM
+func DkimEnable(domain string) (dkimConfig *core.DkimConfig, err error) {
+	return core.DkimEnable(domain)
+}

@@ -125,15 +125,25 @@ func deliverRemote(d *delivery) {
 
 	// DKIM
 	if scope.Cfg.GetDeliverdDkimSign() {
-		scope.Log.Debug(fmt.Sprintf("deliverd-remote %s: add dkim sign", d.id))
-		dkimOptions := dkim.NewSigOptions()
-		dkimOptions.PrivateKey = []byte(privKey)
-		dkimOptions.AddSignatureTimestamp = true
-		dkimOptions.Domain = "tmail.io"
-		dkimOptions.Selector = "test"
-		dkimOptions.Headers = []string{"from", "subject", "date", "message-id"}
-		dkim.Sign(d.rawData, dkimOptions)
-		scope.Log.Debug(fmt.Sprintf("deliverd-remote %s: end dkim sign", d.id))
+		userDomain := strings.SplitN(d.qMsg.MailFrom, "@", 2)
+		if len(userDomain) == 2 {
+			dkc, err := DkimGetConfig(userDomain[1])
+			if err != nil {
+				d.dieTemp("unable to get DKIM config for domain " + userDomain[1])
+				return
+			}
+			if dkc != nil {
+				scope.Log.Debug(fmt.Sprintf("deliverd-remote %s: add dkim sign", d.id))
+				dkimOptions := dkim.NewSigOptions()
+				dkimOptions.PrivateKey = []byte(dkc.PrivKey)
+				dkimOptions.AddSignatureTimestamp = true
+				dkimOptions.Domain = userDomain[1]
+				dkimOptions.Selector = dkc.Selector
+				dkimOptions.Headers = []string{"from", "subject", "date", "message-id"}
+				dkim.Sign(d.rawData, dkimOptions)
+				scope.Log.Debug(fmt.Sprintf("deliverd-remote %s: end dkim sign", d.id))
+			}
+		}
 	}
 
 	dataBuf := bytes.NewBuffer(*d.rawData)

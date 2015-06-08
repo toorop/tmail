@@ -30,6 +30,10 @@ func dbIsOk(DB gorm.DB) bool {
 	if !DB.HasTable(&core.Route{}) {
 		return false
 	}
+	if !DB.HasTable(&core.DkimConfig{}) {
+		return false
+	}
+
 	return true
 }
 
@@ -101,13 +105,24 @@ func initDB(DB gorm.DB) error {
 			return errors.New("Unable to add index idx_route_host on table route - " + err.Error())
 		}
 	}
+
+	if !DB.HasTable(&core.DkimConfig{}) {
+		if err = DB.CreateTable(&core.DkimConfig{}).Error; err != nil {
+			return errors.New("Unable to create table dkim_config - " + err.Error())
+		}
+		// Index
+		if err = DB.Model(&core.DkimConfig{}).AddIndex("idx_domain", "domain").Error; err != nil {
+			return errors.New("Unable to add index idx_domain on table dkim_config - " + err.Error())
+		}
+	}
+
 	return nil
 }
 
 // autoMigrateDB will keep tables reflecting structs
 func autoMigrateDB(DB gorm.DB) error {
 	// if tables exists check if they reflects struts
-	if err := DB.AutoMigrate(&core.User{}, &core.RcptHost{}, &core.RelayIpOk{}, &core.QMessage{}, &core.Route{}).Error; err != nil {
+	if err := DB.AutoMigrate(&core.User{}, &core.RcptHost{}, &core.RelayIpOk{}, &core.QMessage{}, &core.Route{}, &core.DkimConfig{}).Error; err != nil {
 		return errors.New("Unable autoMigrateDB - " + err.Error())
 	}
 	return nil
