@@ -73,7 +73,19 @@ func DkimEnable(domain string) (dkc *DkimConfig, err error) {
 	return dkc, err
 }
 
-// DkimGetConfig returns DKIM ;config for domain domain
+// DkimDisable Disable DKIM for domain domain by removing his
+// DkimConfig entry
+func DkimDisable(domain string) error {
+	domain = strings.ToLower(strings.TrimSpace(domain))
+	// Check if DKIM is alreadu enabled
+	err := scope.DB.Where("domain = ?", domain).Delete(&DkimConfig{}).Error
+	if err != nil && err == gorm.RecordNotFound {
+		return nil
+	}
+	return err
+}
+
+// DkimGetConfig returns DKIM config for domain domain
 func DkimGetConfig(domain string) (dkc *DkimConfig, err error) {
 	dkc = &DkimConfig{}
 	domain = strings.ToLower(domain)
