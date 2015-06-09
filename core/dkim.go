@@ -8,7 +8,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	"github.com/toorop/tmail/scope"
@@ -18,8 +20,8 @@ import (
 type DkimConfig struct {
 	Id       int64
 	Domain   string
-	PubKey   string
-	PrivKey  string
+	PubKey   string `sql:"type:text;"`
+	PrivKey  string `sql:"type:text;"`
 	Selector string
 	Headers  string
 }
@@ -60,12 +62,15 @@ func DkimEnable(domain string) (dkc *DkimConfig, err error) {
 	t := strings.Split(string(pem.EncodeToMemory(&pubKeyBlock)), "\n")
 	pubKey := strings.Join(t[1:len(t)-2], "")
 
+	// selector: unique to prevent collision with existing record
+	selector := strconv.FormatInt(time.Now().Unix(), 10)
+
 	// save
 	dkc = &DkimConfig{
 		Domain:   domain,
 		PubKey:   pubKey,
 		PrivKey:  privKeyPem,
-		Selector: "dkim",
+		Selector: selector,
 		Headers:  "",
 	}
 

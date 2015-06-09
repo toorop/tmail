@@ -21,11 +21,11 @@ var Dkim = cgCli.Command{
 				if len(c.Args()) != 1 {
 					cliDieBadArgs(c)
 				}
-				dkimConfig, err := api.DkimEnable(c.Args().First())
+				dkc, err := api.DkimEnable(c.Args().First())
 				cliHandleErr(err)
 				println("Done !")
-				fmt.Printf("It remains for you to create this TXT record on dkim._domainkey.%s zone:\n\nv=DKIM1;k=rsa;s=email;h=sha256;p=%s\n\n", c.Args().First(), dkimConfig.PubKey)
-				println("And... That's all. KISS.")
+				fmt.Printf("It remains for you to create this TXT record on %s._domainkey.%s zone:\n\nv=DKIM1;k=rsa;s=email;h=sha256;p=%s\n\n", dkc.Selector, c.Args().First(), dkc.PubKey)
+				println("And... That's all.")
 
 				cliDieOk()
 			},
@@ -95,7 +95,7 @@ var Dkim = cgCli.Command{
 				dkc, err := api.DkimGetConfig(domain)
 				cliHandleErr(err)
 				if dkc != nil {
-					fmt.Printf("dkim._domainkey.%s zone:\n\nv=DKIM1;k=rsa;s=email;h=sha256;p=%s\n\n", domain, dkc.PubKey)
+					fmt.Printf("%s._domainkey.%s zone:\n\nv=DKIM1;k=rsa;s=email;h=sha256;p=%s\n\n", domain, dkc.Selector, dkc.PubKey)
 				} else {
 					println("DKIM is not enabled for " + domain)
 					println("To enable DKIM on " + domain + " run command:")
