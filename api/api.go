@@ -135,3 +135,7 @@ func DkimEnable(domain string) (dkimConfig *core.DkimConfig, err error) {
 func DkimDisable(domain string) error {
 	return core.DkimDisable(domain)
 }
+
+func DkimGetConfig(domain string) (dkimConfig *core.DkimConfig, err error) {
+	return core.DkimGetConfig(domain)
+}
