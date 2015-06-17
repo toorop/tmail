@@ -36,11 +36,6 @@ func init() {
 	}
 	scope.Version = TMAIL_VERSION
 
-	// Check local ip
-	/*if _, err = scope.Cfg.GetLocalIps(); err != nil {
-		log.Fatalln("bad config parameter TMAIL_DELIVERD_LOCAL_IPS", err.Error())
-	}*/
-
 	// Check base path structure
 	requiredPaths := []string{"db", "nsq", "ssl"}
 	for _, p := range requiredPaths {
@@ -51,11 +46,12 @@ func init() {
 
 	// TODO: if clusterMode check if nsqlookupd is available
 
-	// On vérifie que la base est à jour
+	// check DB
+	// TODO: do check in CLI call (raise error & ask for user to run tmail initdb|checkdb)
 	if !dbIsOk(scope.DB) {
 		var r []byte
 		for {
-			fmt.Print(fmt.Sprintf("Database 'driver: %s, source: %s' misses some tables.\r\nShould i create them ? (y/n):", scope.Cfg.GetDbDriver(), scope.Cfg.GetDbSource()))
+			fmt.Printf("Database 'driver: %s, source: %s' misses some tables.\r\nShould i create them ? (y/n):", scope.Cfg.GetDbDriver(), scope.Cfg.GetDbSource())
 			r, _, _ = bufio.NewReader(os.Stdin).ReadLine()
 			if r[0] == 110 || r[0] == 121 {
 				break
@@ -66,9 +62,17 @@ func init() {
 				log.Fatalln(err)
 			}
 		} else {
-			log.Fatalln("See you soon...")
+			log.Println("See you soon...")
+			os.Exit(0)
 		}
 	}
+	// sync tables from structs
+	if err := autoMigrateDB(scope.DB); err != nil {
+		log.Fatalln(err)
+	}
+
+	// init rand seed
+	rand.Seed(time.Now().UTC().UnixNano())
 
 	// Dovecot support
 	if scope.Cfg.GetDovecotSupportEnabled() {
@@ -82,45 +86,37 @@ func init() {
 
 // MAIN
 func main() {
-	rand.Seed(time.Now().UTC().UnixNano())
-
-	// Synch tables to structs
-	if err := autoMigrateDB(scope.DB); err != nil {
-		log.Fatalln(err)
-	}
-
 	app := cli.NewApp()
 	app.Name = "tmail"
-	app.Usage = "smtp server... and a little more"
+	app.Usage = "SMTP server"
 	app.Author = "Stéphane Depierrepont aka toorop"
-	app.Email = "toorop@toorop.fr"
+	app.Email = "toorop@tmail.io"
 	app.Version = TMAIL_VERSION
 	app.Commands = cliCommands
+	// no know command ? Launch server
 	app.Action = func(c *cli.Context) {
 		if len(c.Args()) != 0 {
 			cli.ShowAppHelp(c)
 		} else {
-			// if there nothing to do do nothing
+			// if there is nothing to do then... do nothing
 			if !scope.Cfg.GetLaunchDeliverd() && !scope.Cfg.GetLaunchSmtpd() {
 				log.Fatalln("I have nothing to do, so i do nothing. Bye.")
 			}
-
 			// Loop
 			sigChan := make(chan os.Signal, 1)
 			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
+			// TODO
 			// Chanel to comunicate between all elements
 			//daChan := make(chan string)
 
-			// nsqd
+			// init and launch nsqd
 			opts := nsqd.NewNSQDOptions()
-			// logs
-			//opts.Logger = log.New(os.Stderr, "[nsqd] ", log.Ldate|log.Ltime|log.Lmicroseconds)
 			opts.Logger = log.New(ioutil.Discard, "", 0)
 			if scope.Cfg.GetDebugEnabled() {
 				opts.Logger = scope.Log
 			}
-			opts.Verbose = scope.Cfg.GetDebugEnabled() // verbosity
+			opts.Verbose = scope.Cfg.GetDebugEnabled()
 			opts.DataPath = core.GetBasePath() + "/nsq"
 			// if cluster get lookupd addresses
 			if scope.Cfg.GetClusterModeEnabled() {
@@ -143,7 +139,7 @@ func main() {
 			opts.MaxMsgTimeout = 15 * time.Hour
 
 			// maximum requeuing timeout for a message
-			// je pense que si le client ne demande pas de requeue dans ce delais alors
+			// si le client ne demande pas de requeue dans ce delais alors
 			// le message et considéré comme traité
 			opts.MaxReqTimeout = 1 * time.Hour
 
@@ -160,7 +156,7 @@ func main() {
 
 			// smtpd
 			if scope.Cfg.GetLaunchSmtpd() {
-				// If clamav is enabled test it
+				// clamav ?
 				if scope.Cfg.GetSmtpdClamavEnabled() {
 					if err = scanner.NewClamav().Ping(); err != nil {
 						log.Fatalln("Unable to connect to clamd -", err)
@@ -178,7 +174,6 @@ func main() {
 			}
 
 			// deliverd
-			//deliverd.Scope = scope
 			go core.LaunchDeliverd()
 
 			// HTTP REST server
@@ -194,6 +189,9 @@ func main() {
 
 			// flush nsqd memory to disk
 			nsqd.Exit()
+
+			// exit
+			os.Exit(0)
 		}
 	}
 	app.Run(os.Args)
