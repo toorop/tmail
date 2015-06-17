@@ -47,7 +47,7 @@ func init() {
 
 	// check DB
 	// TODO: do check in CLI call (raise error & ask for user to run tmail initdb|checkdb)
-	if !dbIsOk(core.DB) {
+	if !core.IsOkDB(core.DB) {
 		var r []byte
 		for {
 			fmt.Printf("Database 'driver: %s, source: %s' misses some tables.\r\nShould i create them ? (y/n):", core.Cfg.GetDbDriver(), core.Cfg.GetDbSource())
@@ -57,7 +57,7 @@ func init() {
 			}
 		}
 		if r[0] == 121 {
-			if err = initDB(core.DB); err != nil {
+			if err = core.InitDB(core.DB); err != nil {
 				log.Fatalln(err)
 			}
 		} else {
@@ -66,7 +66,7 @@ func init() {
 		}
 	}
 	// sync tables from structs
-	if err := autoMigrateDB(core.DB); err != nil {
+	if err := core.AutoMigrateDB(core.DB); err != nil {
 		log.Fatalln(err)
 	}
 
