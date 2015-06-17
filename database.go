@@ -39,6 +39,7 @@ func dbIsOk(DB gorm.DB) bool {
 
 // initDB create tables if needed and initialize them
 // TODO: SKIP in CLI
+// TODO:  check regularly structure & indexes
 func initDB(DB gorm.DB) error {
 	var err error
 	//users table
@@ -46,10 +47,6 @@ func initDB(DB gorm.DB) error {
 		if err = DB.CreateTable(&core.User{}).Error; err != nil {
 			return errors.New("Unable to create table user - " + err.Error())
 		}
-		// Index
-		/*if err = DB.Model(&user.User{}).AddUniqueIndex("idx_user_login", "login").Error; err != nil {
-			return errors.New("Unable to add index idx_user_login on table user - " + err.Error())
-		}*/
 	}
 	//rcpthosts table
 	if !DB.HasTable(&core.RcptHost{}) {
@@ -86,14 +83,6 @@ func initDB(DB gorm.DB) error {
 		if err = DB.CreateTable(&core.QMessage{}).Error; err != nil {
 			return errors.New("Unable to create table queued_messages - " + err.Error())
 		}
-		// Index
-		/*if err = DB.Model(&core.QMessage{}).AddIndex("idx_queued_messages_deliveryinprogress_nextdeliveryat", "delivery_in_progress", "next_delivery_at").Error; err != nil {
-			return errors.New("Unable to add index idx_rcpthots_domain on table queued_messages - " + err.Error())
-		}*/
-
-		/*if err = DB.Model(&core.QMessage{}).AddIndex("uidx_key", "key").Error; err != nil {
-			return errors.New("Unable to add index uidx_key on table queued_messages - " + err.Error())
-		}*/
 	}
 	// deliverd.route
 	if !DB.HasTable(&core.Route{}) {
