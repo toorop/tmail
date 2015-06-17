@@ -17,6 +17,7 @@ import (
 	"github.com/bitly/nsq/nsqd"
 	"github.com/codegangsta/cli"
 
+	tcli "github.com/toorop/tmail/cli"
 	"github.com/toorop/tmail/core"
 	"github.com/toorop/tmail/rest"
 )
@@ -90,7 +91,7 @@ func main() {
 	app.Author = "Stéphane Depierrepont aka toorop"
 	app.Email = "toorop@tmail.io"
 	app.Version = TMAIL_VERSION
-	app.Commands = cliCommands
+	app.Commands = tcli.CliCommands
 	// no know command ? Launch server
 	app.Action = func(c *cli.Context) {
 		if len(c.Args()) != 0 {

@@ -1,18 +1,17 @@
-package main
+package cli
 
 import (
 	cgCli "github.com/codegangsta/cli"
-	"github.com/toorop/tmail/cli"
 )
 
-var cliCommands = []cgCli.Command{
-	cli.Queue,
-	cli.Routes,
-	cli.User,
-	cli.Rcpthost,
-	cli.RelayIP,
-	cli.Mailbox,
-	cli.Dkim,
+var CliCommands = []cgCli.Command{
+	Queue,
+	Routes,
+	User,
+	Rcpthost,
+	RelayIP,
+	Mailbox,
+	Dkim,
 }
 
 var cliCommandHelpTemplate = `NAME:
