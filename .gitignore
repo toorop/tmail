@@ -5,4 +5,13 @@
 dist/tools/easyCert/
 dist/nsq/*
 dist/conf/tmail.cfg
-
+run
+test
+watch
+build
+buildDist
+dist/log/
+dist/mailboxes/
+dist/tmail64
+dist/tools/
+tmail.zip
