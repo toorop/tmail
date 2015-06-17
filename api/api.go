@@ -1,6 +1,7 @@
 package api
 
-// !!! scope doit etre initialisé avant d'utiliser ce package
+// WARNING core.ScopeBootstrap() must be called
+// WARNING 2: useless to be removed
 
 import (
 	"github.com/toorop/tmail/core"
