@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/jinzhu/gorm"
-	"github.com/toorop/tmail/scope"
 )
 
 // DkimConfig represents DKIM configuration for a domain
@@ -31,7 +30,7 @@ func DkimEnable(domain string) (dkc *DkimConfig, err error) {
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	// Check if DKIM is alreadu enabled
 	dkc = &DkimConfig{}
-	err = scope.DB.Where("domain = ?", domain).Find(dkc).Error
+	err = DB.Where("domain = ?", domain).Find(dkc).Error
 	if err != nil && err != gorm.RecordNotFound {
 		return nil, err
 	} else if err == nil {
@@ -74,7 +73,7 @@ func DkimEnable(domain string) (dkc *DkimConfig, err error) {
 		Headers:  "",
 	}
 
-	err = scope.DB.Save(dkc).Error
+	err = DB.Save(dkc).Error
 	return dkc, err
 }
 
@@ -83,7 +82,7 @@ func DkimEnable(domain string) (dkc *DkimConfig, err error) {
 func DkimDisable(domain string) error {
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	// Check if DKIM is alreadu enabled
-	err := scope.DB.Where("domain = ?", domain).Delete(&DkimConfig{}).Error
+	err := DB.Where("domain = ?", domain).Delete(&DkimConfig{}).Error
 	if err != nil && err == gorm.RecordNotFound {
 		return nil
 	}
@@ -94,7 +93,7 @@ func DkimDisable(domain string) error {
 func DkimGetConfig(domain string) (dkc *DkimConfig, err error) {
 	dkc = &DkimConfig{}
 	domain = strings.ToLower(domain)
-	err = scope.DB.Where("domain = ?", domain).First(dkc).Error
+	err = DB.Where("domain = ?", domain).First(dkc).Error
 	if err != nil {
 		if err == gorm.RecordNotFound {
 			return nil, nil

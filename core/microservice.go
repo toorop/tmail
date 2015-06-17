@@ -17,7 +17,6 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/toorop/tmail/msproto"
-	"github.com/toorop/tmail/scope"
 )
 
 type onfailure int
@@ -154,7 +153,7 @@ func smtpdReturn(resp *msproto.SmtpdResponse, s *smtpServerSession) (stop bool) 
 
 // smtpdNewClient execute microservices for smtpdnewclient hook
 func smtpdNewClient(s *smtpServerSession) (stop bool) {
-	if len(scope.Cfg.GetMicroservicesUri("smtpdnewclient")) == 0 {
+	if len(Cfg.GetMicroservicesUri("smtpdnewclient")) == 0 {
 		return false
 	}
 
@@ -170,7 +169,7 @@ func smtpdNewClient(s *smtpServerSession) (stop bool) {
 		return
 	}
 
-	for _, uri := range scope.Cfg.GetMicroservicesUri("smtpdnewclient") {
+	for _, uri := range Cfg.GetMicroservicesUri("smtpdnewclient") {
 		// parse uri
 		ms, err := newMicroservice(uri)
 		if err != nil {
@@ -208,12 +207,12 @@ func smtpdNewClient(s *smtpServerSession) (stop bool) {
 func smtpdData(s *smtpServerSession, rawMail *[]byte) (stop bool, extraHeaders *[]string) {
 	extraHeaders = &[]string{}
 
-	if len(scope.Cfg.GetMicroservicesUri("smtpddata")) == 0 {
+	if len(Cfg.GetMicroservicesUri("smtpddata")) == 0 {
 		return false, extraHeaders
 	}
 
 	// save data to server throught HTTP
-	f, err := ioutil.TempFile(scope.Cfg.GetTempDir(), "")
+	f, err := ioutil.TempFile(Cfg.GetTempDir(), "")
 	if err != nil {
 		s.logError("ms - unable to save rawmail in tempfile. " + err.Error())
 		return false, extraHeaders
@@ -226,10 +225,10 @@ func smtpdData(s *smtpServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 
 	// HTTP link
 	t := strings.Split(f.Name(), "/")
-	link := fmt.Sprintf("%s:%d/msdata/%s", scope.Cfg.GetRestServerIp(), scope.Cfg.GetRestServerPort(), t[len(t)-1])
+	link := fmt.Sprintf("%s:%d/msdata/%s", Cfg.GetRestServerIp(), Cfg.GetRestServerPort(), t[len(t)-1])
 
 	// TLS
-	if scope.Cfg.GetRestServerIsTls() {
+	if Cfg.GetRestServerIsTls() {
 		link = "https://" + link
 	} else {
 		link = "http://" + link
@@ -241,7 +240,7 @@ func smtpdData(s *smtpServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 		DataLink:  proto.String(link),
 	})
 
-	for _, uri := range scope.Cfg.GetMicroservicesUri("smtpddata") {
+	for _, uri := range Cfg.GetMicroservicesUri("smtpddata") {
 
 		// parse uri
 		ms, err := newMicroservice(uri)

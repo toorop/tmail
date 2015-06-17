@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/jinzhu/gorm"
 	"github.com/kless/osutil/user/crypt/sha512_crypt"
-	"github.com/toorop/tmail/scope"
 	"golang.org/x/crypto/bcrypt"
 	"net/mail"
 	"strings"
@@ -43,7 +42,7 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
 	// if we have to create mailbox, login must be a valid email address
 	if haveMailbox {
 		// check if dovecot is available
-		if !scope.Cfg.GetDovecotSupportEnabled() {
+		if !Cfg.GetDovecotSupportEnabled() {
 			return errors.New("you must enable (and install) Dovecot support")
 		}
 
@@ -59,7 +58,7 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
 		// Quota
 		if mbQuota == "" {
 			// get default
-			mbQuota = scope.Cfg.GetUserMailboxDefaultQuota()
+			mbQuota = Cfg.GetUserMailboxDefaultQuota()
 		}
 
 		// rcptohost must be in rcpthost && must be local
@@ -69,7 +68,7 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
 		}
 		exists := err == nil
 		if !exists {
-			err = scope.DB.Save(&RcptHost{
+			err = DB.Save(&RcptHost{
 				Hostname: t[1],
 				IsLocal:  true,
 			}).Error
@@ -80,7 +79,7 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
 			return errors.New("rcpthost " + t[1] + " is already handled by tmail but declared as remote destination")
 		}
 		// home = base/d/domain/u/user
-		home = scope.Cfg.GetUsersHomeBase() + "/" + string(t[1][0]) + "/" + t[1] + "/" + string(t[0][0]) + "/" + t[0]
+		home = Cfg.GetUsersHomeBase() + "/" + string(t[1][0]) + "/" + t[1] + "/" + string(t[0][0]) + "/" + t[0]
 	}
 
 	// blowfish
@@ -112,7 +111,7 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
 		Home:         home,
 	}
 
-	return scope.DB.Save(&user).Error
+	return DB.Save(&user).Error
 }
 
 // Get return an user by is login/passwd
@@ -124,7 +123,7 @@ func UserGet(login, passwd string) (user *User, err error) {
 		return nil, err
 	}
 
-	err = scope.DB.Where("login = ?", login).Find(user).Error
+	err = DB.Where("login = ?", login).Find(user).Error
 	if err != nil {
 		return nil, err
 	}
@@ -140,14 +139,14 @@ func UserGet(login, passwd string) (user *User, err error) {
 // GetByLogin return an user from his login
 func UserGetByLogin(login string) (user *User, err error) {
 	user = &User{}
-	err = scope.DB.Where("login = ?", strings.ToLower(login)).Find(user).Error
+	err = DB.Where("login = ?", strings.ToLower(login)).Find(user).Error
 	return
 }
 
 // UserList return all user
 func UserList() (users []User, err error) {
 	users = []User{}
-	err = scope.DB.Find(&users).Error
+	err = DB.Find(&users).Error
 	return
 }
 
@@ -163,12 +162,12 @@ func UserDel(login string) error {
 
 	// HERE on doit verifier si l'host doit etre supprimé de rcpthost
 
-	return scope.DB.Where("login = ?", login).Delete(&User{}).Error
+	return DB.Where("login = ?", login).Delete(&User{}).Error
 }
 
 // UserExists checks if an user exists
 func UserExists(login string) (bool, error) {
-	err := scope.DB.Where("login=?", strings.ToLower(login)).Find(&User{}).Error
+	err := DB.Where("login=?", strings.ToLower(login)).Find(&User{}).Error
 	if err == nil {
 		return true, nil
 	}

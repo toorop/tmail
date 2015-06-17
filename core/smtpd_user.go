@@ -2,7 +2,6 @@ package core
 
 import (
 	"errors"
-	"github.com/toorop/tmail/scope"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,7 +20,7 @@ func NewSmtpUser(login, passwd string) (user *SmtpUser, err error) {
 		return nil, err
 	}
 
-	err = scope.DB.Where("login = ?", login).First(user).Error
+	err = DB.Where("login = ?", login).First(user).Error
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +51,7 @@ func AddUser(login, passwd string, authRelay bool) (err error) {
 	}
 	// users exits ?
 	var count int
-	if err = scope.DB.Model(SmtpUser{}).Where("login = ?", login).Count(&count).Error; err != nil {
+	if err = DB.Model(SmtpUser{}).Where("login = ?", login).Count(&count).Error; err != nil {
 		return err
 	}
 	if count != 0 {
@@ -69,7 +68,7 @@ func AddUser(login, passwd string, authRelay bool) (err error) {
 		AuthRelay: authRelay,
 	}
 
-	return scope.DB.Save(&user).Error
+	return DB.Save(&user).Error
 }
 
 // DelUser delete an user
@@ -77,18 +76,18 @@ func DelUser(login string) error {
 	var err error
 	// users exits ?
 	var count int
-	if err = scope.DB.Model(SmtpUser{}).Where("login = ?", login).Count(&count).Error; err != nil {
+	if err = DB.Model(SmtpUser{}).Where("login = ?", login).Count(&count).Error; err != nil {
 		return err
 	}
 	if count == 0 {
 		return errors.New("User " + login + " doesn't exists")
 	}
-	return scope.DB.Where("login = ?", login).Delete(&SmtpUser{}).Error
+	return DB.Where("login = ?", login).Delete(&SmtpUser{}).Error
 }
 
 // GetAuthorizedUsers returns users who can use SMTP to send mail
 func GetAllowedUsers() (users []SmtpUser, err error) {
 	users = []SmtpUser{}
-	err = scope.DB.Where("auth_relay=?", true).Find(&users).Error
+	err = DB.Where("auth_relay=?", true).Find(&users).Error
 	return
 }

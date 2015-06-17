@@ -3,8 +3,6 @@ package core
 import (
 	"bytes"
 	"fmt"
-	//"github.com/toorop/tmail/message"
-	"github.com/toorop/tmail/scope"
 	"io"
 	"os/exec"
 	"strconv"
@@ -14,7 +12,7 @@ import (
 
 // deliverLocal handle local delivery
 func deliverLocal(d *delivery) {
-	scope.Log.Info(fmt.Sprintf("delivery-local %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
+	Log.Info(fmt.Sprintf("delivery-local %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
 
 	// Todo Remove return path
 	//msg.DelHeader("return-path")
@@ -25,7 +23,7 @@ func deliverLocal(d *delivery) {
 		return
 	}*/
 	// Received
-	*d.rawData = append([]byte("Received: tmail deliverd local "+d.id+"; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
+	*d.rawData = append([]byte("Received: tmail deliverd local "+d.id+"; "+time.Now().Format(Time822)+"\r\n"), *d.rawData...)
 
 	//*d.rawData = append([]byte("X-Tmail-MsgId: "+d.qMsg.Key+"\r\n"), *d.rawData...)
 
@@ -37,7 +35,7 @@ func deliverLocal(d *delivery) {
 
 	dataBuf := bytes.NewBuffer(*d.rawData)
 
-	cmd := exec.Command(scope.Cfg.GetDovecotLda(), "-d", d.qMsg.RcptTo)
+	cmd := exec.Command(Cfg.GetDovecotLda(), "-d", d.qMsg.RcptTo)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		d.dieTemp("unable to create pipe to dovecot-lda stdin: " + err.Error())
@@ -62,12 +60,12 @@ func deliverLocal(d *delivery) {
 
 	/*outbuf := new(bytes.Buffer)
 	outbuf.ReadFrom(stdout)
-	scope.Log.Debug(outbuf.String())*/
+	Log.Debug(outbuf.String())*/
 
 	if err := cmd.Wait(); err != nil {
 
 		t := strings.Split(err.Error(), " ")
-		scope.Log.Error(t)
+		Log.Error(t)
 		if len(t) != 3 {
 			d.dieTemp("unexpected response from dovecot-lda. Got: " + err.Error())
 			return

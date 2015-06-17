@@ -18,8 +18,6 @@ import (
 	"github.com/bitly/go-nsq"
 	"github.com/jinzhu/gorm"
 	"github.com/toorop/tmail/message"
-	"github.com/toorop/tmail/scope"
-	"github.com/toorop/tmail/store"
 )
 
 type delivery struct {
@@ -27,7 +25,7 @@ type delivery struct {
 	nsqMsg  *nsq.Message
 	qMsg    *QMessage
 	rawData *[]byte
-	qStore  store.Storer
+	qStore  Storer
 }
 
 // processMsg processes message
@@ -41,13 +39,13 @@ func (d *delivery) processMsg() {
 	// Recover on panic
 	defer func() {
 		if err := recover(); err != nil {
-			scope.Log.Error(fmt.Sprintf("deliverd %s : PANIC \r\n %s \r\n %s", d.id, err, debug.Stack()))
+			Log.Error(fmt.Sprintf("deliverd %s : PANIC \r\n %s \r\n %s", d.id, err, debug.Stack()))
 		}
 	}()
 
 	// decode message from json
 	if err = json.Unmarshal([]byte(d.nsqMsg.Body), d.qMsg); err != nil {
-		scope.Log.Error("deliverd: unable to parse nsq message - " + err.Error())
+		Log.Error("deliverd: unable to parse nsq message - " + err.Error())
 		// TODO
 		// in this case :
 		// on expire le message de la queue par contre on ne
@@ -62,10 +60,10 @@ func (d *delivery) processMsg() {
 		// si on ne le trouve pas en DB il y a de forte chance pour que le message ait déja
 		// été traité
 		if err == gorm.RecordNotFound {
-			scope.Log.Info(fmt.Sprintf("deliverd %s : qMsg %s not in Db, already delivered, discarding", d.id, d.qMsg.Key))
+			Log.Info(fmt.Sprintf("deliverd %s : qMsg %s not in Db, already delivered, discarding", d.id, d.qMsg.Key))
 			d.discard()
 		} else {
-			scope.Log.Error(fmt.Sprintf("deliverd %s : unable to get qMsg %s from Db - %s", d.id, d.qMsg.Key, err))
+			Log.Error(fmt.Sprintf("deliverd %s : unable to get qMsg %s from Db - %s", d.id, d.qMsg.Key, err))
 			d.requeue()
 		}
 		return
@@ -75,11 +73,11 @@ func (d *delivery) processMsg() {
 	if d.qMsg.Status == 0 {
 		// if lastupdate is too old, something fails, requeue message
 		if time.Since(d.qMsg.LastUpdate) > 3600*time.Second {
-			scope.Log.Error(fmt.Sprintf("deliverd %s : msg %s is marked as being in delivery for more than one hour. I will try to requeue it.", d.id, d.qMsg.Key))
+			Log.Error(fmt.Sprintf("deliverd %s : msg %s is marked as being in delivery for more than one hour. I will try to requeue it.", d.id, d.qMsg.Key))
 			d.requeue(2)
 			return
 		}
-		scope.Log.Info(fmt.Sprintf("deliverd %s : msg %s is marked as being in delivery by another process", d.id, d.qMsg.Key))
+		Log.Info(fmt.Sprintf("deliverd %s : msg %s is marked as being in delivery by another process", d.id, d.qMsg.Key))
 		return
 	}
 
@@ -107,13 +105,13 @@ func (d *delivery) processMsg() {
 
 	// Retrieve message from store
 	// c'est le plus long (enfin ça peut si c'est par exemple sur du S3 ou RA)
-	d.qStore, err = store.New(scope.Cfg.GetStoreDriver(), scope.Cfg.GetStoreSource())
+	d.qStore, err = NewStore(Cfg.GetStoreDriver(), Cfg.GetStoreSource())
 	if err != nil {
 		// TODO
 		// On va considerer que c'est une erreur temporaire
 		// il se peut que le store soit momentanément injoignable
 		// A terme on peut regarder le
-		scope.Log.Error(fmt.Sprintf("deliverd %s : unable to get rawmail %s from store - %s", d.id, d.qMsg.Key, err))
+		Log.Error(fmt.Sprintf("deliverd %s : unable to get rawmail %s from store - %s", d.id, d.qMsg.Key, err))
 		d.requeue()
 		return
 	}
@@ -157,17 +155,17 @@ func (d *delivery) processMsg() {
 }
 
 func (d *delivery) dieOk() {
-	scope.Log.Info("deliverd " + d.id + ": success")
+	Log.Info("deliverd " + d.id + ": success")
 	if err := d.qMsg.Delete(); err != nil {
-		scope.Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
 	}
 	d.nsqMsg.Finish()
 }
 
 // dieTemp die when a 4** error occured
 func (d *delivery) dieTemp(msg string) {
-	scope.Log.Info("deliverd " + d.id + ": temp failure - " + msg)
-	if time.Since(d.qMsg.AddedAt) < time.Duration(scope.Cfg.GetDeliverdQueueLifetime())*time.Minute {
+	Log.Info("deliverd " + d.id + ": temp failure - " + msg)
+	if time.Since(d.qMsg.AddedAt) < time.Duration(Cfg.GetDeliverdQueueLifetime())*time.Minute {
 		d.requeue()
 		return
 	}
@@ -177,7 +175,7 @@ func (d *delivery) dieTemp(msg string) {
 
 // diePerm when a 5** error occured
 func (d *delivery) diePerm(msg string) {
-	scope.Log.Info("deliverd " + d.id + ": perm failure - " + msg)
+	Log.Info("deliverd " + d.id + ": perm failure - " + msg)
 	// bounce message
 	d.bounce(msg)
 	return
@@ -185,9 +183,9 @@ func (d *delivery) diePerm(msg string) {
 
 // discard remove a message from queue
 func (d *delivery) discard() {
-	scope.Log.Info("deliverd " + d.id + " discard message " + d.qMsg.Key)
+	Log.Info("deliverd " + d.id + " discard message " + d.qMsg.Key)
 	if err := d.qMsg.Delete(); err != nil {
-		scope.Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
 		d.requeue(1)
 	} else {
 		d.nsqMsg.Finish()
@@ -199,9 +197,9 @@ func (d *delivery) discard() {
 func (d *delivery) bounce(errMsg string) {
 	// If returnPath =="" -> double bounce -> discard
 	if d.qMsg.MailFrom == "" {
-		scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " double bounce: discarding")
+		Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " double bounce: discarding")
 		if err := d.qMsg.Delete(); err != nil {
-			scope.Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+			Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
 			d.requeue(1)
 		} else {
 			d.nsqMsg.Finish()
@@ -211,9 +209,9 @@ func (d *delivery) bounce(errMsg string) {
 
 	// triple bounce
 	if d.qMsg.MailFrom == "#@[]" {
-		scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " triple bounce: discarding")
+		Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " triple bounce: discarding")
 		if err := d.qMsg.Delete(); err != nil {
-			scope.Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+			Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
 			d.requeue(1)
 		} else {
 			d.nsqMsg.Finish()
@@ -236,10 +234,10 @@ func (d *delivery) bounce(errMsg string) {
 		d.rawData = &t
 	}
 
-	tData := templateData{time.Now().Format(scope.Time822), scope.Cfg.GetMe(), d.qMsg.MailFrom, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
+	tData := templateData{time.Now().Format(Time822), Cfg.GetMe(), d.qMsg.MailFrom, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
 	t, err := template.ParseFiles(path.Join(GetBasePath(), "tpl/bounce.tpl"))
 	if err != nil {
-		scope.Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)
 		return
 	}
@@ -247,13 +245,13 @@ func (d *delivery) bounce(errMsg string) {
 	bouncedMailBuf := new(bytes.Buffer)
 	err = t.Execute(bouncedMailBuf, tData)
 	if err != nil {
-		scope.Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)
 		return
 	}
 	b, err := ioutil.ReadAll(bouncedMailBuf)
 	if err != nil {
-		scope.Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)
 		return
 	}
@@ -261,7 +259,7 @@ func (d *delivery) bounce(errMsg string) {
 	// unix2dos it
 	err = Unix2dos(&b)
 	if err != nil {
-		scope.Log.Error("deliverd " + d.id + ": unable to convert bounce from unix to dos. " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable to convert bounce from unix to dos. " + err.Error())
 		d.requeue(3)
 		return
 	}
@@ -270,25 +268,25 @@ func (d *delivery) bounce(errMsg string) {
 	envelope := message.Envelope{"", []string{d.qMsg.MailFrom}}
 	/*message, err := message.New(&b)
 	if err != nil {
-		scope.Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)
 		return
 	}*/
 	id, err := QueueAddMessage(&b, envelope, "")
 	if err != nil {
-		scope.Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
 		d.requeue(3)
 		return
 	}
 
 	if err := d.qMsg.Delete(); err != nil {
-		scope.Log.Error("deliverd " + d.id + ": unable remove bounced message " + d.qMsg.Key + " from queue. " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable remove bounced message " + d.qMsg.Key + " from queue. " + err.Error())
 		d.requeue(1)
 	} else {
 		d.nsqMsg.Finish()
 	}
 
-	scope.Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " queued with id " + id + " for being bounced.")
+	Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " queued with id " + id + " for being bounced.")
 	return
 }
 
@@ -411,11 +409,11 @@ func getSmtpClient(routes *[]Route) (*Client, *Route, error) {
 					continue
 				}
 				// TODO timeout en config
-				c, err := Dialz(remoteAddr, lIp.String(), scope.Cfg.GetMe(), 30)
+				c, err := Dialz(remoteAddr, lIp.String(), Cfg.GetMe(), 30)
 				if err == nil {
 					return c, &route, nil
 				} else {
-					scope.Log.Debug("deliverd.getSmtpClient: unable to get a client", lIp, "->", remoteAddr.IP.String(), ":", remoteAddr.Port, "-", err)
+					Log.Debug("deliverd.getSmtpClient: unable to get a client", lIp, "->", remoteAddr.IP.String(), ":", remoteAddr.Port, "-", err)
 				}
 			}
 		}

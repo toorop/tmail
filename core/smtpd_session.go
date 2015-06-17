@@ -15,11 +15,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 
-	"github.com/toorop/tmail/logger"
 	"github.com/toorop/tmail/message"
-
-	"github.com/toorop/tmail/scanner"
-	"github.com/toorop/tmail/scope"
 )
 
 const (
@@ -32,7 +28,7 @@ const (
 type smtpServerSession struct {
 	uuid     string
 	conn     net.Conn
-	logger   *logger.Logger
+	logger   *Logger
 	timer    *time.Timer // for timeout
 	timeout  time.Duration
 	secured  bool
@@ -51,12 +47,12 @@ func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, 
 		return
 	}
 	sss.conn = conn
-	sss.logger = scope.Log
-	//sss.logger = logger.New(scope.Cfg.GetDebugEnabled())
+	sss.logger = Log
+	//sss.logger = logger.New(Cfg.GetDebugEnabled())
 	sss.secured = secured
 	// timeout
 	sss.exitasap = make(chan int, 1)
-	sss.timeout = time.Duration(scope.Cfg.GetSmtpdTransactionTimeout()) * time.Second
+	sss.timeout = time.Duration(Cfg.GetSmtpdTransactionTimeout()) * time.Second
 	sss.timer = time.AfterFunc(sss.timeout, sss.raiseTimeout)
 	sss.reset()
 	return
@@ -106,7 +102,7 @@ func (s *smtpServerSession) logError(msg ...string) {
 
 // logError is a log helper for error logs
 func (s *smtpServerSession) logDebug(msg ...string) {
-	if !scope.Cfg.GetDebugEnabled() {
+	if !Cfg.GetDebugEnabled() {
 		return
 	}
 	s.logger.Debug("smtpd -", s.uuid, "-", s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
@@ -139,19 +135,19 @@ func (s *smtpServerSession) smtpGreeting() {
 	// Todo desactiver server signature en option
 	// dans le cas ou l'on refuse la transaction on doit répondre par un 554 et attendre le quit
 	time.Sleep(100 * time.Nanosecond)
-	if scope.SmtpSessionsCount > scope.Cfg.GetSmtpdConcurrencyIncoming() {
-		s.log(fmt.Sprintf("max connections reached %d/%d", scope.SmtpSessionsCount, scope.Cfg.GetSmtpdConcurrencyIncoming()))
+	if SmtpSessionsCount > Cfg.GetSmtpdConcurrencyIncoming() {
+		s.log(fmt.Sprintf("max connections reached %d/%d", SmtpSessionsCount, Cfg.GetSmtpdConcurrencyIncoming()))
 		s.out(fmt.Sprintf("421 sorry, the maximum number of connections has been reached, try again later %s", s.uuid))
 		s.exitAsap()
 		return
 	}
-	s.log(fmt.Sprintf("starting new transaction %d/%d", scope.SmtpSessionsCount, scope.Cfg.GetSmtpdConcurrencyIncoming()))
+	s.log(fmt.Sprintf("starting new transaction %d/%d", SmtpSessionsCount, Cfg.GetSmtpdConcurrencyIncoming()))
 
 	// Microservices
 	if smtpdNewClient(s) {
 		return
 	}
-	s.out(fmt.Sprintf("220 %s tmail V %s ESMTP %s", scope.Cfg.GetMe(), scope.Version, s.uuid))
+	s.out(fmt.Sprintf("220 %s tmail V %s ESMTP %s", Cfg.GetMe(), Version, s.uuid))
 
 }
 
@@ -162,7 +158,7 @@ func (s *smtpServerSession) smtpHelo(msg []string) {
 	if len(msg) > 1 {
 		s.helo = strings.Join(msg[1:], " ")
 	}
-	s.out(fmt.Sprintf("250 %s", scope.Cfg.GetMe()))
+	s.out(fmt.Sprintf("250 %s", Cfg.GetMe()))
 	//s.log("remote greets as", s.helo)
 }
 
@@ -174,11 +170,11 @@ func (s *smtpServerSession) smtpEhlo(msg []string) {
 	if len(msg) > 1 {
 		s.helo = strings.Join(msg[1:], " ")
 	}
-	s.out(fmt.Sprintf("250-%s", scope.Cfg.GetMe()))
+	s.out(fmt.Sprintf("250-%s", Cfg.GetMe()))
 
 	// Extensions
 	// Size
-	s.out(fmt.Sprintf("250-SIZE %d", scope.Cfg.GetSmtpdMaxDataBytes()))
+	s.out(fmt.Sprintf("250-SIZE %d", Cfg.GetSmtpdMaxDataBytes()))
 
 	// Auth
 	s.out("250-AUTH PLAIN")
@@ -238,7 +234,7 @@ func (s *smtpServerSession) smtpMailFrom(msg []string) {
 
 		// If only local part add me
 		if strings.Count(s.envelope.MailFrom, "@") == 0 {
-			s.envelope.MailFrom = fmt.Sprintf("%s@%s", s.envelope.MailFrom, scope.Cfg.GetMe())
+			s.envelope.MailFrom = fmt.Sprintf("%s@%s", s.envelope.MailFrom, Cfg.GetMe())
 		}
 	}
 	s.seenMail = true
@@ -528,7 +524,7 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		//TRACE.Println(dataBytes)
 
 		// Max hops reached ?
-		if hops > scope.Cfg.GetSmtpdMaxHops() {
+		if hops > Cfg.GetSmtpdMaxHops() {
 			s.log(fmt.Sprintf("Message is looping. Hops : %d", hops))
 			s.out("554 too many hops, this message is looping (#5.4.6)")
 			s.purgeConn()
@@ -537,8 +533,8 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 		}
 
 		// Max databytes reached ?
-		if dataBytes > scope.Cfg.GetSmtpdMaxDataBytes() {
-			s.log(fmt.Sprintf("552 Message size (%d) exceeds config.smtp.in.maxDataBytes (%d).", dataBytes, scope.Cfg.GetSmtpdMaxDataBytes()))
+		if dataBytes > Cfg.GetSmtpdMaxDataBytes() {
+			s.log(fmt.Sprintf("552 Message size (%d) exceeds config.smtp.in.maxDataBytes (%d).", dataBytes, Cfg.GetSmtpdMaxDataBytes()))
 			s.out("552 sorry, that message size exceeds my databytes limit (#5.3.4)")
 			s.purgeConn()
 			s.reset()
@@ -548,9 +544,9 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 
 	// scan
 	// clamav
-	if scope.Cfg.GetSmtpdClamavEnabled() {
-		found, virusName, err := scanner.NewClamav().ScanStream(bytes.NewReader(rawMessage))
-		scope.Log.Debug("clamav scan result", found, virusName, err)
+	if Cfg.GetSmtpdClamavEnabled() {
+		found, virusName, err := NewClamav().ScanStream(bytes.NewReader(rawMessage))
+		Log.Debug("clamav scan result", found, virusName, err)
 		if err != nil {
 			s.out("454 oops, scanner failure (#4.3.0)")
 			s.log("ERROR clamav: " + err.Error())
@@ -624,10 +620,10 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 	}
 
 	// timestamp
-	recieved += time.Now().Format(scope.Time822)
+	recieved += time.Now().Format(Time822)
 
 	// tmail
-	recieved += "; tmail " + scope.Version
+	recieved += "; tmail " + Version
 	recieved += "; " + s.uuid
 	h := []byte(recieved)
 	message.FoldHeader(&h)
@@ -713,7 +709,7 @@ func (s *smtpServerSession) smtpAuth(rawMsg string) {
 		s.out("334 ")
 		// get encoded by reading next line
 		for {
-			s.timer.Reset(time.Duration(scope.Cfg.GetSmtpdTransactionTimeout()) * time.Second)
+			s.timer.Reset(time.Duration(Cfg.GetSmtpdTransactionTimeout()) * time.Second)
 			_, err := s.conn.Read(ch)
 			s.timer.Stop()
 			if err != nil {

@@ -1,15 +1,15 @@
-package scanner
+package core
 
 import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/toorop/tmail/scope"
 	"io"
 	"net"
 	"strings"
 )
 
+// inspirated from https://github.com/dutchcoders/go-clamd
 type clamav struct {
 	dsn  string
 	conn net.Conn
@@ -17,7 +17,7 @@ type clamav struct {
 
 // NewClamav returns a new clamac wrapper
 func NewClamav() *clamav {
-	return &clamav{dsn: scope.Cfg.GetSmtpdClamavDsns()}
+	return &clamav{dsn: Cfg.GetSmtpdClamavDsns()}
 }
 
 // connect make the connexion

@@ -1,4 +1,4 @@
-package logger
+package core
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ type Logger struct {
 	trace        *log.Logger
 }
 
-func New(out io.Writer, debugEnabled bool) (*Logger, error) {
+func NewLogger(out io.Writer, debugEnabled bool) (*Logger, error) {
 	hostname, _ := os.Hostname()
 	return &Logger{
 		debugEnabled: debugEnabled,

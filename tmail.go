@@ -14,13 +14,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/toorop/tmail/core"
-	"github.com/toorop/tmail/rest"
-	"github.com/toorop/tmail/scanner"
-	"github.com/toorop/tmail/scope"
-
 	"github.com/bitly/nsq/nsqd"
 	"github.com/codegangsta/cli"
+
+	"github.com/toorop/tmail/core"
+	"github.com/toorop/tmail/rest"
 )
 
 const (
@@ -31,10 +29,10 @@ const (
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	var err error
-	if err = scope.Bootstrap(); err != nil {
+	if err = core.ScopeBootstrap(); err != nil {
 		log.Fatalln(err)
 	}
-	scope.Version = TMAIL_VERSION
+	core.Version = TMAIL_VERSION
 
 	// Check base path structure
 	requiredPaths := []string{"db", "nsq", "ssl"}
@@ -48,17 +46,17 @@ func init() {
 
 	// check DB
 	// TODO: do check in CLI call (raise error & ask for user to run tmail initdb|checkdb)
-	if !dbIsOk(scope.DB) {
+	if !dbIsOk(core.DB) {
 		var r []byte
 		for {
-			fmt.Printf("Database 'driver: %s, source: %s' misses some tables.\r\nShould i create them ? (y/n):", scope.Cfg.GetDbDriver(), scope.Cfg.GetDbSource())
+			fmt.Printf("Database 'driver: %s, source: %s' misses some tables.\r\nShould i create them ? (y/n):", core.Cfg.GetDbDriver(), core.Cfg.GetDbSource())
 			r, _, _ = bufio.NewReader(os.Stdin).ReadLine()
 			if r[0] == 110 || r[0] == 121 {
 				break
 			}
 		}
 		if r[0] == 121 {
-			if err = initDB(scope.DB); err != nil {
+			if err = initDB(core.DB); err != nil {
 				log.Fatalln(err)
 			}
 		} else {
@@ -67,7 +65,7 @@ func init() {
 		}
 	}
 	// sync tables from structs
-	if err := autoMigrateDB(scope.DB); err != nil {
+	if err := autoMigrateDB(core.DB); err != nil {
 		log.Fatalln(err)
 	}
 
@@ -75,8 +73,8 @@ func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	// Dovecot support
-	if scope.Cfg.GetDovecotSupportEnabled() {
-		_, err := exec.LookPath(scope.Cfg.GetDovecotLda())
+	if core.Cfg.GetDovecotSupportEnabled() {
+		_, err := exec.LookPath(core.Cfg.GetDovecotLda())
 		if err != nil {
 			log.Fatalln("Unable to find Dovecot LDA binary, checks your config poarameter TMAIL_DOVECOT_LDA ", err)
 		}
@@ -99,7 +97,7 @@ func main() {
 			cli.ShowAppHelp(c)
 		} else {
 			// if there is nothing to do then... do nothing
-			if !scope.Cfg.GetLaunchDeliverd() && !scope.Cfg.GetLaunchSmtpd() {
+			if !core.Cfg.GetLaunchDeliverd() && !core.Cfg.GetLaunchSmtpd() {
 				log.Fatalln("I have nothing to do, so i do nothing. Bye.")
 			}
 			// Loop
@@ -113,14 +111,14 @@ func main() {
 			// init and launch nsqd
 			opts := nsqd.NewNSQDOptions()
 			opts.Logger = log.New(ioutil.Discard, "", 0)
-			if scope.Cfg.GetDebugEnabled() {
-				opts.Logger = scope.Log
+			if core.Cfg.GetDebugEnabled() {
+				opts.Logger = core.Log
 			}
-			opts.Verbose = scope.Cfg.GetDebugEnabled()
+			opts.Verbose = core.Cfg.GetDebugEnabled()
 			opts.DataPath = core.GetBasePath() + "/nsq"
 			// if cluster get lookupd addresses
-			if scope.Cfg.GetClusterModeEnabled() {
-				opts.NSQLookupdTCPAddresses = scope.Cfg.GetNSQLookupdTcpAddresses()
+			if core.Cfg.GetClusterModeEnabled() {
+				opts.NSQLookupdTCPAddresses = core.Cfg.GetNSQLookupdTcpAddresses()
 			}
 
 			// deflate (compression)
@@ -155,21 +153,21 @@ func main() {
 			nsqd.Main()
 
 			// smtpd
-			if scope.Cfg.GetLaunchSmtpd() {
+			if core.Cfg.GetLaunchSmtpd() {
 				// clamav ?
-				if scope.Cfg.GetSmtpdClamavEnabled() {
-					if err = scanner.NewClamav().Ping(); err != nil {
+				if core.Cfg.GetSmtpdClamavEnabled() {
+					if err = core.NewClamav().Ping(); err != nil {
 						log.Fatalln("Unable to connect to clamd -", err)
 					}
 				}
 
-				smtpdDsns, err := core.GetDsnsFromString(scope.Cfg.GetSmtpdDsns())
+				smtpdDsns, err := core.GetDsnsFromString(core.Cfg.GetSmtpdDsns())
 				if err != nil {
 					log.Fatalln("unable to parse smtpd dsn -", err)
 				}
 				for _, dsn := range smtpdDsns {
 					go core.NewSmtpd(dsn).ListenAndServe()
-					scope.Log.Info("smtpd " + dsn.String() + " launched.")
+					core.Log.Info("smtpd " + dsn.String() + " launched.")
 				}
 			}
 
@@ -177,15 +175,15 @@ func main() {
 			go core.LaunchDeliverd()
 
 			// HTTP REST server
-			if scope.Cfg.GetRestServerLaunch() {
+			if core.Cfg.GetRestServerLaunch() {
 				go rest.LaunchServer()
 			}
 
 			<-sigChan
-			scope.Log.Info("Exiting...")
+			core.Log.Info("Exiting...")
 
 			// close NsqQueueProducer if exists
-			scope.NsqQueueProducer.Stop()
+			core.NsqQueueProducer.Stop()
 
 			// flush nsqd memory to disk
 			nsqd.Exit()

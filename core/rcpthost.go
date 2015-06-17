@@ -3,7 +3,6 @@ package core
 import (
 	"errors"
 	"github.com/jinzhu/gorm"
-	"github.com/toorop/tmail/scope"
 	"strings"
 )
 
@@ -16,7 +15,7 @@ type RcptHost struct {
 
 // isInRcptHost checks if domain is in the RcptHost list (-> relay authorized)
 func IsInRcptHost(hostname string) (bool, error) {
-	err := scope.DB.Where("hostname = ?", hostname).First(&RcptHost{}).Error
+	err := DB.Where("hostname = ?", hostname).First(&RcptHost{}).Error
 	if err == nil {
 		return true, nil
 	}
@@ -28,7 +27,7 @@ func IsInRcptHost(hostname string) (bool, error) {
 
 // RcpthostGet return a rcpthost
 func RcpthostGet(hostname string) (rcpthost RcptHost, err error) {
-	err = scope.DB.Where("hostname = ?", hostname).First(&rcpthost).Error
+	err = DB.Where("hostname = ?", hostname).First(&rcpthost).Error
 	return
 }
 
@@ -44,7 +43,7 @@ func RcpthostAdd(hostname string, isLocal bool) error {
 
 	// domain already in rcpthosts ?
 	var count int
-	if err := scope.DB.Model(RcptHost{}).Where("hostname = ?", hostname).Count(&count).Error; err != nil {
+	if err := DB.Model(RcptHost{}).Where("hostname = ?", hostname).Count(&count).Error; err != nil {
 		return err
 	}
 	if count != 0 {
@@ -54,7 +53,7 @@ func RcpthostAdd(hostname string, isLocal bool) error {
 		Hostname: hostname,
 		IsLocal:  isLocal,
 	}
-	return scope.DB.Save(&h).Error
+	return DB.Save(&h).Error
 }
 
 // DelRcptHost delete a hostname from rcpthosts list
@@ -63,18 +62,18 @@ func RcpthostDel(hostname string) error {
 	hostname = strings.ToLower(hostname)
 	// hostname exits ?
 	/*var count int
-	if err = scope.DB.Model(RcptHost{}).Where("hostname = ?", hostname).Count(&count).Error; err != nil {
+	if err = DB.Model(RcptHost{}).Where("hostname = ?", hostname).Count(&count).Error; err != nil {
 		return err
 	}
 	if count == 0 {
 		return errors.New("Hostname " + hostname + " doesn't exists.")
 	}*/
-	return scope.DB.Where("hostname = ?", hostname).Delete(&RcptHost{}).Error
+	return DB.Where("hostname = ?", hostname).Delete(&RcptHost{}).Error
 }
 
 // GetRcptHosts return hostnames in rcpthosts
 func RcpthostGetAll() (hostnames []RcptHost, err error) {
 	hostnames = []RcptHost{}
-	err = scope.DB.Find(&hostnames).Error
+	err = DB.Find(&hostnames).Error
 	return
 }

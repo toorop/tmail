@@ -11,7 +11,8 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/julienschmidt/httprouter"
 	"github.com/nbio/httpcontext"
-	"github.com/toorop/tmail/scope"
+
+	"github.com/toorop/tmail/core"
 )
 
 const (
@@ -32,19 +33,19 @@ func LaunchServer() {
 	addQueueHandlers(router)
 
 	// Microservice data handler
-	router.Handler("GET", "/msdata/:id", http.StripPrefix("/msdata/", http.FileServer(http.Dir(scope.Cfg.GetTempDir()))))
+	router.Handler("GET", "/msdata/:id", http.StripPrefix("/msdata/", http.FileServer(http.Dir(core.Cfg.GetTempDir()))))
 
 	// Server
 	n := negroni.New(negroni.NewRecovery(), NewLogger())
 	n.UseHandler(router)
-	addr := fmt.Sprintf("%s:%d", scope.Cfg.GetRestServerIp(), scope.Cfg.GetRestServerPort())
+	addr := fmt.Sprintf("%s:%d", core.Cfg.GetRestServerIp(), core.Cfg.GetRestServerPort())
 
 	// TLS
-	if scope.Cfg.GetRestServerIsTls() {
-		scope.Log.Info("httpd " + addr + " TLS launched")
+	if core.Cfg.GetRestServerIsTls() {
+		core.Log.Info("httpd " + addr + " TLS launched")
 		log.Fatalln(http.ListenAndServeTLS(addr, path.Join(getBasePath(), "ssl/web_server.crt"), path.Join(getBasePath(), "ssl/web_server.key"), n))
 	} else {
-		scope.Log.Info("httpd " + addr + " launched")
+		core.Log.Info("httpd " + addr + " launched")
 		log.Fatalln(http.ListenAndServe(addr, n))
 	}
 }

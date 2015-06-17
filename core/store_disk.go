@@ -1,4 +1,4 @@
-package store
+package core
 
 import (
 	"bytes"
@@ -14,6 +14,7 @@ type diskStore struct {
 	basePath string
 }
 
+// NewDiskStore returns a store with local disk as backend
 func NewDiskStore(basePath string) (*diskStore, error) {
 	basePath = path.Clean(basePath)
 	// check if path exists & is writable
@@ -33,7 +34,7 @@ func NewDiskStore(basePath string) (*diskStore, error) {
 	return &diskStore{basePath}, nil
 }
 
-// Get
+// Get returns io.Reader corresponding to key
 func (s *diskStore) Get(key string) (io.Reader, error) {
 	if key == "" {
 		return nil, errors.New("diskStore.Get: key is empty")
@@ -46,7 +47,7 @@ func (s *diskStore) Get(key string) (io.Reader, error) {
 	return io.Reader(bytes.NewReader(raw)), nil
 }
 
-// Put
+// Put save key value in store
 func (s *diskStore) Put(key string, reader io.Reader) error {
 	var err error
 	if key == "" {

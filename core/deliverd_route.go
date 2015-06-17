@@ -4,7 +4,6 @@ import (
 	//"errors"
 	"database/sql"
 	"errors"
-	"github.com/toorop/tmail/scope"
 	"net"
 	"strings"
 )
@@ -36,7 +35,7 @@ type matchingRoutes struct {
 // GetAllRoutes returns all routes (really ?!)
 func GetAllRoutes() (routes []Route, err error) {
 	routes = []Route{}
-	err = scope.DB.Find(&routes).Error
+	err = DB.Find(&routes).Error
 	return
 }
 
@@ -111,7 +110,7 @@ func AddRoute(host, localIp, remoteHost string, remotePort, priority int, user, 
 		}
 	}
 
-	return scope.DB.Create(route).Error
+	return DB.Create(route).Error
 }
 
 // DelRoute delete a route
@@ -119,7 +118,7 @@ func DelRoute(id int64) error {
 	r := Route{
 		Id: id,
 	}
-	return scope.DB.Delete(&r).Error
+	return DB.Delete(&r).Error
 }
 
 // getRoute return matchingRoutes for the specified destination host
@@ -144,14 +143,14 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 
 	// On teste si il y a une route correspondant à: authUser + host + mailFrom
 	if haveAuthUser {
-		if err = scope.DB.Order("priority asc").Where("user=? and host=? and mail_from=?", authUser, host, mailFrom).Find(&routes).Error; err != nil {
+		if err = DB.Order("priority asc").Where("user=? and host=? and mail_from=?", authUser, host, mailFrom).Find(&routes).Error; err != nil {
 			return
 		}
 
 		// On teste si il y a une route correspondant à: authUserHost + host + mailFrom
 		if len(routes) == 0 {
 			if len(authUserHost) != 0 {
-				if err = scope.DB.Order("priority asc").Where("user=? and host=? and mail_from=?", authUserHost, host, mailFrom).Find(&routes).Error; err != nil {
+				if err = DB.Order("priority asc").Where("user=? and host=? and mail_from=?", authUserHost, host, mailFrom).Find(&routes).Error; err != nil {
 					return
 				}
 			}
@@ -159,41 +158,41 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 
 		// On teste si il y a une route correspondant à: authUser + host + mailFromHost
 		if len(routes) == 0 {
-			if err = scope.DB.Order("priority asc").Where("user=? and host is null and mail_from is null", authUserHost).Find(&routes).Error; err != nil {
+			if err = DB.Order("priority asc").Where("user=? and host is null and mail_from is null", authUserHost).Find(&routes).Error; err != nil {
 				return
 			}
 		}
 
 		// On teste si il y a une route correspondant à: authUserHost + host + mailFromHost
 		if len(routes) == 0 && len(authUserHost) != 0 {
-			if err = scope.DB.Order("priority asc").Where("user=? and host=? and mail_from=?", authUserHost, host, mailFromHost).Find(&routes).Error; err != nil {
+			if err = DB.Order("priority asc").Where("user=? and host=? and mail_from=?", authUserHost, host, mailFromHost).Find(&routes).Error; err != nil {
 				return
 			}
 		}
 
 		// On teste si il y a une route correspondant à: authUser + host
 		if len(routes) == 0 {
-			if err = scope.DB.Order("priority asc").Where("user=? and host=? and mail_from is null", authUser, host).Find(&routes).Error; err != nil {
+			if err = DB.Order("priority asc").Where("user=? and host=? and mail_from is null", authUser, host).Find(&routes).Error; err != nil {
 				return
 			}
 		}
 
 		// On teste si il y a une route correspondant à: authUserHost + host
 		if len(routes) == 0 && len(authUserHost) != 0 {
-			if err = scope.DB.Order("priority asc").Where("user=? and host=? and mail_from is null", authUserHost, host).Find(&routes).Error; err != nil {
+			if err = DB.Order("priority asc").Where("user=? and host=? and mail_from is null", authUserHost, host).Find(&routes).Error; err != nil {
 				return
 			}
 		}
 		// On teste si il y a une route correspondant à: authUser
 		if len(routes) == 0 {
-			if err = scope.DB.Order("priority asc").Where("user=? and host is null and mail_from is null", authUser).Find(&routes).Error; err != nil {
+			if err = DB.Order("priority asc").Where("user=? and host is null and mail_from is null", authUser).Find(&routes).Error; err != nil {
 				return
 			}
 		}
 
 		// On teste si il y a une route correspondant à: authUserHost
 		if len(routes) == 0 && len(authUserHost) != 0 {
-			if err = scope.DB.Order("priority asc").Where("user=? and host is null and mail_from is null", authUserHost).Find(&routes).Error; err != nil {
+			if err = DB.Order("priority asc").Where("user=? and host is null and mail_from is null", authUserHost).Find(&routes).Error; err != nil {
 				return
 			}
 		}
@@ -201,14 +200,14 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 
 	// On cherche les routes spécifiques à cet host
 	if len(routes) == 0 {
-		if err = scope.DB.Order("priority asc").Where("host=? and user is null and mail_from is null", host).Find(&routes).Error; err != nil {
+		if err = DB.Order("priority asc").Where("host=? and user is null and mail_from is null", host).Find(&routes).Error; err != nil {
 			return
 		}
 	}
 
 	// Sinon on cherche une wildcard
 	if len(routes) == 0 {
-		if err = scope.DB.Order("priority asc").Where("host=? and user is null and mail_from is null", "*").Find(&routes).Error; err != nil {
+		if err = DB.Order("priority asc").Where("host=? and user is null and mail_from is null", "*").Find(&routes).Error; err != nil {
 			return
 		}
 	}
@@ -229,9 +228,9 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 
 	// On ajoute les IP locales
 	for i, route := range routes {
-		//scope.Log.Debug(route)
+		//Log.Debug(route)
 		if !route.LocalIp.Valid || route.LocalIp.String == "" {
-			routes[i].LocalIp.String = scope.Cfg.GetLocalIps()
+			routes[i].LocalIp.String = Cfg.GetLocalIps()
 		}
 
 		// Si il n'y a pas de port pour le remote host
@@ -245,7 +244,7 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 		}
 
 	}
-	//scope.Log.Debug(routes)
+	//Log.Debug(routes)
 	r = &routes
 	return
 }

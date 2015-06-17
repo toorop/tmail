@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/bitly/go-nsq"
-	"github.com/toorop/tmail/scope"
 	"log"
 	"os"
 	"os/signal"
@@ -23,7 +22,7 @@ func LaunchDeliverd() {
 	cfg := nsq.NewConfig()
 
 	cfg.UserAgent = "tmail/deliverd"
-	cfg.MaxInFlight = scope.Cfg.GetDeliverdMaxInFlight()
+	cfg.MaxInFlight = Cfg.GetDeliverdMaxInFlight()
 	// MaxAttempts: number of attemps for a message before sending a
 	// 1 [queueRemote/deliverd] msg 07814777d6312000 attempted 6 times, giving up
 	cfg.MaxAttempts = 0
@@ -34,18 +33,18 @@ func LaunchDeliverd() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if scope.Cfg.GetDebugEnabled() {
-		consumer.SetLogger(scope.Log, 0)
+	if Cfg.GetDebugEnabled() {
+		consumer.SetLogger(Log, 0)
 	} else {
-		consumer.SetLogger(scope.Log, 4)
+		consumer.SetLogger(Log, 4)
 	}
 
 	// Bind handler
 	consumer.AddHandler(&deliveryHandler{})
 
 	// connect
-	if scope.Cfg.GetClusterModeEnabled() {
-		err = consumer.ConnectToNSQLookupds(scope.Cfg.GetNSQLookupdHttpAddresses())
+	if Cfg.GetClusterModeEnabled() {
+		err = consumer.ConnectToNSQLookupds(Cfg.GetNSQLookupdHttpAddresses())
 	} else {
 		err = consumer.ConnectToNSQDs([]string{"127.0.0.1:4150"})
 	}
@@ -53,7 +52,7 @@ func LaunchDeliverd() {
 		log.Fatalln(err)
 	}
 
-	scope.Log.Info("deliverd launched")
+	Log.Info("deliverd launched")
 
 	for {
 		select {

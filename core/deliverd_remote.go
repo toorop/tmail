@@ -9,15 +9,14 @@ import (
 	"time"
 
 	dkim "github.com/toorop/go-dkim"
-	"github.com/toorop/tmail/scope"
 )
 
 func deliverRemote(d *delivery) {
-	scope.Log.Info(fmt.Sprintf("delivery-remote %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
+	Log.Info(fmt.Sprintf("delivery-remote %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
 
 	// Get route
 	routes, err := getRoutes(d.qMsg.MailFrom, d.qMsg.Host, d.qMsg.AuthUser)
-	scope.Log.Debug("deliverd-remote: ", routes, err)
+	Log.Debug("deliverd-remote: ", routes, err)
 	if err != nil {
 		d.dieTemp("unable to get route to host " + d.qMsg.Host + ". " + err.Error())
 		return
@@ -25,7 +24,7 @@ func deliverRemote(d *delivery) {
 
 	// Get client
 	c, r, err := getSmtpClient(routes)
-	//scope.Log.Debug(c, r, err)
+	//Log.Debug(c, r, err)
 	if err != nil {
 		// TODO
 		d.dieTemp("unable to get client")
@@ -76,7 +75,7 @@ func deliverRemote(d *delivery) {
 	// MAIL FROM
 	if err = c.Mail(d.qMsg.MailFrom); err != nil {
 		msg := "connected to remote server " + c.RemoteIP + ":" + fmt.Sprintf("%d", c.RemotePort) + " but sender " + d.qMsg.MailFrom + " was rejected." + err.Error()
-		scope.Log.Info(fmt.Sprintf("deliverd-remote %s: %s", d.id, msg))
+		Log.Info(fmt.Sprintf("deliverd-remote %s: %s", d.id, msg))
 		d.diePerm(msg)
 		return
 	}
@@ -102,11 +101,11 @@ func deliverRemote(d *delivery) {
 	// - received
 
 	// Received
-	*d.rawData = append([]byte("Received: tmail deliverd remote "+d.id+"; "+time.Now().Format(scope.Time822)+"\r\n"), *d.rawData...)
+	*d.rawData = append([]byte("Received: tmail deliverd remote "+d.id+"; "+time.Now().Format(Time822)+"\r\n"), *d.rawData...)
 	//*d.rawData = append([]byte("X-Tmail-MsgId: "+d.qMsg.Key+"\r\n"), *d.rawData...)
 
 	// DKIM
-	if scope.Cfg.GetDeliverdDkimSign() {
+	if Cfg.GetDeliverdDkimSign() {
 		userDomain := strings.SplitN(d.qMsg.MailFrom, "@", 2)
 		if len(userDomain) == 2 {
 			dkc, err := DkimGetConfig(userDomain[1])
@@ -115,7 +114,7 @@ func deliverRemote(d *delivery) {
 				return
 			}
 			if dkc != nil {
-				scope.Log.Debug(fmt.Sprintf("deliverd-remote %s: add dkim sign", d.id))
+				Log.Debug(fmt.Sprintf("deliverd-remote %s: add dkim sign", d.id))
 				dkimOptions := dkim.NewSigOptions()
 				dkimOptions.PrivateKey = []byte(dkc.PrivKey)
 				dkimOptions.AddSignatureTimestamp = true
@@ -123,7 +122,7 @@ func deliverRemote(d *delivery) {
 				dkimOptions.Selector = dkc.Selector
 				dkimOptions.Headers = []string{"from", "subject", "date", "message-id"}
 				dkim.Sign(d.rawData, dkimOptions)
-				scope.Log.Debug(fmt.Sprintf("deliverd-remote %s: end dkim sign", d.id))
+				Log.Debug(fmt.Sprintf("deliverd-remote %s: end dkim sign", d.id))
 			}
 		}
 	}
@@ -137,7 +136,7 @@ func deliverRemote(d *delivery) {
 
 	dataPipe.WriteCloser.Close()
 	code, msg, err := dataPipe.c.Text.ReadResponse(0)
-	scope.Log.Info(fmt.Sprintf("deliverd-remote %s: remote server %s reply to data cmd: %d - %s", d.id, c.RemoteIP, code, msg))
+	Log.Info(fmt.Sprintf("deliverd-remote %s: remote server %s reply to data cmd: %d - %s", d.id, c.RemoteIP, code, msg))
 	if err != nil {
 		//d.dieTemp(parts[2])
 		d.handleSmtpError(err.Error(), c.RemoteIP)

@@ -1,4 +1,4 @@
-package store
+package core
 
 // put: err := storage.disk.put(key, io.reader).Error
 // get: io.reader, err := storage.disk.get(id)
@@ -16,7 +16,7 @@ type Storer interface {
 }
 
 // New return a new srore
-func New(driver, source string) (Storer, error) {
+func NewStore(driver, source string) (Storer, error) {
 	switch driver {
 	case "disk":
 		return NewDiskStore(source)

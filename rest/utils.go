@@ -1,8 +1,9 @@
 package rest
 
 import (
-	"github.com/toorop/tmail/scope"
 	"net/http"
+
+	"github.com/toorop/tmail/core"
 )
 
 // httpWriteJson send a json response
@@ -21,7 +22,7 @@ func httpWriteErrorJson(w http.ResponseWriter, httpStatus int, msg, raw string) 
 // httpGetScheme returns http ou https
 func httpGetScheme() string {
 	scheme := "http"
-	if scope.Cfg.GetRestServerIsTls() {
+	if core.Cfg.GetRestServerIsTls() {
 		scheme = "https"
 	}
 	return scheme

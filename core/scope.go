@@ -1,18 +1,17 @@
-package scope
+package core
 
 import (
 	"errors"
+	"io"
+	"io/ioutil"
+	"os"
+	"path"
+
 	"github.com/bitly/go-nsq"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/toorop/tmail/config"
-	"github.com/toorop/tmail/logger"
-	"io"
-	"io/ioutil"
-	"os"
-	"path"
 )
 
 const (
@@ -21,18 +20,19 @@ const (
 
 var (
 	Version             string
-	Cfg                 *config.Config
+	Cfg                 *Config
 	DB                  gorm.DB
-	Log                 *logger.Logger
+	Log                 *Logger
 	NsqQueueProducer    *nsq.Producer
 	SmtpSessionsCount   int
 	ChSmtpSessionsCount chan int
 )
 
-// TODO check validity de chaque élément
-func Bootstrap() (err error) {
+// Boostrap DB, config,...
+// TODO check validity of each element
+func ScopeBootstrap() (err error) {
 	// Load config
-	Cfg, err = config.Init("tmail")
+	Cfg, err = InitConfig("tmail")
 	if err != nil {
 		return
 	}
@@ -51,12 +51,11 @@ func Bootstrap() (err error) {
 			return
 		}
 	}
-	Log, err = logger.New(out, Cfg.GetDebugEnabled())
+	Log, err = NewLogger(out, Cfg.GetDebugEnabled())
 	if err != nil {
 		return
 	}
 
-	// Init DB
 	// Init DB
 	DB, err = gorm.Open(Cfg.GetDbDriver(), Cfg.GetDbSource())
 	if err != nil {

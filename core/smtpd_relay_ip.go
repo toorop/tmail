@@ -3,7 +3,6 @@ package core
 import (
 	"errors"
 	"github.com/jinzhu/gorm"
-	"github.com/toorop/tmail/scope"
 	"net"
 	"strings"
 )
@@ -16,7 +15,7 @@ type RelayIpOk struct {
 
 // remoteIpCanUseSmtp checks if an IP can relay
 func IpCanRelay(ip net.Addr) (bool, error) {
-	err := scope.DB.Where("ip = ?", ip.String()[:strings.Index(ip.String(), ":")]).Find(&RelayIpOk{}).Error
+	err := DB.Where("ip = ?", ip.String()[:strings.Index(ip.String(), ":")]).Find(&RelayIpOk{}).Error
 	if err == nil {
 		return true, nil
 	}
@@ -35,13 +34,13 @@ func RelayIpAdd(ip string) error {
 	rip := RelayIpOk{
 		Ip: ip,
 	}
-	return scope.DB.Save(&rip).Error
+	return DB.Save(&rip).Error
 }
 
 // RelayIpList return all IPs authorized to relay through tmail
 func RelayIpGetAll() (ips []RelayIpOk, err error) {
 	ips = []RelayIpOk{}
-	err = scope.DB.Find(&ips).Error
+	err = DB.Find(&ips).Error
 	return
 }
 
@@ -51,5 +50,5 @@ func RelayIpDel(ip string) error {
 	if net.ParseIP(ip) == nil {
 		return errors.New("Invalid IP: " + ip)
 	}
-	return scope.DB.Where("ip = ?", ip).Delete(&RelayIpOk{}).Error
+	return DB.Where("ip = ?", ip).Delete(&RelayIpOk{}).Error
 }

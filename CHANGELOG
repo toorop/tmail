@@ -1,3 +1,8 @@
+V 0.0.9
+	- DKIM
+	- DKIM: cli tool
+	- Webservices: poc
+
 V 0.0.8
 	- DKIM: sign outgoing message (test)
 

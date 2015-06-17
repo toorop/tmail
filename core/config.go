@@ -1,8 +1,4 @@
-package config
-
-/*
-	when default is set to _ that means that the defauly value is (type)null (eg "" for string)
-*/
+package core
 
 import (
 	"errors"
@@ -17,6 +13,8 @@ import (
 
 var c Config
 
+// Config
+// when default is set to _ that means that the defauly value is (type)null (eg "" for string)
 type Config struct {
 	sync.Mutex
 	cfg struct {
@@ -71,7 +69,7 @@ type Config struct {
 	}
 }
 
-func Init(prefix string) (*Config, error) {
+func InitConfig(prefix string) (*Config, error) {
 	if err := c.loadFromEnv(prefix); err != nil {
 		return nil, err
 	}

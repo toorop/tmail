@@ -7,8 +7,6 @@ import (
 	"fmt"
 	//"github.com/jinzhu/gorm"
 	"github.com/toorop/tmail/message"
-	"github.com/toorop/tmail/scope"
-	"github.com/toorop/tmail/store"
 	"strings"
 	//"github.com/bitly/go-nsq"
 	"errors"
@@ -41,19 +39,19 @@ func (q *QMessage) Delete() error {
 	defer q.Unlock()
 	var err error
 	// remove from DB
-	if err = scope.DB.Delete(q).Error; err != nil {
+	if err = DB.Delete(q).Error; err != nil {
 		return err
 	}
 
 	// If there is no other reference in DB, remove raw message from store
 	var c uint
-	if err = scope.DB.Model(QMessage{}).Where("`key` = ?", q.Key).Count(&c).Error; err != nil {
+	if err = DB.Model(QMessage{}).Where("`key` = ?", q.Key).Count(&c).Error; err != nil {
 		return err
 	}
 	if c != 0 {
 		return nil
 	}
-	qStore, err := store.New(scope.Cfg.GetStoreDriver(), scope.Cfg.GetStoreSource())
+	qStore, err := NewStore(Cfg.GetStoreDriver(), Cfg.GetStoreSource())
 	if err != nil {
 		return err
 	}
@@ -69,7 +67,7 @@ func (q *QMessage) Delete() error {
 func (q *QMessage) UpdateFromDb() error {
 	q.Lock()
 	defer q.Unlock()
-	return scope.DB.First(q, q.Id).Error
+	return DB.First(q, q.Id).Error
 }
 
 // SaveInDb save qMessage in DB
@@ -77,7 +75,7 @@ func (q *QMessage) SaveInDb() error {
 	q.Lock()
 	defer q.Unlock()
 	q.LastUpdate = time.Now()
-	return scope.DB.Save(q).Error
+	return DB.Save(q).Error
 }
 
 // Discard mark message as being discarded on next delivery attemp
@@ -105,7 +103,7 @@ func (q *QMessage) Bounce() error {
 // GetMessageByKey return a message from is key
 func QueueGetMessageById(id int64) (msg QMessage, err error) {
 	msg = QMessage{}
-	err = scope.DB.Where("id = ?", id).First(&msg).Error
+	err = DB.Where("id = ?", id).First(&msg).Error
 	/*if err != nil && err == gorm.RecordNotFound {
 		err = errors.New("not found")
 	}*/
@@ -114,7 +112,7 @@ func QueueGetMessageById(id int64) (msg QMessage, err error) {
 
 // Add add a new mail in queue
 func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string) (uuid string, err error) {
-	qStore, err := store.New(scope.Cfg.GetStoreDriver(), scope.Cfg.GetStoreSource())
+	qStore, err := NewStore(Cfg.GetStoreDriver(), Cfg.GetStoreSource())
 	if err != nil {
 		return
 	}
@@ -159,7 +157,7 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 		}
 
 		// create record in db
-		err = scope.DB.Create(&qm).Error
+		err = DB.Create(&qm).Error
 		if err != nil {
 			// Rollback on storage
 			if cloop == 0 {
@@ -179,16 +177,16 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 			if cloop == 1 {
 				qStore.Del(key)
 			}
-			scope.DB.Delete(&qmsg)
+			DB.Delete(&qmsg)
 			return
 		}
 		// queue local  | queue remote
-		err = scope.NsqQueueProducer.Publish("todeliver", jMsg)
+		err = NsqQueueProducer.Publish("todeliver", jMsg)
 		if err != nil {
 			if cloop == 1 {
 				qStore.Del(key)
 			}
-			scope.DB.Delete(&qmsg)
+			DB.Delete(&qmsg)
 			return
 		}
 	}
@@ -198,6 +196,6 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 // ListMessage return all message in queue
 func QueueListMessages() ([]QMessage, error) {
 	messages := []QMessage{}
-	err := scope.DB.Find(&messages).Error
+	err := DB.Find(&messages).Error
 	return messages, err
 }

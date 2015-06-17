@@ -2,7 +2,6 @@ package core
 
 import (
 	"errors"
-	"github.com/toorop/tmail/scope"
 	"github.com/jinzhu/gorm"
 	"net/mail"
 	"strings"
@@ -43,7 +42,7 @@ func MailboxAdd(mailbox string) error {
 	if b {
 		return errors.New("Mailbox " + mailbox + " already exists.")
 	}
-	return scope.DB.Create(&Mailbox{
+	return DB.Create(&Mailbox{
 		LocalPart:  t[0],
 		DomainPart: t[1],
 	}).Error
@@ -58,7 +57,7 @@ func MailboxDel(mailbox string) error {
 		return errors.New("Bad mailbox format: " + mailbox)
 	}
 	t := strings.Split(address.Address, "@")
-	return scope.DB.Where("local_part=? and domain_part=?", t[0], t[1]).Delete(&Mailbox{}).Error
+	return DB.Where("local_part=? and domain_part=?", t[0], t[1]).Delete(&Mailbox{}).Error
 }
 
 // MailboxExists checks if mailbox exist
@@ -67,7 +66,7 @@ func MailboxExists(mailbox string) (bool, error) {
 	if len(t) != 2 {
 		return false, errors.New("Bad mailbox format: " + mailbox)
 	}
-	err := scope.DB.Where("local_part=? and domain_part=?", t[0], t[1]).Find(&Mailbox{}).Error
+	err := DB.Where("local_part=? and domain_part=?", t[0], t[1]).Find(&Mailbox{}).Error
 	if err == nil {
 		return true, nil
 	}
@@ -80,7 +79,7 @@ func MailboxExists(mailbox string) (bool, error) {
 // MailboxList return all mailboxes
 func MailboxList() (mailboxes []Mailbox, err error) {
 	mailboxes = []Mailbox{}
-	err = scope.DB.Find(&mailboxes).Error
+	err = DB.Find(&mailboxes).Error
 	return
 }
 

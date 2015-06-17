@@ -24,8 +24,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/toorop/tmail/scope"
 )
 
 // A Client represents a client connection to an SMTP server.
@@ -166,7 +164,7 @@ func (c *Client) cmd(expectCode int, format string, args ...interface{}) (int, s
 	var err error
 	timeout := make(chan bool, 1)
 	done := make(chan bool, 1)
-	timer := time.AfterFunc(time.Duration(scope.Cfg.GetDeliverdRemoteTimeout())*time.Second, func() {
+	timer := time.AfterFunc(time.Duration(Cfg.GetDeliverdRemoteTimeout())*time.Second, func() {
 		timeout <- true
 	})
 	defer timer.Stop()
