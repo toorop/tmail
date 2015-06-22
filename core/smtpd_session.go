@@ -176,11 +176,12 @@ func (s *smtpServerSession) smtpEhlo(msg []string) {
 	// Size
 	s.out(fmt.Sprintf("250-SIZE %d", Cfg.GetSmtpdMaxDataBytes()))
 
+	// STARTTLS
+	// TODO: si déja en tls/SSL ne pas renvoyer STARTTLS
+	s.out("250 STARTTLS")
+
 	// Auth
 	s.out("250-AUTH PLAIN")
-
-	// STARTTLS
-	s.out("250 STARTTLS")
 
 	//s.log("remote greets as", s.helo)
 
@@ -346,7 +347,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 	// Relay denied
 	if !relay {
 		s.out(fmt.Sprintf("554 5.7.1 <%s>: Relay access denied", rcptto))
-		s.log("Relay access denied - IP: " + s.conn.RemoteAddr().String() + " MAIL FROM: " + s.envelope.MailFrom + " RCPT TO: " + rcptto)
+		s.log("Relay access denied - from " + s.envelope.MailFrom + " to " + rcptto)
 		s.exitAsap()
 		return
 	}
@@ -664,7 +665,7 @@ func (s *smtpServerSession) smtpStartTls() {
 	s.out("220 Ready to start TLS")
 	cert, err := tls.LoadX509KeyPair(path.Join(GetBasePath(), "ssl/server.crt"), path.Join(GetBasePath(), "ssl/server.key"))
 	if err != nil {
-		msg := "TLS failed unable to load servr keys: " + err.Error()
+		msg := "TLS failed unable to load server keys: " + err.Error()
 		s.logError(msg)
 		s.out("454 " + msg)
 		return
@@ -683,14 +684,14 @@ func (s *smtpServerSession) smtpStartTls() {
 	// errors.New("tls: unsupported SSLv2 handshake received")
 	err = tlsConn.Handshake()
 	if err != nil {
-		var msg string
+		msg := "454 - TLS handshake failed: " + err.Error()
 		if err.Error() == "tls: unsupported SSLv2 handshake received" {
-			msg = "TLS handshake failed: SSLv2 suffers from a number of security flaws. Not supported by tmail, please upgrade."
+			//s.logError(msg)
+			s.log(msg)
 		} else {
-			msg = "TLS handshake failed: " + err.Error()
+			s.logError(msg)
 		}
-		s.logError(msg)
-		s.out("454 " + msg)
+		s.out(msg)
 		return
 	}
 
@@ -829,15 +830,14 @@ func (s *smtpServerSession) handle() {
 
 	go func() {
 		for {
-			_, error := s.conn.Read(buffer)
-			if error != nil {
-				if error.Error() == "EOF" {
+			_, err := s.conn.Read(buffer)
+			if err != nil {
+				if err.Error() == "EOF" {
 					s.logDebug(s.conn.RemoteAddr().String(), "- Client send EOF")
-				} else if !strings.Contains(error.Error(), "use of closed network connection") { // timeout
-					s.logError("Client s.connection error: ", error.Error())
+				} else if !strings.Contains(err.Error(), "use of closed network connection") {
+					s.logError("unable to read data from client - ", err.Error())
 				}
 				s.exitAsap()
-				//s.conn.Close()
 				break
 			}
 
