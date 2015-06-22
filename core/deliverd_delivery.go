@@ -60,10 +60,10 @@ func (d *delivery) processMsg() {
 		// si on ne le trouve pas en DB il y a de forte chance pour que le message ait déja
 		// été traité
 		if err == gorm.RecordNotFound {
-			Log.Info(fmt.Sprintf("deliverd %s : qMsg %s not in Db, already delivered, discarding", d.id, d.qMsg.Key))
+			Log.Info(fmt.Sprintf("deliverd %s : queued message %s not in Db, already delivered, discarding", d.id, d.qMsg.Uuid))
 			d.discard()
 		} else {
-			Log.Error(fmt.Sprintf("deliverd %s : unable to get qMsg %s from Db - %s", d.id, d.qMsg.Key, err))
+			Log.Error(fmt.Sprintf("deliverd %s : unable to get queued message  %s from Db - %s", d.id, d.qMsg.Uuid, err))
 			d.requeue()
 		}
 		return
@@ -73,11 +73,11 @@ func (d *delivery) processMsg() {
 	if d.qMsg.Status == 0 {
 		// if lastupdate is too old, something fails, requeue message
 		if time.Since(d.qMsg.LastUpdate) > 3600*time.Second {
-			Log.Error(fmt.Sprintf("deliverd %s : msg %s is marked as being in delivery for more than one hour. I will try to requeue it.", d.id, d.qMsg.Key))
+			Log.Error(fmt.Sprintf("deliverd %s : queued message  %s is marked as being in delivery for more than one hour. I will try to requeue it.", d.id, d.qMsg.Uuid))
 			d.requeue(2)
 			return
 		}
-		Log.Info(fmt.Sprintf("deliverd %s : msg %s is marked as being in delivery by another process", d.id, d.qMsg.Key))
+		Log.Info(fmt.Sprintf("deliverd %s : queued message %s is marked as being in delivery by another process", d.id, d.qMsg.Uuid))
 		return
 	}
 
@@ -111,7 +111,7 @@ func (d *delivery) processMsg() {
 		// On va considerer que c'est une erreur temporaire
 		// il se peut que le store soit momentanément injoignable
 		// A terme on peut regarder le
-		Log.Error(fmt.Sprintf("deliverd %s : unable to get rawmail %s from store - %s", d.id, d.qMsg.Key, err))
+		Log.Error(fmt.Sprintf("deliverd %s : unable to get rawmail of queued message %s from store (key: %s)- %s", d.id, d.qMsg.Uuid, d.qMsg.Key, err))
 		d.requeue()
 		return
 	}
@@ -157,7 +157,7 @@ func (d *delivery) processMsg() {
 func (d *delivery) dieOk() {
 	Log.Info("deliverd " + d.id + ": success")
 	if err := d.qMsg.Delete(); err != nil {
-		Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable remove queued message " + d.qMsg.Uuid + " from queue. (key " + d.qMsg.Key + ") " + err.Error())
 	}
 	d.nsqMsg.Finish()
 }
@@ -183,9 +183,9 @@ func (d *delivery) diePerm(msg string) {
 
 // discard remove a message from queue
 func (d *delivery) discard() {
-	Log.Info("deliverd " + d.id + " discard message " + d.qMsg.Key)
+	Log.Info("deliverd " + d.id + " discard message queued as " + d.qMsg.Uuid)
 	if err := d.qMsg.Delete(); err != nil {
-		Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable remove message queued as " + d.qMsg.Uuid + " from queue. " + err.Error())
 		d.requeue(1)
 	} else {
 		d.nsqMsg.Finish()
@@ -199,7 +199,7 @@ func (d *delivery) bounce(errMsg string) {
 	if d.qMsg.MailFrom == "" {
 		Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " double bounce: discarding")
 		if err := d.qMsg.Delete(); err != nil {
-			Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+			Log.Error("deliverd " + d.id + ": unable remove message queued as " + d.qMsg.Uuid + " from queue. " + err.Error())
 			d.requeue(1)
 		} else {
 			d.nsqMsg.Finish()
@@ -237,7 +237,7 @@ func (d *delivery) bounce(errMsg string) {
 	tData := templateData{time.Now().Format(Time822), Cfg.GetMe(), d.qMsg.MailFrom, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
 	t, err := template.ParseFiles(path.Join(GetBasePath(), "tpl/bounce.tpl"))
 	if err != nil {
-		Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable to bounce message queued as " + d.qMsg.Uuid + " " + err.Error())
 		d.requeue(3)
 		return
 	}
@@ -245,13 +245,13 @@ func (d *delivery) bounce(errMsg string) {
 	bouncedMailBuf := new(bytes.Buffer)
 	err = t.Execute(bouncedMailBuf, tData)
 	if err != nil {
-		Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable to bounce message queued as " + d.qMsg.Uuid + " " + err.Error())
 		d.requeue(3)
 		return
 	}
 	b, err := ioutil.ReadAll(bouncedMailBuf)
 	if err != nil {
-		Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable to bounce message queued as " + d.qMsg.Uuid + " " + err.Error())
 		d.requeue(3)
 		return
 	}
@@ -274,13 +274,13 @@ func (d *delivery) bounce(errMsg string) {
 	}*/
 	id, err := QueueAddMessage(&b, envelope, "")
 	if err != nil {
-		Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable to bounce message queued as " + d.qMsg.Uuid + " " + err.Error())
 		d.requeue(3)
 		return
 	}
 
 	if err := d.qMsg.Delete(); err != nil {
-		Log.Error("deliverd " + d.id + ": unable remove bounced message " + d.qMsg.Key + " from queue. " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable remove bounced message queued as " + d.qMsg.Uuid + " from queue. " + err.Error())
 		d.requeue(1)
 	} else {
 		d.nsqMsg.Finish()
