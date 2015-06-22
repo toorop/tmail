@@ -178,10 +178,12 @@ func (s *smtpServerSession) smtpEhlo(msg []string) {
 
 	// STARTTLS
 	// TODO: si déja en tls/SSL ne pas renvoyer STARTTLS
-	s.out("250 STARTTLS")
+	if !s.secured {
+		s.out("250-STARTTLS")
+	}
 
 	// Auth
-	s.out("250-AUTH PLAIN")
+	s.out("250 AUTH PLAIN")
 
 	//s.log("remote greets as", s.helo)
 
