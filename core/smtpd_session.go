@@ -664,9 +664,9 @@ func (s *smtpServerSession) smtpStartTls() {
 	s.out("220 Ready to start TLS")
 	cert, err := tls.LoadX509KeyPair(path.Join(GetBasePath(), "ssl/server.crt"), path.Join(GetBasePath(), "ssl/server.key"))
 	if err != nil {
-		s.logError("Unable to load SSL keys:", err.Error())
-		s.out("451 Unable to load SSL keys (#4.5.1)")
-		s.exitAsap()
+		msg := "TLS failed unable to load servr keys: " + err.Error()
+		s.logError(msg)
+		s.out("454 " + msg)
 		return
 	}
 
@@ -680,7 +680,20 @@ func (s *smtpServerSession) smtpStartTls() {
 	//tlsConn = tls.Server(client.socket, TLSconfig)
 	tlsConn = tls.Server(s.conn, &tlsConfig)
 	// run a handshake
-	tlsConn.Handshake()
+	// errors.New("tls: unsupported SSLv2 handshake received")
+	err = tlsConn.Handshake()
+	if err != nil {
+		var msg string
+		if err.Error() == "tls: unsupported SSLv2 handshake received" {
+			msg = "TLS handshake failed: SSLv2 suffers from a number of security flaws. Not supported by tmail, please upgrade."
+		} else {
+			msg = "TLS handshake failed: " + err.Error()
+		}
+		s.logError(msg)
+		s.out("454 " + msg)
+		return
+	}
+
 	// Here is the trick. Since I do not need to access
 	// any of the TLS functions anymore,
 	// I can convert tlsConn back in to a net.Conn type
