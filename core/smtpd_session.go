@@ -836,6 +836,8 @@ func (s *smtpServerSession) handle() {
 			if err != nil {
 				if err.Error() == "EOF" {
 					s.logDebug(s.conn.RemoteAddr().String(), "- Client send EOF")
+				} else if strings.Contains(err.Error(), "connection reset by peer") {
+					s.log(err.Error())
 				} else if !strings.Contains(err.Error(), "use of closed network connection") {
 					s.logError("unable to read data from client - ", err.Error())
 				}
@@ -890,7 +892,7 @@ func (s *smtpServerSession) handle() {
 				case "auth":
 					s.smtpAuth(strMsg)
 				case "rset":
-					s.reset()
+					s.rset()
 				case "noop":
 					s.noop()
 				case "quit":

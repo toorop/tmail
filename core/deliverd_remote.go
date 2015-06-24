@@ -14,6 +14,11 @@ import (
 func deliverRemote(d *delivery) {
 	Log.Info(fmt.Sprintf("delivery-remote %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
 
+	// gatling
+	//Log.Info(fmt.Sprintf("deliverd-remote %s: done for gatling test", d.id))
+	//d.dieOk()
+	//return
+
 	// Get route
 	routes, err := getRoutes(d.qMsg.MailFrom, d.qMsg.Host, d.qMsg.AuthUser)
 	Log.Debug("deliverd-remote: ", routes, err)

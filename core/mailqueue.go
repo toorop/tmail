@@ -4,16 +4,14 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/json"
-	"fmt"
-	//"github.com/jinzhu/gorm"
-	"github.com/toorop/tmail/message"
-	"strings"
-	//"github.com/bitly/go-nsq"
 	"errors"
+	"fmt"
 	"io"
-	//"net/mail"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/toorop/tmail/message"
 )
 
 type QMessage struct {
@@ -159,12 +157,25 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 		// create record in db
 		err = DB.Create(&qm).Error
 		if err != nil {
+			if cloop == 0 {
+				qStore.Del(key)
+			}
+			return
+		}
+		/*tx := DB.Begin()
+		err = tx.Create(&qm).Error
+		if err != nil {
+			tx.Rollback()
 			// Rollback on storage
 			if cloop == 0 {
 				qStore.Del(key)
 			}
 			return
 		}
+		err = tx.Commit().Error
+		if err != nil {
+			return
+		}*/
 		cloop++
 		qmessages = append(qmessages, qm)
 	}
