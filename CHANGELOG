@@ -1,5 +1,9 @@
 V 0.0.9
-	- DKIM
+	- Better handling of smtpd TLS error
+	- bugfix: on RSET
+	- bugfix: second STARTTLS response (see RFC 3207 4.2)
+	- Log; add queue ID
+	- DKIM: per domain
 	- DKIM: cli tool
 	- Webservices: poc
 
