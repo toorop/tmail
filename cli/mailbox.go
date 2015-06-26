@@ -1,5 +1,6 @@
 package cli
 
+/*
 import (
 	"fmt"
 	"github.com/toorop/tmail/api"
@@ -55,4 +56,4 @@ var Mailbox = cgCli.Command{
 			},
 		},
 	},
-}
+}*/

@@ -9,7 +9,7 @@ export TMAIL_ME="tmail.io"
 
 
 # debug
-export TMAIL_DEBUG_ENABLED=true
+export TMAIL_DEBUG_ENABLED=false
 
 # run tmail as cluster
 # default false
@@ -55,7 +55,7 @@ export TMAIL_NSQ_LOOKUPD_HTTP_ADDRESSES="127.0.0.1:4161"
 ## sqlite
 # "sqlite3" "/tmp/gorm.db"
 export TMAIL_DB_DRIVER="sqlite3"
-export TMAIL_DB_SOURCE="/home/tmail/dist/db/tmail.db"
+export TMAIL_DB_SOURCE="/home/tmail/dist/db/tmail.db?_busy_timeout=60000"
 
 
 ##
