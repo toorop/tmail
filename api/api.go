@@ -9,14 +9,14 @@ import (
 
 // USER
 
-// UserGetByLoging returns an User by his login
+// UserGetByLogin returns an User by his login
 func UserGetByLogin(login string) (user *core.User, err error) {
 	return core.UserGetByLogin(login)
 }
 
 // UserAdd add a new usere
-func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
-	return core.UserAdd(login, passwd, mbQuota, haveMailbox, authRelay)
+func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay, isCatchall bool) error {
+	return core.UserAdd(login, passwd, mbQuota, haveMailbox, authRelay, isCatchall)
 }
 
 // UserDel delete an user (keep his mailboxe)
@@ -24,12 +24,14 @@ func UserDel(login string) error {
 	return core.UserDel(login)
 }
 
-// UserList return all users
+// UserGetAll return all users
 func UserGetAll() (users []core.User, err error) {
 	return core.UserList()
 }
 
+/*
 // MAILBOXES
+
 // MailboxAdd create a new mailbox
 func MailboxAdd(mailbox string) error {
 	return core.MailboxAdd(mailbox)
@@ -44,6 +46,7 @@ func MailboxDel(mailbox string) error {
 func MailboxList() (mailboxes []core.Mailbox, err error) {
 	return core.MailboxList()
 }
+*/
 
 // RELAY IP
 // RelayIpAdd add an IP authozed to relay through tmail

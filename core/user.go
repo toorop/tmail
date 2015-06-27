@@ -2,28 +2,30 @@ package core
 
 import (
 	"errors"
+	"net/mail"
+	"strings"
+
 	"github.com/jinzhu/gorm"
 	"github.com/kless/osutil/user/crypt/sha512_crypt"
 	"golang.org/x/crypto/bcrypt"
-	"net/mail"
-	"strings"
 )
 
+// User represents a tmail user.
 type User struct {
-	Id           int64
+	ID           int64
 	Login        string `sql:"unique"`
 	Passwd       string `sql:"not null"`
 	DovePasswd   string `sql:"null"`                     // SHA512 passwd workaround (glibc on most linux flavor doesn't have bcrypt support)
 	Active       string `sql:"type:char(1);default:'Y'"` //rune `sql:"type:char(1);not null;default:'Y'`
 	AuthRelay    bool   `sql:"default:false"`            // authorization of relaying
 	HaveMailbox  bool   `sql:"default:false"`
+	IsCatchall   bool   `sql:"default:false"`
 	MailboxQuota string `sql:"null"`
-	Home         string // used by dovecot to store mailbox
+	Home         string `sql:"null"` // used by dovecot to store mailbox
 }
 
 // UserAdd add an user
-func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
-	home := ""
+func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay, isCatchall bool) error {
 	login = strings.ToLower(login)
 	// login must be < 257 char
 	l := len(login)
@@ -37,6 +39,14 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
 	// passwd > 6 char
 	if len(passwd) < 6 {
 		return errors.New("password must be at least 6 chars lenght")
+	}
+
+	//OK
+	user := &User{
+		Login:       login,
+		AuthRelay:   authRelay,
+		IsCatchall:  isCatchall,
+		HaveMailbox: haveMailbox,
 	}
 
 	// if we have to create mailbox, login must be a valid email address
@@ -60,8 +70,9 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
 			// get default
 			mbQuota = Cfg.GetUserMailboxDefaultQuota()
 		}
+		user.MailboxQuota = mbQuota
 
-		// rcptohost must be in rcpthost && must be local
+		// rcpthost must be in rcpthost && must be local
 		rcpthost, err := RcpthostGet(t[1])
 		if err != nil && err != gorm.RecordNotFound {
 			return err
@@ -79,14 +90,15 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
 			return errors.New("rcpthost " + t[1] + " is already handled by tmail but declared as remote destination")
 		}
 		// home = base/d/domain/u/user
-		home = Cfg.GetUsersHomeBase() + "/" + string(t[1][0]) + "/" + t[1] + "/" + string(t[0][0]) + "/" + t[0]
+		user.Home = Cfg.GetUsersHomeBase() + "/" + string(t[1][0]) + "/" + t[1] + "/" + string(t[0][0]) + "/" + t[0]
 	}
 
-	// blowfish
+	// hash passwd
 	hashed, err := bcrypt.GenerateFromPassword([]byte(passwd), 10)
 	if err != nil {
 		return err
 	}
+	user.Passwd = string(hashed)
 
 	// sha512 for dovecot compatibility
 	// {SHA512-CRYPT}$6$iW6KmxlZL56A1raN$4DjgXTUzFZlGQgq61YnBMF2AYWKdY5ZanOUWTDBhuvBYVzkdNjqrmpYnLlQ3M0kU1joUH0Bb2aJcPhUF0xlSq/
@@ -96,25 +108,14 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay bool) error {
 	}
 	salt = "$6$" + salt[:16]
 	c := sha512_crypt.New()
-	dovePasswd, err := c.Generate([]byte(passwd), []byte(salt))
+	user.DovePasswd, err = c.Generate([]byte(passwd), []byte(salt))
 	if err != nil {
 		return err
 	}
-	user := User{
-		Login:        login,
-		Passwd:       string(hashed[:]),
-		DovePasswd:   dovePasswd,
-		Active:       "Y",
-		AuthRelay:    authRelay,
-		HaveMailbox:  haveMailbox,
-		MailboxQuota: mbQuota,
-		Home:         home,
-	}
-
 	return DB.Save(&user).Error
 }
 
-// Get return an user by is login/passwd
+// UserGet return an user by is login/passwd
 func UserGet(login, passwd string) (user *User, err error) {
 	user = &User{}
 	// check input
@@ -136,7 +137,7 @@ func UserGet(login, passwd string) (user *User, err error) {
 	return
 }
 
-// GetByLogin return an user from his login
+// UserGetByLogin return an user from his login
 func UserGetByLogin(login string) (user *User, err error) {
 	user = &User{}
 	err = DB.Where("login = ?", strings.ToLower(login)).Find(user).Error
@@ -150,7 +151,7 @@ func UserList() (users []User, err error) {
 	return
 }
 
-// Del delete an user
+// UserDel delete an user
 func UserDel(login string) error {
 	exists, err := UserExists(login)
 	if err != nil {
@@ -159,9 +160,7 @@ func UserDel(login string) error {
 	if !exists {
 		return errors.New("User " + login + " doesn't exists")
 	}
-
-	// HERE on doit verifier si l'host doit etre supprimé de rcpthost
-
+	// TODO on doit verifier si l'host doit etre supprimé de rcpthost
 	return DB.Where("login = ?", login).Delete(&User{}).Error
 }
 

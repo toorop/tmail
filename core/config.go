@@ -13,7 +13,7 @@ import (
 
 var c Config
 
-// Config
+// Config represents tmail confiig
 // when default is set to _ that means that the defauly value is (type)null (eg "" for string)
 type Config struct {
 	sync.Mutex
@@ -69,6 +69,7 @@ type Config struct {
 	}
 }
 
+// InitConfig initialise config
 func InitConfig(prefix string) (*Config, error) {
 	if err := c.loadFromEnv(prefix); err != nil {
 		return nil, err
@@ -186,7 +187,7 @@ func (c *Config) GetTempDir() string {
 	return c.cfg.TempDir
 }
 
-// GetLogPath
+// GetLogPath return log path
 func (c *Config) GetLogPath() string {
 	c.Lock()
 	defer c.Unlock()
@@ -295,7 +296,7 @@ func (c *Config) GetLaunchDeliverd() bool {
 	return c.cfg.NsqdEnbleLogging
 }*/
 
-// GetNSQLookupdTCPAddresses return lookupd tcp adresses
+// GetNSQLookupdTcpAddresses returns lookupd tcp adresses
 func (c *Config) GetNSQLookupdTcpAddresses() (addr []string) {
 	if c.cfg.NSQLookupdTcpAddresses == "_" {
 		return
@@ -325,7 +326,7 @@ func (c *Config) GetNSQLookupdHttpAddresses() (addr []string) {
 
 // microservices
 
-// getMicroservicesUri returns defined URI for a hookId
+// GetMicroservicesUri returns defined URI for a hookId
 func (c *Config) GetMicroservicesUri(hookId string) []string {
 	c.Lock()
 	defer c.Unlock()
@@ -352,7 +353,7 @@ func (c *Config) GetRestServerLaunch() bool {
 	return c.cfg.LaunchRestServer
 }
 
-// GetRestServerIP return the ip that the REST server should listen on
+// GetRestServerIp return the ip that the REST server should listen on
 func (c *Config) GetRestServerIp() string {
 	c.Lock()
 	defer c.Unlock()
@@ -380,6 +381,7 @@ func (c *Config) GetRestServerLogin() string {
 	return c.cfg.RestServerLogin
 }
 
+// SetRestServerLogin is used to set REST server login
 func (c *Config) SetRestServerLogin(login string) {
 	c.Lock()
 	defer c.Unlock()
@@ -402,7 +404,7 @@ func (c *Config) SetRestServerPasswd(passwd string) {
 
 // deliverd
 
-//  GetDeliverdMaxInFlight returns DeliverdMaxInFlight
+// GetDeliverdMaxInFlight returns DeliverdMaxInFlight
 func (c *Config) GetDeliverdMaxInFlight() int {
 	c.Lock()
 	defer c.Unlock()
@@ -470,7 +472,7 @@ func (c *Config) GetDeliverdDkimSign() bool {
 	return c.cfg.DeliverdDkimSign
 }
 
-// GetUserHomeBase returns users home base
+// GetUsersHomeBase returns users home base
 func (c *Config) GetUsersHomeBase() string {
 	c.Lock()
 	defer c.Unlock()

@@ -19,7 +19,9 @@ import (
 )
 
 const (
+	// CR is a Carriage Return
 	CR = 13
+	// LF is a Line Feed
 	LF = 10
 	//ZEROBYTE ="\\0"
 )
@@ -48,7 +50,6 @@ func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, 
 	}
 	sss.conn = conn
 	sss.logger = Log
-	//sss.logger = logger.New(Cfg.GetDebugEnabled())
 	sss.secured = secured
 	// timeout
 	sss.exitasap = make(chan int, 1)
@@ -159,7 +160,6 @@ func (s *smtpServerSession) smtpHelo(msg []string) {
 		s.helo = strings.Join(msg[1:], " ")
 	}
 	s.out(fmt.Sprintf("250 %s", Cfg.GetMe()))
-	//s.log("remote greets as", s.helo)
 }
 
 // EHLO
@@ -312,7 +312,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 			if rcpthost.IsLocal {
 				s.logDebug("Le domaine est local")
 				// check destination
-				exists, err := IsValidLocalRcpt(strings.ToLower(strings.ToLower(rcptto)))
+				exists, err := IsValidLocalRcpt(strings.ToLower(rcptto))
 				if err != nil {
 					s.out("454 oops, problem with relay access (#4.3.0)")
 					s.log("ERROR relay access checking validity of local rpctto " + err.Error())

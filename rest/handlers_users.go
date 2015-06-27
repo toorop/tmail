@@ -2,14 +2,15 @@ package rest
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/jinzhu/gorm"
 	"github.com/julienschmidt/httprouter"
 	"github.com/nbio/httpcontext"
 	"github.com/toorop/tmail/api"
-	"net/http"
 )
 
-// UsersAdd adds an user
+// usersAdd adds an user
 func usersAdd(w http.ResponseWriter, r *http.Request) {
 	if !authorized(w, r) {
 		return
@@ -18,6 +19,7 @@ func usersAdd(w http.ResponseWriter, r *http.Request) {
 		Passwd       string `json: "passwd"`
 		AuthRelay    bool   `json: "authRelay"`
 		HaveMailbox  bool   `json: "haveMailbox"`
+		IsCathall    bool   `json: "isCatchall"`
 		MailboxQuota string `json: "mailboxQuota"`
 	}{}
 
@@ -32,7 +34,7 @@ func usersAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := api.UserAdd(httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), p.Passwd, p.MailboxQuota, p.HaveMailbox, p.AuthRelay); err != nil {
+	if err := api.UserAdd(httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), p.Passwd, p.MailboxQuota, p.HaveMailbox, p.AuthRelay, p.IsCathall); err != nil {
 		httpWriteErrorJson(w, 422, "unable to create new user", err.Error())
 		return
 	}

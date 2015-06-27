@@ -23,8 +23,7 @@ import (
 )
 
 const (
-	// TMAIL_VERSION version of tmail
-	TMAIL_VERSION = "0.0.9"
+	TmailVersion = "0.0.9"
 )
 
 func init() {
@@ -33,7 +32,7 @@ func init() {
 	if err = core.ScopeBootstrap(); err != nil {
 		log.Fatalln(err)
 	}
-	core.Version = TMAIL_VERSION
+	core.Version = TmailVersion
 
 	// Check base path structure
 	requiredPaths := []string{"db", "nsq", "ssl"}
@@ -80,7 +79,6 @@ func init() {
 			log.Fatalln("Unable to find Dovecot LDA binary, checks your config poarameter TMAIL_DOVECOT_LDA ", err)
 		}
 	}
-
 }
 
 // MAIN
@@ -90,7 +88,7 @@ func main() {
 	app.Usage = "SMTP server"
 	app.Author = "Stéphane Depierrepont aka toorop"
 	app.Email = "toorop@tmail.io"
-	app.Version = TMAIL_VERSION
+	app.Version = TmailVersion
 	app.Commands = tcli.CliCommands
 	// no know command ? Launch server
 	app.Action = func(c *cli.Context) {

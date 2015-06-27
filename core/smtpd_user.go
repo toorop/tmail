@@ -1,5 +1,7 @@
 package core
 
+/*
+
 import (
 	"errors"
 	"golang.org/x/crypto/bcrypt"
@@ -91,3 +93,4 @@ func GetAllowedUsers() (users []SmtpUser, err error) {
 	err = DB.Where("auth_relay=?", true).Find(&users).Error
 	return
 }
+*/

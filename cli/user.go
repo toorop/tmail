@@ -5,9 +5,8 @@ import (
 	"github.com/toorop/tmail/api"
 )
 
-var User = cgCli.Command{
 
-	// User
+var user = cgCli.Command{
 	Name:  "user",
 	Usage: "commands to manage users of mailserver",
 	Subcommands: []cgCli.Command{
@@ -25,6 +24,10 @@ var User = cgCli.Command{
 					Name:  "relay, r",
 					Usage: "Authorise user to use server as SMTP relay.",
 				},
+				cgCli.BoolFlag{
+					Name:  "catchall",
+					Usage: "Set this user as catchall for domain",
+				},
 				cgCli.StringFlag{
 					Name:  "quota, q",
 					Value: "",
@@ -36,7 +39,7 @@ var User = cgCli.Command{
 				if len(c.Args()) < 2 {
 					cliDieBadArgs(c)
 				}
-				err = api.UserAdd(c.Args()[0], c.Args()[1], c.String("q"), c.Bool("m"), c.Bool("r"))
+				err = api.UserAdd(c.Args()[0], c.Args()[1], c.String("q"), c.Bool("m"), c.Bool("r"), c.Bool("catchall"))
 				cliHandleErr(err)
 				cliDieOk()
 			},

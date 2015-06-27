@@ -4,10 +4,11 @@ import (
 	cgCli "github.com/codegangsta/cli"
 )
 
+// CliCommands is a slice of subcomands
 var CliCommands = []cgCli.Command{
 	Queue,
 	Routes,
-	User,
+	user,
 	Rcpthost,
 	RelayIP,
 	//Mailbox,
