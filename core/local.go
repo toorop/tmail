@@ -2,11 +2,12 @@ package core
 
 import (
 	"errors"
-	"github.com/jinzhu/gorm"
 	"strings"
+
+	"github.com/jinzhu/gorm"
 )
 
-// Check if it's a localm delivery
+// Check if it's a local delivery
 func isLocalDelivery(rcpt string) (bool, error) {
 	t := strings.Split(rcpt, "@")
 	if len(t) != 2 {
@@ -24,17 +25,26 @@ func isLocalDelivery(rcpt string) (bool, error) {
 }
 
 // IsValidLocalRcpt checks if rcpt is a valid local destination
-// 1 - catchall
-// 2 - Mailbox (or wildcard)
-// 3 - Alias
+// Mailbox (or wildcard)
+// Alias
+// catchall
 func IsValidLocalRcpt(rcpt string) (bool, error) {
-	// Mailbox ?
+	// Mailbox
 	u, err := UserGetByLogin(rcpt)
 	if err != nil && err != gorm.RecordNotFound {
 		return false, err
 	}
-	if err == gorm.RecordNotFound {
-		return false, nil
+	if err != nil && u.HaveMailbox {
+		return true, nil
 	}
-	return u.HaveMailbox, nil
+
+	// alias ?
+	ok, err := AliasExists(rcpt)
+	if err != nil {
+		return false, err
+	}
+	if ok {
+		return true, nil
+	}
+	return false, nil
 }
