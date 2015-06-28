@@ -8,35 +8,45 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jinzhu/gorm"
 )
 
 // deliverLocal handle local delivery
 func deliverLocal(d *delivery) {
 	Log.Info(fmt.Sprintf("delivery-local %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
-
+	deliverTo := d.qMsg.RcptTo
 	// Alias ?
 
-	// Todo Remove return path
-	//msg.DelHeader("return-path")
+	alias, err := AliasGet(d.qMsg.RcptTo)
+	if err != nil && err != gorm.RecordNotFound {
+		d.dieTemp("unable to check if " + d.qMsg.RcptTo + " is an alias")
+	}
+	// err == nil -> err != gorm.RecordNotFound -> alias exists
+	if err == nil {
+		// TODO Pipe ?
 
-	/**d.rawData, err = msg.GetRaw()
-	if err != nil {
-		d.dieTemp("unable to get raw message: " + err.Error())
-		return
-	}*/
+		// New deliverTo
+		if alias.DeliverTo != "" {
+			deliverTo = alias.DeliverTo
+		}
+	}
+
+	// TODO Remove return path
+	//msg.DelHeader("return-path")
 
 	// Received
 	*d.rawData = append([]byte("Received: tmail deliverd local "+d.id+"; "+time.Now().Format(Time822)+"\r\n"), *d.rawData...)
 
 	// Delivered-To
-	*d.rawData = append([]byte("Delivered-To: "+d.qMsg.RcptTo+"\r\n"), *d.rawData...)
+	*d.rawData = append([]byte("Delivered-To: "+deliverTo+"\r\n"), *d.rawData...)
 
 	// Return path
 	*d.rawData = append([]byte("Return-Path: "+d.qMsg.MailFrom+"\r\n"), *d.rawData...)
 
 	dataBuf := bytes.NewBuffer(*d.rawData)
 
-	cmd := exec.Command(Cfg.GetDovecotLda(), "-d", d.qMsg.RcptTo)
+	cmd := exec.Command(Cfg.GetDovecotLda(), "-d", deliverTo)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		d.dieTemp("unable to create pipe to dovecot-lda stdin: " + err.Error())

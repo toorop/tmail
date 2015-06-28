@@ -16,6 +16,12 @@ type Alias struct {
 	Pipe      string `sql:"null"`
 }
 
+// AliasGet returns an alias
+func AliasGet(aliasStr string) (alias Alias, err error) {
+	err = DB.Where("alias = ?", aliasStr).Find(&alias).Error
+	return alias, err
+}
+
 // AliasAdd create a new tmail alias
 func AliasAdd(alias, deliverTo, pipe string) error {
 	// deliverTo && pipe must be != null
