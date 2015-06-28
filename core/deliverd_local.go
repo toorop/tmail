@@ -14,6 +14,8 @@ import (
 func deliverLocal(d *delivery) {
 	Log.Info(fmt.Sprintf("delivery-local %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
 
+	// Alias ?
+
 	// Todo Remove return path
 	//msg.DelHeader("return-path")
 
@@ -22,10 +24,9 @@ func deliverLocal(d *delivery) {
 		d.dieTemp("unable to get raw message: " + err.Error())
 		return
 	}*/
+
 	// Received
 	*d.rawData = append([]byte("Received: tmail deliverd local "+d.id+"; "+time.Now().Format(Time822)+"\r\n"), *d.rawData...)
-
-	//*d.rawData = append([]byte("X-Tmail-MsgId: "+d.qMsg.Key+"\r\n"), *d.rawData...)
 
 	// Delivered-To
 	*d.rawData = append([]byte("Delivered-To: "+d.qMsg.RcptTo+"\r\n"), *d.rawData...)

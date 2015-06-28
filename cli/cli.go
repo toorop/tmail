@@ -6,6 +6,7 @@ import (
 
 // CliCommands is a slice of subcomands
 var CliCommands = []cgCli.Command{
+	alias,
 	Queue,
 	Routes,
 	user,

@@ -12,7 +12,7 @@ import (
 
 // User represents a tmail user.
 type User struct {
-	ID           int64
+	Id           int64
 	Login        string `sql:"unique"`
 	Passwd       string `sql:"not null"`
 	DovePasswd   string `sql:"null"`                     // SHA512 passwd workaround (glibc on most linux flavor doesn't have bcrypt support)

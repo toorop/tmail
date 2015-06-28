@@ -29,6 +29,18 @@ func UserGetAll() (users []core.User, err error) {
 	return core.UserList()
 }
 
+// ALIAS
+
+// AliasAdd add an alias
+func AliasAdd(alias, deliverTo, pipe string) error {
+	return core.AliasAdd(alias, deliverTo, pipe)
+}
+
+// AliasDel  delete an alias
+func AliasDel(alias string) error {
+	return core.AliasDel(alias)
+}
+
 /*
 // MAILBOXES
 

@@ -6,11 +6,14 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-// dbIsOk checks if database is ok
+// IsOkDB checks if database is ok
 func IsOkDB(DB gorm.DB) bool {
 	// Check if all tables exists
 	// user
 	if !DB.HasTable(&User{}) {
+		return false
+	}
+	if !DB.HasTable(&Alias{}) {
 		return false
 	}
 	if !DB.HasTable(&RcptHost{}) {
@@ -31,11 +34,10 @@ func IsOkDB(DB gorm.DB) bool {
 	if !DB.HasTable(&DkimConfig{}) {
 		return false
 	}
-
 	return true
 }
 
-// initDB create tables if needed and initialize them
+// InitDB create tables if needed and initialize them
 // TODO: SKIP in CLI
 // TODO:  check regularly structure & indexes
 func InitDB(DB gorm.DB) error {
@@ -46,6 +48,14 @@ func InitDB(DB gorm.DB) error {
 			return errors.New("Unable to create table user - " + err.Error())
 		}
 	}
+
+	// Alias
+	if !DB.HasTable(&Alias{}) {
+		if err = DB.CreateTable(&Alias{}).Error; err != nil {
+			return errors.New("Unable to create table Alias - " + err.Error())
+		}
+	}
+
 	//rcpthosts table
 	if !DB.HasTable(&RcptHost{}) {
 		if err = DB.CreateTable(&RcptHost{}).Error; err != nil {
@@ -106,10 +116,10 @@ func InitDB(DB gorm.DB) error {
 	return nil
 }
 
-// autoMigrateDB will keep tables reflecting structs
+// AutoMigrateDB will keep tables reflecting structs
 func AutoMigrateDB(DB gorm.DB) error {
 	// if tables exists check if they reflects struts
-	if err := DB.AutoMigrate(&User{}, &RcptHost{}, &RelayIpOk{}, &QMessage{}, &Route{}, &DkimConfig{}).Error; err != nil {
+	if err := DB.AutoMigrate(&User{}, &Alias{}, &RcptHost{}, &RelayIpOk{}, &QMessage{}, &Route{}, &DkimConfig{}).Error; err != nil {
 		return errors.New("Unable autoMigrateDB - " + err.Error())
 	}
 	return nil
