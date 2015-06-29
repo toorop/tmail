@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -116,7 +117,7 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 	}*/
 
 	// generate key useless
-	// TODO keep onlu UUID
+	// TODO keep only UUID
 	/*hasher := sha1.New()
 	if _, err = io.Copy(hasher, bytes.NewReader(*rawMess)); err != nil {
 		return
@@ -132,6 +133,12 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 		return
 	}
 	key := uuid
+
+	err = qStore.Put(key, bytes.NewReader(*rawMess))
+	if err != nil {
+		return
+	}
+
 	messageId := message.RawGetMessageId(rawMess)
 
 	cloop := 0
