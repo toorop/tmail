@@ -144,6 +144,13 @@ func UserGetByLogin(login string) (user *User, err error) {
 	return
 }
 
+// UserGetCatchallForDomain return catchall
+func UserGetCatchallForDomain(domain string) (user *User, err error) {
+	user = &User{}
+	err = DB.Where("login LIKE ? AND is_catchall=?", "%"+strings.ToLower(domain), "true").Find(user).Error
+	return
+}
+
 // UserList return all user
 func UserList() (users []User, err error) {
 	users = []User{}

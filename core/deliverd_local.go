@@ -26,7 +26,8 @@ func deliverLocal(d *delivery) {
 	// Alias ?
 	alias, err := AliasGet(d.qMsg.RcptTo)
 	if err != nil && err != gorm.RecordNotFound {
-		d.dieTemp("unable to check if " + d.qMsg.RcptTo + " is an alias")
+		d.dieTemp(fmt.Sprintf("delivery-local %s: unable to check if %s is an alias. %s", d.id, d.qMsg.RcptTo, err))
+		return
 	}
 	// err == nil -> err != gorm.RecordNotFound -> alias exists
 	if err == nil {
@@ -99,6 +100,25 @@ func deliverLocal(d *delivery) {
 		}
 		d.dieOk()
 		return
+	}
+
+	// user or catchall
+	user, err := UserGetByLogin(d.qMsg.RcptTo)
+	if err != nil && err != gorm.RecordNotFound {
+		d.dieTemp(fmt.Sprintf("delivery-local %s: unable to check if %s is a real user. %s", d.id, d.qMsg.RcptTo, err))
+		return
+	}
+	// not an user
+	if err != nil {
+		localDom := strings.Split(d.qMsg.RcptTo, "@")
+		user, err = UserGetCatchallForDomain(localDom[1])
+		if err != nil {
+			d.dieTemp(fmt.Sprintf("delivery-local %s: unable to search a catchall for rcpt%s. %s", d.id, localDom[1], err))
+			return
+		}
+		if user != nil {
+			deliverTo = user.Login
+		}
 	}
 
 	// TODO Remove return path
