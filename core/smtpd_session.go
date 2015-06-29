@@ -857,7 +857,13 @@ func (s *smtpServerSession) handle() {
 				strMsg := strings.TrimSpace(string(msg))
 				s.logDebug("<", strMsg)
 				splittedMsg := strings.Split(strMsg, " ")
-				//TRACE.Println(splittedMsg)
+				splittedMsg = []string{}
+				for _, m := range strings.Split(strMsg, " ") {
+					m = strings.TrimSpace(m)
+					if m != "" {
+						splittedMsg = append(splittedMsg, m)
+					}
+				}
 				// get command, first word
 				verb := strings.ToLower(splittedMsg[0])
 				switch verb {
