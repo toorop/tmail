@@ -23,12 +23,16 @@ var alias = cgCli.Command{
 					Name:  "deliver-to, d",
 					Usage: "in --deliver-to user@local_domain1, mail will be deliverer to local1@domain",
 				},
+				cgCli.BoolFlag{
+					Name:  "minilist, m",
+					Usage: "if set, enveloppe mail from is rewritted to alias@domain",
+				},
 			},
 			Action: func(c *cgCli.Context) {
 				if len(c.Args()) != 1 {
 					cliDieBadArgs(c)
 				}
-				err := api.AliasAdd(c.Args()[0], c.String("d"), c.String("p"))
+				err := api.AliasAdd(c.Args()[0], c.String("d"), c.String("p"), c.Bool("m"))
 				cliHandleErr(err)
 				cliDieOk()
 			},

@@ -32,8 +32,8 @@ func UserGetAll() (users []core.User, err error) {
 // ALIAS
 
 // AliasAdd add an alias
-func AliasAdd(alias, deliverTo, pipe string) error {
-	return core.AliasAdd(alias, deliverTo, pipe)
+func AliasAdd(alias, deliverTo, pipe string, isMinilist bool) error {
+	return core.AliasAdd(alias, deliverTo, pipe, isMinilist)
 }
 
 // AliasDel  delete an alias

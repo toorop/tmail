@@ -1,3 +1,6 @@
+V 0.0.10
+	- local aliases
+
 V 0.0.9
 	- Better handling of smtpd TLS error
 	- bugfix: on RSET
