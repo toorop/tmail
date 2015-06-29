@@ -34,10 +34,10 @@ func IsValidLocalRcpt(rcpt string) (bool, error) {
 	if err != nil && err != gorm.RecordNotFound {
 		return false, err
 	}
-	if err != nil && u.HaveMailbox {
+	if err == nil && u.HaveMailbox {
 		return true, nil
 	}
-	// alias ?
+	// email alias ?
 	ok, err := AliasExists(rcpt)
 	if err != nil {
 		return false, err
@@ -45,11 +45,19 @@ func IsValidLocalRcpt(rcpt string) (bool, error) {
 	if ok {
 		return true, nil
 	}
-	// Catchall
+	// domain alias
 	localDom := strings.Split(rcpt, "@")
 	if len(localDom) != 2 {
 		return false, errors.New("bad address format in IsValidLocalRcpt. Got " + rcpt)
 	}
+	ok, err = AliasExists(localDom[1])
+	if err != nil {
+		return false, err
+	}
+	if ok {
+		return true, nil
+	}
+	// Catchall
 	u, err = UserGetCatchallForDomain(localDom[1])
 	if err != nil && err != gorm.RecordNotFound {
 		return false, err

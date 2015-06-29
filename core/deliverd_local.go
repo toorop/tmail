@@ -88,6 +88,7 @@ func deliverLocal(d *delivery) {
 				MailFrom: d.qMsg.MailFrom,
 				RcptTo:   localRcpt,
 			}
+			// rem: no minilist for domainAlias
 			if alias.IsMiniList {
 				enveloppe.MailFrom = alias.Alias
 			}
