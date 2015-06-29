@@ -1,12 +1,8 @@
 package core
 
 import (
-	"bytes"
-	"crypto/sha1"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"strings"
 	"sync"
 	"time"
@@ -119,8 +115,9 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 		return
 	}*/
 
-	// generate key
-	hasher := sha1.New()
+	// generate key useless
+	// TODO keep onlu UUID
+	/*hasher := sha1.New()
 	if _, err = io.Copy(hasher, bytes.NewReader(*rawMess)); err != nil {
 		return
 	}
@@ -129,11 +126,12 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 	if err != nil {
 		return
 	}
-
+	*/
 	uuid, err = NewUUID()
 	if err != nil {
 		return
 	}
+	key := uuid
 	messageId := message.RawGetMessageId(rawMess)
 
 	cloop := 0
