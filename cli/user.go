@@ -5,7 +5,6 @@ import (
 	"github.com/toorop/tmail/api"
 )
 
-
 var user = cgCli.Command{
 	Name:  "user",
 	Usage: "commands to manage users of mailserver",
@@ -14,7 +13,7 @@ var user = cgCli.Command{
 		{
 			Name:        "add",
 			Usage:       "Add an user",
-			Description: "tmail user add USER CLEAR_PASSWD [-m] [-r]",
+			Description: "tmail user add USER CLEAR_PASSWD [-m] [-r] [-q BYTES] [--catchall]",
 			Flags: []cgCli.Flag{
 				cgCli.BoolFlag{
 					Name:  "mailbox, m",

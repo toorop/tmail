@@ -41,11 +41,15 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay, isCatchall b
 		return errors.New("password must be at least 6 chars lenght")
 	}
 
+	// no catchall without mailbox
+	if isCatchall && !haveMailbox {
+		return errors.New("only users with mailbox can be defined as catchall")
+	}
+
 	//OK
 	user := &User{
 		Login:       login,
 		AuthRelay:   authRelay,
-		IsCatchall:  isCatchall,
 		HaveMailbox: haveMailbox,
 	}
 
@@ -91,6 +95,18 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay, isCatchall b
 		}
 		// home = base/d/domain/u/user
 		user.Home = Cfg.GetUsersHomeBase() + "/" + string(t[1][0]) + "/" + t[1] + "/" + string(t[0][0]) + "/" + t[0]
+
+		// catchall
+		if isCatchall {
+			// is there another catchall for this domain
+			u, err := UserGetCatchallForDomain(t[1])
+			if err != nil {
+				return errors.New("unable to check catchall existense for domain " + t[1])
+			}
+			if u != nil {
+				return errors.New("domain " + t[1] + "already have a catchall: " + u.Login)
+			}
+		}
 	}
 
 	// hash passwd
@@ -112,7 +128,7 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay, isCatchall b
 	if err != nil {
 		return err
 	}
-	return DB.Save(&user).Error
+	return DB.Save(user).Error
 }
 
 // UserGet return an user by is login/passwd
