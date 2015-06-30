@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"strings"
+
 	cgCli "github.com/codegangsta/cli"
 	"github.com/toorop/tmail/api"
 )
@@ -46,6 +48,29 @@ var alias = cgCli.Command{
 				}
 				err := api.AliasDel(c.Args()[0])
 				cliHandleErr(err)
+				cliDieOk()
+			},
+		}, {
+			Name:        "list",
+			Usage:       "list all aliases",
+			Description: "tmail alias list",
+			Action: func(c *cgCli.Context) {
+				aliases, err := api.AliasList()
+				cliHandleErr(err)
+				if len(aliases) == 0 {
+					println("there is no alias defined")
+				} else {
+					for _, alias := range aliases {
+						println(alias.Alias)
+						if alias.Pipe != "" {
+							println("\tPipe: " + alias.Pipe)
+						}
+						for _, d := range strings.Split(alias.DeliverTo, ";") {
+							println("\t-> " + d)
+						}
+						println(" ")
+					}
+				}
 				cliDieOk()
 			},
 		},

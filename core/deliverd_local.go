@@ -18,100 +18,121 @@ import (
 // deliverLocal handle local delivery
 func deliverLocal(d *delivery) {
 	var dataBuf *bytes.Buffer
+	mailboxAvailable := false
 	localRcpt := []string{}
 
 	Log.Info(fmt.Sprintf("delivery-local %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
 	deliverTo := d.qMsg.RcptTo
 
-	// Alias ?
-	alias, err := AliasGet(d.qMsg.RcptTo)
-	if err != nil && err != gorm.RecordNotFound {
-		d.dieTemp(fmt.Sprintf("delivery-local %s: unable to check if %s is an alias. %s", d.id, d.qMsg.RcptTo, err))
-		return
-	}
-	// err == nil -> err != gorm.RecordNotFound -> alias exists
-	if err == nil {
-		// Pipe
-		if alias.Pipe != "" {
-			// expected exit status for pipe cmd
-			// 0: OK
-			// 4: temp fail
-			// 5: perm fail
-			dataBuf := bytes.NewBuffer(*d.rawData)
-
-			cmd := exec.Command(strings.Join(strings.Split(alias.Pipe, " "), ","))
-			stdin, err := cmd.StdinPipe()
-			if err != nil {
-				d.dieTemp(fmt.Sprintf("delivery-local %s: unable to create stddin pipe to %s. %s", d.id, alias.Pipe, err.Error()))
-				return
-			}
-			if err != nil {
-				d.dieTemp(fmt.Sprintf("delivery-local %s: unable to create stdout pipe from %s. %s", d.id, alias.Pipe, err.Error()))
-			}
-			if err := cmd.Start(); err != nil {
-				d.dieTemp(fmt.Sprintf("delivery-local %s: unable to exec pipe  %s. %s", d.id, alias.Pipe, err.Error()))
-				return
-			}
-			_, err = io.Copy(stdin, dataBuf)
-			if err != nil {
-				d.dieTemp(fmt.Sprintf("delivery-local %s: unable to pipe mail to cmd %s. %s", d.id, alias.Pipe, err.Error()))
-				return
-			}
-			stdin.Close()
-
-			if err := cmd.Wait(); err != nil {
-				if msg, ok := err.(*exec.ExitError); ok {
-					exitStatus := msg.Sys().(syscall.WaitStatus).ExitStatus()
-					switch exitStatus {
-					case 5:
-						d.diePerm(fmt.Sprintf("delivery-local %s: cmd %s failed with exit code 5 (perm failure)", d.id, alias.Pipe))
-						return
-					case 4:
-						d.dieTemp(fmt.Sprintf("delivery-local %s: cmd %s failed with exit code 4 (temp failure)", d.id, alias.Pipe))
-						return
-					default:
-						d.diePerm(fmt.Sprintf("delivery-local %s: cmd %s return unexpected exit code %d", d.id, alias.Pipe, exitStatus))
-						return
-					}
-				} else {
-					d.diePerm(fmt.Sprintf("delivery-local %s: cmd %s oops something went wrong %s", d.id, alias.Pipe, err))
-					return
-				}
-			}
-			Log.Info(fmt.Sprintf("delivery-local %s: cmd %s succeeded", d.id, alias.Pipe))
-		}
-
-		// deliverTo
-		if alias.DeliverTo != "" {
-			localRcpt = strings.Split(alias.DeliverTo, ";")
-			enveloppe := message.Envelope{
-				MailFrom: d.qMsg.MailFrom,
-				RcptTo:   localRcpt,
-			}
-			// rem: no minilist for domainAlias
-			if alias.IsMiniList {
-				enveloppe.MailFrom = alias.Alias
-			}
-			uuid, err := QueueAddMessage(d.rawData, enveloppe, "")
-			if err != nil {
-				d.dieTemp(fmt.Sprintf("delivery-local %s: unable to requeue aliased msg: %s", d.id, err))
-				return
-			}
-			Log.Info(fmt.Sprintf("delivery-local %s: rcpt is an alias, mail is requeue with ID %s for final rcpt: %s", d.id, uuid, strings.Join(localRcpt, " ")))
-		}
-		d.dieOk()
-		return
-	}
-
-	// user or catchall
+	// if it's not a local user checks for alias
 	user, err := UserGetByLogin(d.qMsg.RcptTo)
 	if err != nil && err != gorm.RecordNotFound {
 		d.dieTemp(fmt.Sprintf("delivery-local %s: unable to check if %s is a real user. %s", d.id, d.qMsg.RcptTo, err))
 		return
 	}
-	// not an user
-	if err != nil {
+	// user exists
+	if err == nil {
+		mailboxAvailable = user.HaveMailbox
+	}
+
+	// If there non mailbox for this RCPT
+	if !mailboxAvailable {
 		localDom := strings.Split(d.qMsg.RcptTo, "@")
+		// first checks if it's an email alias ?
+		alias, err := AliasGet(d.qMsg.RcptTo)
+		if err != nil && err != gorm.RecordNotFound {
+			d.dieTemp(fmt.Sprintf("delivery-local %s: unable to check if %s is an alias. %s", d.id, d.qMsg.RcptTo, err))
+			return
+		}
+
+		// domain alias ?
+		if err != nil && err == gorm.RecordNotFound {
+			if len(localDom) == 2 {
+				alias, err = AliasGet(localDom[1])
+				if err != nil && err != gorm.RecordNotFound {
+					d.dieTemp(fmt.Sprintf("delivery-local %s: unable to check if %s is an alias. %s", d.id, localDom[1], err))
+					return
+				}
+			}
+		}
+
+		// err == nil -> err != gorm.RecordNotFound -> alias exists (email or domain)
+		if err == nil {
+			// Pipe
+			if alias.Pipe != "" {
+				// expected exit status for pipe cmd
+				// 0: OK
+				// 4: temp fail
+				// 5: perm fail
+				dataBuf := bytes.NewBuffer(*d.rawData)
+
+				cmd := exec.Command(strings.Join(strings.Split(alias.Pipe, " "), ","))
+				stdin, err := cmd.StdinPipe()
+				if err != nil {
+					d.dieTemp(fmt.Sprintf("delivery-local %s: unable to create stddin pipe to %s. %s", d.id, alias.Pipe, err.Error()))
+					return
+				}
+				if err != nil {
+					d.dieTemp(fmt.Sprintf("delivery-local %s: unable to create stdout pipe from %s. %s", d.id, alias.Pipe, err.Error()))
+				}
+				if err := cmd.Start(); err != nil {
+					d.dieTemp(fmt.Sprintf("delivery-local %s: unable to exec pipe  %s. %s", d.id, alias.Pipe, err.Error()))
+					return
+				}
+				_, err = io.Copy(stdin, dataBuf)
+				if err != nil {
+					d.dieTemp(fmt.Sprintf("delivery-local %s: unable to pipe mail to cmd %s. %s", d.id, alias.Pipe, err.Error()))
+					return
+				}
+				stdin.Close()
+
+				if err := cmd.Wait(); err != nil {
+					if msg, ok := err.(*exec.ExitError); ok {
+						exitStatus := msg.Sys().(syscall.WaitStatus).ExitStatus()
+						switch exitStatus {
+						case 5:
+							d.diePerm(fmt.Sprintf("delivery-local %s: cmd %s failed with exit code 5 (perm failure)", d.id, alias.Pipe))
+							return
+						case 4:
+							d.dieTemp(fmt.Sprintf("delivery-local %s: cmd %s failed with exit code 4 (temp failure)", d.id, alias.Pipe))
+							return
+						default:
+							d.diePerm(fmt.Sprintf("delivery-local %s: cmd %s return unexpected exit code %d", d.id, alias.Pipe, exitStatus))
+							return
+						}
+					} else {
+						d.diePerm(fmt.Sprintf("delivery-local %s: cmd %s oops something went wrong %s", d.id, alias.Pipe, err))
+						return
+					}
+				}
+				Log.Info(fmt.Sprintf("delivery-local %s: cmd %s succeeded", d.id, alias.Pipe))
+			}
+
+			// deliverTo
+			if alias.DeliverTo != "" {
+				localRcpt = strings.Split(alias.DeliverTo, ";")
+				if alias.IsDomAlias {
+					localRcpt = []string{localDom[0] + "@" + localRcpt[0]}
+				}
+				enveloppe := message.Envelope{
+					MailFrom: d.qMsg.MailFrom,
+					RcptTo:   localRcpt,
+				}
+				// rem: no minilist for domainAlias
+				if alias.IsMiniList && !alias.IsDomAlias {
+					enveloppe.MailFrom = alias.Alias
+				}
+				uuid, err := QueueAddMessage(d.rawData, enveloppe, "")
+				if err != nil {
+					d.dieTemp(fmt.Sprintf("delivery-local %s: unable to requeue aliased msg: %s", d.id, err))
+					return
+				}
+				Log.Info(fmt.Sprintf("delivery-local %s: rcpt is an alias, mail is requeue with ID %s for final rcpt: %s", d.id, uuid, strings.Join(localRcpt, " ")))
+			}
+			d.dieOk()
+			return
+		}
+		// search for a catchall
 		user, err = UserGetCatchallForDomain(localDom[1])
 		if err != nil {
 			d.dieTemp(fmt.Sprintf("delivery-local %s: unable to search a catchall for rcpt%s. %s", d.id, localDom[1], err))

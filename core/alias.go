@@ -30,10 +30,10 @@ func AliasAdd(alias, deliverTo, pipe string, isMiniList bool) error {
 
 	// deliverTo && pipe must be != null
 	if deliverTo == "" && pipe == "" {
-		return errors.New("you must define pipe command OR local mailbox where mail for this alias have to be delivered")
+		return errors.New("you must define pipe command OR local mailbox(es), domain where mails for this alias have to be delivered")
 	}
-
 	alias = strings.ToLower(strings.TrimSpace(alias))
+
 	// domain or adress alias
 	localDom := strings.SplitN(alias, "@", 2)
 	if len(localDom) > 2 {
@@ -45,8 +45,11 @@ func AliasAdd(alias, deliverTo, pipe string, isMiniList bool) error {
 	}
 
 	// if domainAlias minilist is forbiden
-	// HERE
+	if isDomAlias && isMiniList {
+		return errors.New("you can't use --minilist option on dmain alias")
+	}
 
+	// exists ?
 	exists, err := AliasExists(alias)
 	if err != nil {
 		return err
@@ -77,6 +80,23 @@ func AliasAdd(alias, deliverTo, pipe string, isMiniList bool) error {
 		if !rcpthost.IsLocal {
 			return errors.New("domain part of alias must be a local domain handled by tmail")
 		}
+	} else {
+		// alias is a domain and must be in rcpthost
+		rcptpHost, err := RcpthostGet(alias)
+		if err != nil {
+			if err == gorm.RecordNotFound {
+				if err = RcpthostAdd(alias, true, true); err != nil {
+					return errors.New("unable to add " + alias + " as rcpthost")
+				}
+			} else {
+				return err
+			}
+		} else {
+			// domain should be an alias
+			if !rcptpHost.IsAlias {
+				return errors.New("domain " + alias + " is and existing domain (and not an alias)")
+			}
+		}
 	}
 
 	// if pipe
@@ -95,15 +115,23 @@ func AliasAdd(alias, deliverTo, pipe string, isMiniList bool) error {
 	if deliverTo != "" { // delivery
 		dt := []string{}
 		t := strings.Split(strings.TrimSpace(deliverTo), " ")
-		for _, d := range t {
+		for i, d := range t {
 			rcpt := strings.TrimSpace(d)
 			if rcpt == "" {
 				continue
 			}
+			if rcpt == alias {
+				return errors.New("are you drunk ?")
+			}
 			if !isDomAlias {
-				localDom = strings.Split(rcpt, "@")
-				if len(localDom) != 2 {
+				localDomRcpt := strings.Split(rcpt, "@")
+				if len(localDomRcpt) != 2 {
 					return errors.New("deliverTo addresses should be valid email addresses. " + rcpt + " given")
+				}
+
+				// alias domain && rcpt domain should be the same
+				if localDom[1] != localDomRcpt[1] {
+					return errors.New("an email alias must have the same domain part than the final recipient")
 				}
 
 				user, err := UserGetByLogin(rcpt)
@@ -117,15 +145,22 @@ func AliasAdd(alias, deliverTo, pipe string, isMiniList bool) error {
 					return errors.New("user " + rcpt + " doesn't have mailbox account")
 				}
 			} else {
+				// is domain alias
+				if i > 0 {
+					return errors.New("a domain can be an alias on only one other domain")
+				}
+				// rcpt should be a domain
+				if strings.Count(rcpt, "@") != 0 {
+					return errors.New("you must give a domain... for a domain alias. " + rcpt + " given")
+				}
 				// domain should be a local domain
 				domain, err := RcpthostGet(rcpt)
 				if err != nil {
-					if err != gorm.RecordNotFound {
-						return errors.New("domain " + rcpt + " doesn't exists.")
+					if err == gorm.RecordNotFound {
+						return errors.New("domain " + rcpt + " is not a local domain")
 					}
 					return err
-				}
-				if !domain.IsLocal {
+				} else if !domain.IsLocal {
 					return errors.New("domain " + rcpt + " is not a local domain")
 				}
 			}
@@ -135,13 +170,6 @@ func AliasAdd(alias, deliverTo, pipe string, isMiniList bool) error {
 			deliverTo = strings.Join(dt, ";")
 		}
 	}
-
-	/* useless
-	  // sep are used to easely find alias with specific rcpt (LIKE "%;rcpt;%") // just in case...
-		if deliverTo != "" {
-			deliverTo = ";" + deliverTo + ";"
-		}
-	*/
 
 	return DB.Save(&Alias{
 		Alias:      alias,
@@ -154,15 +182,32 @@ func AliasAdd(alias, deliverTo, pipe string, isMiniList bool) error {
 
 // AliasDel is used to delete an alias
 func AliasDel(alias string) error {
-	exists, err := AliasExists(alias)
+	a, err := AliasGet(alias)
 	if err != nil {
+		if err == gorm.RecordNotFound {
+			return errors.New("Alias " + alias + " doesn't exists")
+		}
+		return errors.New("unable to get alias " + alias + ". " + err.Error())
+	}
+	tx := DB.Begin()
+	if a.IsDomAlias {
+		if err = tx.Where("hostname=?", a.Alias).Delete(&RcptHost{}).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	if err = tx.Where("alias = ?", alias).Delete(&Alias{}).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
-	if !exists {
-		return errors.New("Alias " + alias + " doesn't exists")
-	}
-	// TODO on doit verifier si l'host doit etre supprimé de rcpthost
-	return DB.Where("alias = ?", alias).Delete(&Alias{}).Error
+	return tx.Commit().Error
+}
+
+// AliasList return all alias
+func AliasList() (aliases []Alias, err error) {
+	aliases = []Alias{}
+	err = DB.Find(&aliases).Error
+	return aliases, err
 }
 
 // AliasExists checks if an alias exists

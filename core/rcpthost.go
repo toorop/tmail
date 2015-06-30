@@ -2,8 +2,9 @@ package core
 
 import (
 	"errors"
-	"github.com/jinzhu/gorm"
 	"strings"
+
+	"github.com/jinzhu/gorm"
 )
 
 // RcptHost represents a hostname that tmail have to handle mails for (=local domains)
@@ -11,9 +12,10 @@ type RcptHost struct {
 	Id       int64
 	Hostname string `sql:"unique"`
 	IsLocal  bool   `sql:"default:false"`
+	IsAlias  bool   `sql:"default:false"`
 }
 
-// isInRcptHost checks if domain is in the RcptHost list (-> relay authorized)
+// IsInRcptHost checks if domain is in the RcptHost list (-> relay authorized)
 func IsInRcptHost(hostname string) (bool, error) {
 	err := DB.Where("hostname = ?", hostname).First(&RcptHost{}).Error
 	if err == nil {
@@ -31,10 +33,10 @@ func RcpthostGet(hostname string) (rcpthost RcptHost, err error) {
 	return
 }
 
-// AddRcptHost add hostname to rcpthosts
-func RcpthostAdd(hostname string, isLocal bool) error {
+// RcpthostAdd add hostname to rcpthosts
+func RcpthostAdd(hostname string, isLocal, isAlias bool) error {
 	if len(hostname) > 256 {
-		return errors.New("login must have less than 256 chars")
+		return errors.New("hostname must have less than 256 chars")
 	}
 	// to lower
 	hostname = strings.ToLower(hostname)
@@ -52,11 +54,12 @@ func RcpthostAdd(hostname string, isLocal bool) error {
 	h := RcptHost{
 		Hostname: hostname,
 		IsLocal:  isLocal,
+		IsAlias:  isAlias,
 	}
 	return DB.Save(&h).Error
 }
 
-// DelRcptHost delete a hostname from rcpthosts list
+// RcpthostDel delete a hostname from rcpthosts list
 func RcpthostDel(hostname string) error {
 	//var err error
 	hostname = strings.ToLower(hostname)
@@ -71,7 +74,7 @@ func RcpthostDel(hostname string) error {
 	return DB.Where("hostname = ?", hostname).Delete(&RcptHost{}).Error
 }
 
-// GetRcptHosts return hostnames in rcpthosts
+// RcpthostGetAll return hostnames in rcpthosts
 func RcpthostGetAll() (hostnames []RcptHost, err error) {
 	hostnames = []RcptHost{}
 	err = DB.Find(&hostnames).Error

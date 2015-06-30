@@ -29,7 +29,7 @@ func isLocalDelivery(rcpt string) (bool, error) {
 // Alias
 // catchall
 func IsValidLocalRcpt(rcpt string) (bool, error) {
-	// Mailbox
+	// mailbox
 	u, err := UserGetByLogin(rcpt)
 	if err != nil && err != gorm.RecordNotFound {
 		return false, err
@@ -37,12 +37,12 @@ func IsValidLocalRcpt(rcpt string) (bool, error) {
 	if err == nil && u.HaveMailbox {
 		return true, nil
 	}
-	// email alias ?
-	ok, err := AliasExists(rcpt)
+	// email alias
+	exists, err := AliasExists(rcpt)
 	if err != nil {
 		return false, err
 	}
-	if ok {
+	if exists {
 		return true, nil
 	}
 	// domain alias
@@ -50,12 +50,16 @@ func IsValidLocalRcpt(rcpt string) (bool, error) {
 	if len(localDom) != 2 {
 		return false, errors.New("bad address format in IsValidLocalRcpt. Got " + rcpt)
 	}
-	ok, err = AliasExists(localDom[1])
+	exists, err = AliasExists(localDom[1])
 	if err != nil {
 		return false, err
 	}
-	if ok {
-		return true, nil
+	if exists {
+		alias, err := AliasGet(localDom[1])
+		if err != nil {
+			return false, err
+		}
+		return IsValidLocalRcpt(localDom[0] + "@" + alias.DeliverTo)
 	}
 	// Catchall
 	u, err = UserGetCatchallForDomain(localDom[1])

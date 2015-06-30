@@ -41,6 +41,11 @@ func AliasDel(alias string) error {
 	return core.AliasDel(alias)
 }
 
+// AliasList return all alias
+func AliasList() (aliases []core.Alias, err error) {
+	return core.AliasList()
+}
+
 /*
 // MAILBOXES
 
@@ -124,8 +129,8 @@ func RoutesDel(routeId int64) error {
 // RCPTHOSTS ie locals domains
 
 // RcptHostAdd add a rcpthost
-func RcpthostAdd(host string, isLocal bool) error {
-	return core.RcpthostAdd(host, isLocal)
+func RcpthostAdd(host string, isLocal, isAlias bool) error {
+	return core.RcpthostAdd(host, isLocal, isAlias)
 }
 
 // RcpthostDel delete a rcpthost

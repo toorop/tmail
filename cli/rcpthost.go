@@ -6,10 +6,12 @@ package cli
 
 import (
 	"fmt"
+
 	cgCli "github.com/codegangsta/cli"
 	"github.com/toorop/tmail/api"
 )
 
+// Rcpthost represents commands for dealing with rcpthosts
 var Rcpthost = cgCli.Command{
 	Name:  "rcpthost",
 	Usage: "commands to manage domains that tmail should handle",
@@ -28,7 +30,7 @@ var Rcpthost = cgCli.Command{
 				if len(c.Args()) == 0 {
 					cliDieBadArgs(c)
 				}
-				err := api.RcpthostAdd(c.Args().First(), c.Bool("l"))
+				err := api.RcpthostAdd(c.Args().First(), c.Bool("l"), false)
 				cliHandleErr(err)
 			},
 		},
