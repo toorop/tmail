@@ -5,7 +5,7 @@
 # Common
 
 # Who am i (used in SMTP transaction for HELO)
-export TMAIL_ME="tmail.io" 
+export TMAIL_ME="tmail.io"
 
 
 # debug
@@ -36,14 +36,14 @@ export TMAIL_NSQ_LOOKUPD_HTTP_ADDRESSES="127.0.0.1:4161"
 
 ###
 # Database
-# 
+#
 # tmail currenlty support:
 # 	sqlite3
-#  	MySQL (and compatibles DB like percona, mariaDB) 
+#  	MySQL (and compatibles DB like percona, mariaDB)
 #  	PostgreSQL
 
 # Database driver & source
-# 
+#
 # Exemple
 # "postgres" "user=gorm dbname=gorm sslmode=disable"
 ## Mysql tcp
@@ -60,7 +60,7 @@ export TMAIL_DB_SOURCE="/home/tmail/dist/db/tmail.db?_busy_timeout=60000"
 
 ##
 # Store
-# 
+#
 # Drivers supported
 # disk: source is baspath
 #
@@ -80,12 +80,12 @@ export TMAIL_SMTPD_LAUNCH=true;
 # IP:PORT:SSL
 # IP: ip address to listen to
 # PORT: associated port
-# SSL: activate SSL 
+# SSL: activate SSL
 # if SSL is true all transactions will be encrypted
 # if SSL is false transactions will be clear by default but they will be upgraded
 # via STARTTLS smtp extension/cmd
-# 
-# Exemple: 
+#
+# Exemple:
 # 	"127.0.0.1:2525:false;127.0.0.1:4656:true"
 # will launch 2 smtpd deamons
 # 	- one listening on 127.0.0.1:2525 without encryption (but upgradable via STARTTLS)
@@ -102,10 +102,18 @@ export TMAIL_SMTPD_TRANSACTION_TIMEOUT=60
 # Default 50000000 (50M)
 export TMAIL_SMTPD_MAX_DATABYTES=50000000
 
-# Number of relays who previously take mail in charge 
+# Number of relays who previously take mail in charge
 # ->  preventing loops
 # default 30
 export TMAIL_SMTPD_MAX_HOPS=50
+
+
+# Maximum of RCPT TO per transaction
+# when is reached serveur will reply with a 451 error (4.1.0)
+export TMAIL_SMTP_MAX_RCPT=30
+
+# Drop smtp session after TMAIL_SMTP_MAX_BAD_RCPT unavailable RCPT TO
+export TMAIL_SMTP_MAX_BAD_RCPT=3
 
 # Number of simultaneous incoming SMTP sessions
 # Default 20
@@ -132,9 +140,9 @@ export TMAIL_SMTPD_SCAN_CLAMAV_DSNS="/var/run/clamav/clamd.ctl"
 # Separator could be :
 # | -> or  -> round robin
 # & -> and -> fail over
-# Warning: you can't mix | and & 
+# Warning: you can't mix | and &
 
-# Examples : 
+# Examples :
 # 127.0.0.1&127.0.0.2&127.0.0.3
 # deliverd will start tring with 127.0.0.1, if it doesn't works it will try with 127.0.0.2 ...
 #

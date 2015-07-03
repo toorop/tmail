@@ -28,21 +28,23 @@ const (
 
 // Session SMTP (server)
 type smtpServerSession struct {
-	uuid     string
-	conn     net.Conn
-	logger   *Logger
-	timer    *time.Timer // for timeout
-	timeout  time.Duration
-	secured  bool
-	user     *User
-	seenMail bool
-	helo     string
-	envelope message.Envelope
-	exitasap chan int
+	uuid           string
+	conn           net.Conn
+	logger         *Logger
+	timer          *time.Timer // for timeout
+	timeout        time.Duration
+	secured        bool
+	user           *User
+	seenMail       bool
+	helo           string
+	envelope       message.Envelope
+	exitasap       chan int
+	rcptCount      int
+	badRcptToCount int
 }
 
 // NewSmtpServerSession returns a new SMTP session
-func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, err error) {
+func NewSMTPServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, err error) {
 	sss = new(smtpServerSession)
 	sss.uuid, err = NewUUID()
 	if err != nil {
@@ -51,10 +53,12 @@ func NewSmtpServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, 
 	sss.conn = conn
 	sss.logger = Log
 	sss.secured = secured
+	sss.seenMail = false
 	// timeout
 	sss.exitasap = make(chan int, 1)
 	sss.timeout = time.Duration(Cfg.GetSmtpdTransactionTimeout()) * time.Second
 	sss.timer = time.AfterFunc(sss.timeout, sss.raiseTimeout)
+	sss.badRcptToCount = 0
 	sss.reset()
 	return
 }
@@ -81,6 +85,7 @@ func (s *smtpServerSession) resetTimeout() {
 func (s *smtpServerSession) reset() {
 	s.envelope.MailFrom = ""
 	s.envelope.RcptTo = []string{}
+	s.rcptCount = 0
 	s.resetTimeout()
 }
 
@@ -250,6 +255,14 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 	var err error
 	rcptto := ""
 
+	s.rcptCount++
+	s.log(fmt.Sprintf("RCPT TO %d/%d", s.rcptCount, Cfg.GetSmtpdMaxRcptTo()))
+	if s.rcptCount > Cfg.GetSmtpdMaxRcptTo() {
+		s.log(fmt.Sprintf("max RCPT TO command reached (%d)", Cfg.GetSmtpdMaxRcptTo()))
+		s.out("451 max RCPT To commands reached for the sessions (#4.1.0)")
+		return
+	}
+
 	if !s.seenMail {
 		s.log("503 RCPT TO before MAIL FROM")
 		s.out("503 MAIL first (#5.5.1)")
@@ -319,9 +332,13 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 					return
 				}
 				if !exists {
-					s.out("551 Sorry, no mailbox here by that name. (#5.1.1)")
 					s.log("No mailbox here by that name: " + rcptto)
-					s.exitAsap()
+					s.out("551 Sorry, no mailbox here by that name. (#5.1.1)")
+					s.badRcptToCount++
+					s.log(fmt.Sprintf("bad rcpt: %d - max %d", s.badRcptToCount, Cfg.GetSmtpdMaxBadRcptTo()))
+					if s.badRcptToCount > Cfg.GetSmtpdMaxBadRcptTo() {
+						s.exitAsap()
+					}
 					return
 				}
 			}

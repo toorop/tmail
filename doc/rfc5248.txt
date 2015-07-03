@@ -1,0 +1,619 @@
+
+
+
+
+
+
+Network Working Group                                          T. Hansen
+Request for Comments: 5248                             AT&T Laboratories
+BCP: 138                                                      J. Klensin
+Updates: 3463, 4468, 4954                                      June 2008
+Category: Best Current Practice
+
+
+         A Registry for SMTP Enhanced Mail System Status Codes
+
+Status of This Memo
+
+   This document specifies an Internet Best Current Practices for the
+   Internet Community, and requests discussion and suggestions for
+   improvements.  Distribution of this memo is unlimited.
+
+Abstract
+
+   The specification for enhanced mail system status codes, RFC 3463,
+   establishes a new code model and lists a collection of status codes.
+   While it anticipated that more codes would be added over time, it did
+   not provide an explicit mechanism for registering and tracking those
+   codes.  This document specifies an IANA registry for mail system
+   enhanced status codes, and initializes that registry with the codes
+   so far established in published standards-track documents, as well as
+   other codes that have become established in the industry.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . . . 2
+   2.  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 2
+     2.1.  SMTP Enhanced Status Codes Registry . . . . . . . . . . . . 2
+     2.2.  Review Process for New Values . . . . . . . . . . . . . . . 4
+     2.3.  Registration Updates  . . . . . . . . . . . . . . . . . . . 4
+     2.4.  Initial Values  . . . . . . . . . . . . . . . . . . . . . . 5
+   3.  Security Considerations . . . . . . . . . . . . . . . . . . . . 8
+   4.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . 9
+   5.  References  . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+     5.1.  Normative References  . . . . . . . . . . . . . . . . . . . 9
+     5.2.  Informative References  . . . . . . . . . . . . . . . . . . 9
+
+
+
+
+
+
+
+
+
+
+
+
+Hansen & Klensin         Best Current Practice                  [Page 1]
+
+RFC 5248           SMTP Enhanced Status Code Registry          June 2008
+
+
+1.  Introduction
+
+   Enhanced Status Codes for SMTP were first defined in [RFC1893], which
+   was subsequently replaced by [RFC3463].  While it anticipated that
+   more codes would be added over time (see section 2 of [RFC3463]), it
+   did not provide an explicit mechanism for registering and tracking
+   those codes.  Since then, various RFCs have been published and
+   internet drafts proposed that define additional status codes.
+   However, without an IANA registry, conflicts in definitions have
+   begun to appear.
+
+   This RFC defines such an IANA registry and was written to help
+   prevent further conflicts from appearing in the future.  It
+   initializes the registry with the established standards-track
+   enhanced status codes from [RFC3463], [RFC3886], [RFC4468], and
+   [RFC4954].  In addition, this document adds several codes to the
+   registry that were established by various internet drafts and have
+   come into common use, despite the expiration of the documents
+   themselves.
+
+   As specified in [RFC3463], an enhanced status code consists of a
+   three-part code, with each part being numeric and separated by a
+   period character.  The three portions are known as the class sub-
+   code, the subject sub-code, and the detail sub-code.  In the tables,
+   a wildcard for the class sub-code is represented by an X, a wildcard
+   for a subject sub-code is represented by an XXX, and a wildcard for a
+   detail sub-code is represented by a YYY.  For example, 3.XXX.YYY has
+   an unspecified subject sub-code and an unspecified status code, and
+   X.5.0 is has an unspecified class sub-code.  (This is a change from
+   [RFC3463], which uses XXX for both the subject sub-code and detail
+   sub-code wildcards.)
+
+2.  IANA Considerations
+
+2.1.  SMTP Enhanced Status Codes Registry
+
+   IANA has created the registry "SMTP Enhanced Status Codes".  The SMTP
+   Enhanced Status Codes registry will have three tables:
+
+   o  Class Sub-Codes
+      Each of the entries in this table represent class sub-codes and
+      all have an unspecified subject sub-code and an unspecified detail
+      sub-code.
+
+   o  Subject Sub-Codes
+      Each of the entries in this table represent subject sub-codes and
+      all have an unspecified class sub-code and an unspecified detail
+      sub-code.
+
+
+
+Hansen & Klensin         Best Current Practice                  [Page 2]
+
+RFC 5248           SMTP Enhanced Status Code Registry          June 2008
+
+
+   o  Enumerated Status Codes
+      Each of the entries in this table represent the combination of a
+      subject sub-code and a detail sub-code.  All entries will have an
+      unspecified class sub-code, a specified subject sub-code, and a
+      specified detail sub-code.
+
+   Each entry in the tables will include the following.  (The sub-code
+   tables will not have the Associated Basic Status Code entries.)
+
+   Code:                         The status code.  For example,
+                                 3.XXX.YYY is a class sub-code with an
+                                 unspecified subject sub-code and an
+                                 unspecified detail sub-code, and X.5.0
+                                 is an enumerated status code with an
+                                 unspecified class sub-code.
+
+   Summary: or Sample Text:      For class and subject sub-codes, this
+                                 is the summary of the use for the sub-
+                                 code shown in section 2 of [RFC3463].
+                                 For enumerated status codes, this is an
+                                 example of a message that might be sent
+                                 along with the code.
+
+   Associated Basic Status Code: For enumerated status codes, the basic
+                                 status code(s) of [RFC2821] with which
+                                 it is usually associated.  This may
+                                 also have a value such as "Any" or "Not
+                                 given".  NOTE: This is a non-exclusive
+                                 list.  In particular, the entries that
+                                 list some basic status codes for an
+                                 Enhanced Status Code might allow for
+                                 other basic status codes, while the
+                                 entries denoted "Not given" can be
+                                 filled in by updating the IANA registry
+                                 through updates to this document or at
+                                 the direction of the IESG.
+
+   Description:                  A short description of the code.
+
+   Reference:                    A reference to the document in which
+                                 the code is defined.  This reference
+                                 should note whether the relevant
+                                 specification is standards-track, best
+                                 current practice, or neither, using one
+                                 of "(Standards track)", "(Best current
+                                 practice)" or "(Not standards track)".
+
+
+
+
+
+Hansen & Klensin         Best Current Practice                  [Page 3]
+
+RFC 5248           SMTP Enhanced Status Code Registry          June 2008
+
+
+   Submitter:                    The identity of the submitter, usually
+                                 the document author.
+
+   Change Controller:            The identity of the change controller
+                                 for the specification.  This will be
+                                 "IESG" in the case of IETF-produced
+                                 documents.
+
+   An example of an entry in the enumerated status code table would be:
+
+   Code:               X.0.0
+   Sample Text:        Other undefined Status
+   Associated basic status code:  Any
+   Description:        Other undefined status is the only undefined
+                       error code.  It should be used for all errors for
+                       which only the class of the error is known.
+   Reference:          RFC 3463 (Standards track)
+   Submitter:          G. Vaudreuil
+   Change controller:  IESG.
+
+2.2.  Review Process for New Values
+
+   Entries in this registry are expected to follow the "Specification
+   Required" model ([RFC5226]) although, in practice, most entries are
+   expected to derive from standards-track documents.  Non-standards-
+   track documents that specify codes to be registered should be readily
+   available.  The principal purpose of this registry is to avoid
+   confusion and conflicts among different definitions or uses for the
+   same code.
+
+2.3.  Registration Updates
+
+   Standards-track registrations may be updated if the relevant
+   standards are updated as a consequence of that action.  Non-
+   standards-track entries may be updated by the listed change
+   controller.  Only the entry's short description or references may be
+   modified in this way, not the code or associated text.  In
+   exceptional cases, any aspect of any registered entity may be updated
+   at the direction of the IESG (for example, to correct a conflict).
+
+
+
+
+
+
+
+
+
+
+
+
+Hansen & Klensin         Best Current Practice                  [Page 4]
+
+RFC 5248           SMTP Enhanced Status Code Registry          June 2008
+
+
+2.4.  Initial Values
+
+   The initial values for the class and subject sub-code tables are to
+   be populated from section 2 of [RFC3463].  Specifically, these are
+   the values for 2.XXX.YYY, 4.XXX.YYY, and 5.XXX.YYY for the Class Sub-
+   Code table, and the values X.0.YYY, X.1.YYY, X.2.YYY, X.3.YYY,
+   X.4.YYY, X.5.YYY, X.6.YYY, and X.7.YYY for the Subject Sub-Code
+   table.  The code, sample text, and description for each entry are to
+   be taken from [RFC3463].  Each entry is to use [RFC3463] as the
+   reference, submitted by G. Vaudreuil, and change controlled by the
+   IESG.  There are no associated detail sub-code values for the class
+   and subject sub-code tables.
+
+   The initial values for the Enumerated Status Code table is to be
+   populated from:
+
+   1.  sections 3.1 through 3.8 of [RFC3463], (X.0.0, X.1.0 through
+       X.1.8, X.2.0 through X.2.4, X.3.0 through X.3.5, X.4.0 through
+       X.4.7, X.5.0 through X.5.5, X.6.0 through X.6.5, and X.7.0
+       through X.7.7),
+
+   2.  section 3.3.4 of [RFC3886] (X.1.9),
+
+   3.  X.6.6 found in section 5 of [RFC4468], (but not X.7.8 found in
+       the same section),
+
+   4.  and X.5.6, X.7.8, X.7.9, X.7.11, and X.7.12, found in section 6
+       of [RFC4954] (using the text from X.5.6, 5.7.8, 5.7.9, 5.7.11,
+       and 4.7.12).
+
+   Each entry is to be designated as defined in the corresponding RFC,
+   submitted by the corresponding RFC author, and change controlled by
+   the IESG.  Each of the above RFCs is a standards-track document.
+
+   The initial values for the Associated Basic Status Code for each of
+   the above initial enhanced status codes is given in the following
+   table.
+
+   As noted above, this table is incomplete.  In particular, the entries
+   that have some basic status codes might allow for other detail sub-
+   status codes, while the entries denoted "Not given" can be filled in
+   by updating the IANA registry through updates to this document or at
+   the direction of the IESG.
+
+
+
+
+
+
+
+
+Hansen & Klensin         Best Current Practice                  [Page 5]
+
+RFC 5248           SMTP Enhanced Status Code Registry          June 2008
+
+
+   +--------+---------------+--------+----------+--------+-------------+
+   | Enh.   | Assoc.  Basic | Enh.   | Assoc.   | Enh.   | Assoc.      |
+   | Status | Status Code   | Status | Basic    | Status | Basic       |
+   | Code   |               | Code   | Status   | Code   | Status Code |
+   |        |               |        | Code     |        |             |
+   +--------+---------------+--------+----------+--------+-------------+
+   | X.0.0  | Any           | X.1.0  | Not      | X.1.1  | 451, 550    |
+   |        |               |        | given    |        |             |
+   | X.1.2  | Not given     | X.1.3  | 501      | X.1.4  | Not given   |
+   | X.1.5  | 250           | X.1.6  | Not      | X.1.7  | Not given   |
+   |        |               |        | given    |        |             |
+   | X.1.8  | 451, 501      | X.1.9  | Not      | X.2.0  | Not given   |
+   |        |               |        | given    |        |             |
+   | X.2.1  | Not given     | X.2.2  | 552      | X.2.3  | 552         |
+   | X.2.4  | 450, 452      | X.3.0  | 221,     | X.3.1  | 452         |
+   |        |               |        | 250,     |        |             |
+   |        |               |        | 421,     |        |             |
+   |        |               |        | 451,     |        |             |
+   |        |               |        | 550, 554 |        |             |
+   | X.3.2  | 453           | X.3.3  | Not      | X.3.4  | 552, 554    |
+   |        |               |        | given    |        |             |
+   | X.3.5  | Not given     | X.4.0  | Not      | X.4.1  | 451         |
+   |        |               |        | given    |        |             |
+   | X.4.2  | 421           | X.4.3  | 451, 550 | X.4.4  | Not given   |
+   | X.4.5  | 451           | X.4.6  | Not      | X.4.7  | Not given   |
+   |        |               |        | given    |        |             |
+   | X.5.0  | 220, 250,     | X.5.1  | 430,     | X.5.2  | 500, 501,   |
+   |        | 251, 252,     |        | 500,     |        | 502, 550,   |
+   |        | 253, 451,     |        | 501,     |        | 555         |
+   |        | 452, 454,     |        | 503,     |        |             |
+   |        | 458, 459,     |        | 530,     |        |             |
+   |        | 501, 502,     |        | 550,     |        |             |
+   |        | 503, 554      |        | 554, 555 |        |             |
+   | X.5.3  | 451           | X.5.4  | 451,     | X.5.5  | Not given   |
+   |        |               |        | 501,     |        |             |
+   |        |               |        | 502,     |        |             |
+   |        |               |        | 503,     |        |             |
+   |        |               |        | 504,     |        |             |
+   |        |               |        | 550, 555 |        |             |
+   | X.5.6  | 500           | X.6.0  | Not      | X.6.1  | Not given   |
+   |        |               |        | given    |        |             |
+   | X.6.2  | Not given     | X.6.3  | 554      | X.6.4  | 250         |
+   | X.6.5  | Not given     | X.6.6  | 554      | X.7.0  | 220, 235,   |
+   |        |               |        |          |        | 450, 454,   |
+   |        |               |        |          |        | 500, 501,   |
+   |        |               |        |          |        | 503, 504,   |
+   |        |               |        |          |        | 530, 535,   |
+   |        |               |        |          |        | 550         |
+
+
+
+Hansen & Klensin         Best Current Practice                  [Page 6]
+
+RFC 5248           SMTP Enhanced Status Code Registry          June 2008
+
+
+   | X.7.1  | 451, 454,     | X.7.2  | 550      | X.7.3  | Not given   |
+   |        | 502, 503,     |        |          |        |             |
+   |        | 533, 550, 551 |        |          |        |             |
+   | X.7.4  | 504           | X.7.5  | Not      | X.7.6  | Not given   |
+   |        |               |        | given    |        |             |
+   | X.7.7  | Not given     | X.7.8  | 535, 554 | X.7.9  | 534         |
+   | X.7.10 | 523           | X.7.11 | 524, 538 | X.7.12 | 422, 432    |
+   | X.7.13 | 525           | X.7.14 | 535, 554 |        |             |
+   +--------+---------------+--------+----------+--------+-------------+
+
+                                  Table 1
+
+   The following additional definitions have been registered in the
+   enumerated status code table.  These entries have been used in the
+   industry without any published specification.
+
+   Code:               X.7.10
+   Sample Text:        Encryption Needed
+   Associated basic status code:  523
+   Description:        This indicates that an external strong privacy
+                       layer is needed in order to use the requested
+                       authentication mechanism.  This is primarily
+                       intended for use with clear text authentication
+                       mechanisms.  A client that receives this may
+                       activate a security layer such as TLS prior to
+                       authenticating, or attempt to use a stronger
+                       mechanism.
+   Reference:          RFC 5248 (Best current practice)
+   Submitter:          T. Hansen, J. Klensin
+   Change controller:  IESG
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Hansen & Klensin         Best Current Practice                  [Page 7]
+
+RFC 5248           SMTP Enhanced Status Code Registry          June 2008
+
+
+   Code:               X.7.13
+   Sample Text:        User Account Disabled
+   Associated basic status code:  525
+   Description:        Sometimes a system administrator will have to
+                       disable a user's account (e.g., due to lack of
+                       payment, abuse, evidence of a break-in attempt,
+                       etc.).  This error code occurs after a successful
+                       authentication to a disabled account.  This
+                       informs the client that the failure is permanent
+                       until the user contacts their system
+                       administrator to get the account re-enabled.  It
+                       differs from a generic authentication failure
+                       where the client's best option is to present the
+                       passphrase entry dialog in case the user simply
+                       mistyped their passphrase.
+   Reference:          RFC 5248 (Best current practice)
+   Submitter:          T. Hansen, J. Klensin
+   Change controller:  IESG
+
+   Code:               X.7.14
+   Sample Text:        Trust relationship required
+   Associated basic status code:  535, 554
+   Description:        The submission server requires a configured trust
+                       relationship with a third-party server in order
+                       to access the message content.  This value
+                       replaces the prior use of X.7.8 for this error
+                       condition, thereby updating [RFC4468].
+   Reference:          RFC 5248 (Best current practice)
+   Submitter:          T. Hansen, J. Klensin
+   Change controller:  IESG
+
+3.  Security Considerations
+
+   As stated in [RFC1893], use of enhanced status codes may disclose
+   additional information about how an internal mail system is
+   implemented beyond that available through the SMTP status codes.
+
+   Many proposed additions to the response code list are security
+   related.  Having these registered in one place to prevent collisions
+   will improve their value.  Security error responses can leak
+   information to active attackers (e.g., the distinction between "user
+   not found" and "bad password" during authentication).  Documents
+   defining security error codes should make it clear when this is the
+   case so SMTP server software subject to such threats can provide
+   appropriate controls to restrict exposure.
+
+
+
+
+
+
+Hansen & Klensin         Best Current Practice                  [Page 8]
+
+RFC 5248           SMTP Enhanced Status Code Registry          June 2008
+
+
+4.  Acknowledgements
+
+   While the need for this registry should have become clear shortly
+   after [RFC3463] was approved, the growth of the code table through
+   additional documents and work done as part of email
+   internationalization and [RFC2821] updating efforts made the
+   requirement much more clear.  The comments of the participants in
+   those efforts are gratefully acknowledged, particularly the members
+   of the ietf-smtp@imc.org mailing list.  Chris Newman and Randy
+   Gellens provided useful comments and some text for early versions of
+   the document.
+
+5.  References
+
+5.1.  Normative References
+
+   [RFC2821]  Klensin, J., "Simple Mail Transfer Protocol", RFC 2821,
+              April 2001.
+
+   [RFC3463]  Vaudreuil, G., "Enhanced Mail System Status Codes",
+              RFC 3463, January 2003.
+
+   [RFC3886]  Allman, E., "An Extensible Message Format for Message
+              Tracking Responses", RFC 3886, September 2004.
+
+   [RFC4468]  Newman, C., "Message Submission BURL Extension", RFC 4468,
+              May 2006.
+
+   [RFC4954]  Siemborski, R. and A. Melnikov, "SMTP Service Extension
+              for Authentication", RFC 4954, July 2007.
+
+5.2.  Informative References
+
+   [RFC1893]  Vaudreuil, G., "Enhanced Mail System Status Codes",
+              RFC 1893, January 1996.
+
+   [RFC5226]  Narten, T. and H. Alvestrand, "Guidelines for Writing an
+              IANA Considerations Section in RFCs", BCP 26, RFC 5226,
+              May 2008.
+
+
+
+
+
+
+
+
+
+
+
+
+Hansen & Klensin         Best Current Practice                  [Page 9]
+
+RFC 5248           SMTP Enhanced Status Code Registry          June 2008
+
+
+Authors' Addresses
+
+   Tony Hansen
+   AT&T Laboratories
+   200 Laurel Ave.
+   Middletown, NJ  07748
+   USA
+
+   EMail: tony+mailesc@maillennium.att.com
+
+
+   John C Klensin
+   1770 Massachusetts Ave, Ste 322
+   Cambridge, MA  02140
+   USA
+
+   Phone: +1 617 245 1457
+   EMail: john+ietf@jck.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Hansen & Klensin         Best Current Practice                 [Page 10]
+
+RFC 5248           SMTP Enhanced Status Code Registry          June 2008
+
+
+Full Copyright Statement
+
+   Copyright (C) The IETF Trust (2008).
+
+   This document is subject to the rights, licenses and restrictions
+   contained in BCP 78, and except as set forth therein, the authors
+   retain all their rights.
+
+   This document and the information contained herein are provided on an
+   "AS IS" basis and THE CONTRIBUTOR, THE ORGANIZATION HE/SHE REPRESENTS
+   OR IS SPONSORED BY (IF ANY), THE INTERNET SOCIETY, THE IETF TRUST AND
+   THE INTERNET ENGINEERING TASK FORCE DISCLAIM ALL WARRANTIES, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF
+   THE INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED
+   WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+Intellectual Property
+
+   The IETF takes no position regarding the validity or scope of any
+   Intellectual Property Rights or other rights that might be claimed to
+   pertain to the implementation or use of the technology described in
+   this document or the extent to which any license under such rights
+   might or might not be available; nor does it represent that it has
+   made any independent effort to identify any such rights.  Information
+   on the procedures with respect to rights in RFC documents can be
+   found in BCP 78 and BCP 79.
+
+   Copies of IPR disclosures made to the IETF Secretariat and any
+   assurances of licenses to be made available, or the result of an
+   attempt made to obtain a general license or permission for the use of
+   such proprietary rights by implementers or users of this
+   specification can be obtained from the IETF on-line IPR repository at
+   http://www.ietf.org/ipr.
+
+   The IETF invites any interested party to bring to its attention any
+   copyrights, patents or patent applications, or other proprietary
+   rights that may cover technology that may be required to implement
+   this standard.  Please address the information to the IETF at
+   ietf-ipr@ietf.org.
+
+
+
+
+
+
+
+
+
+
+
+
+Hansen & Klensin         Best Current Practice                 [Page 11]
+

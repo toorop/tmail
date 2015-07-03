@@ -55,7 +55,7 @@ func (s *Smtpd) ListenAndServe() {
 				go func(conn net.Conn) {
 					ChSmtpSessionsCount <- 1
 					defer func() { ChSmtpSessionsCount <- -1 }()
-					sss, err := NewSmtpServerSession(conn, secured)
+					sss, err := NewSMTPServerSession(conn, secured)
 					if err != nil {
 						log.Println("unable to get new SmtpServerSession")
 					} else {

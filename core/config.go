@@ -39,6 +39,8 @@ type Config struct {
 		SmtpdTransactionTimeout  int    `name:"smtpd_transaction_timeout" default:"60"`
 		SmtpdMaxDataBytes        int    `name:"smtpd_max_databytes" default:"60"`
 		SmtpdMaxHops             int    `name:"smtpd_max_hops" default:"10"`
+		SmtpdMaxRcptTo           int    `name:"smtpd_max_rcpt" default:"30"`
+		SmtpdMaxBadRcptTo        int    `name:"smtpd_max_bad_rcpt" default:"3"`
 		SmtpdClamavEnabled       bool   `name:"smtpd_scan_clamav_enabled" default:"false"`
 		SmtpdClamavDsns          string `name:"smtpd_scan_clamav_dsns" default:""`
 		SmtpdConcurrencyIncoming int    `name:"smtpd_concurrency_incoming" default:"20"`
@@ -258,6 +260,20 @@ func (c *Config) GetSmtpdMaxHops() int {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.SmtpdMaxHops
+}
+
+// GetSmtpdMaxRcptTo returns the maximum number of RCPT TO commands
+func (c *Config) GetSmtpdMaxRcptTo() int {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.SmtpdMaxRcptTo
+}
+
+// GetSmtpdMaxBadRcptTo returns the maximum number of bad RCPT TO commands
+func (c *Config) GetSmtpdMaxBadRcptTo() int {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.SmtpdMaxBadRcptTo
 }
 
 // GetSmtpdClamavEnabled returns if clamav scan is enable
