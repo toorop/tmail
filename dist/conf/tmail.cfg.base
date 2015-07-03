@@ -107,7 +107,6 @@ export TMAIL_SMTPD_MAX_DATABYTES=50000000
 # default 30
 export TMAIL_SMTPD_MAX_HOPS=50
 
-
 # Maximum of RCPT TO per transaction
 # when is reached serveur will reply with a 451 error (4.1.0)
 export TMAIL_SMTP_MAX_RCPT=30
