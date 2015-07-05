@@ -109,10 +109,12 @@ export TMAIL_SMTPD_MAX_HOPS=50
 
 # Maximum of RCPT TO per transaction
 # when is reached serveur will reply with a 451 error (4.1.0)
-export TMAIL_SMTP_MAX_RCPT=30
+# to be full RFC compliant it should be 0
+export TMAIL_SMTP_MAX_RCPT=0
 
 # Drop smtp session after TMAIL_SMTP_MAX_BAD_RCPT unavailable RCPT TO
-export TMAIL_SMTP_MAX_BAD_RCPT=3
+# to be full RFC compliant it should be 0
+export TMAIL_SMTP_MAX_BAD_RCPT=0
 
 # Number of simultaneous incoming SMTP sessions
 # Default 20

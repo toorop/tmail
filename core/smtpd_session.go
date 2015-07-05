@@ -256,8 +256,8 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 	rcptto := ""
 
 	s.rcptCount++
-	s.log(fmt.Sprintf("RCPT TO %d/%d", s.rcptCount, Cfg.GetSmtpdMaxRcptTo()))
-	if s.rcptCount > Cfg.GetSmtpdMaxRcptTo() {
+	s.logDebug(fmt.Sprintf("RCPT TO %d/%d", s.rcptCount, Cfg.GetSmtpdMaxRcptTo()))
+	if Cfg.GetSmtpdMaxRcptTo() != 0 && s.rcptCount > Cfg.GetSmtpdMaxRcptTo() {
 		s.log(fmt.Sprintf("max RCPT TO command reached (%d)", Cfg.GetSmtpdMaxRcptTo()))
 		s.out("451 max RCPT To commands reached for the sessions (#4.1.0)")
 		return
@@ -335,8 +335,8 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 					s.log("No mailbox here by that name: " + rcptto)
 					s.out("551 Sorry, no mailbox here by that name. (#5.1.1)")
 					s.badRcptToCount++
-					s.log(fmt.Sprintf("bad rcpt: %d - max %d", s.badRcptToCount, Cfg.GetSmtpdMaxBadRcptTo()))
-					if s.badRcptToCount > Cfg.GetSmtpdMaxBadRcptTo() {
+					s.logDebug(fmt.Sprintf("bad rcpt: %d - max %d", s.badRcptToCount, Cfg.GetSmtpdMaxBadRcptTo()))
+					if Cfg.GetSmtpdMaxBadRcptTo() != 0 && s.badRcptToCount > Cfg.GetSmtpdMaxBadRcptTo() {
 						s.exitAsap()
 					}
 					return
