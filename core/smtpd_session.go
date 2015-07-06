@@ -10,6 +10,7 @@ import (
 	"net/mail"
 	"path"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
@@ -54,14 +55,16 @@ func NewSMTPServerSession(conn net.Conn, secured bool) (sss *SMTPServerSession, 
 	sss.conn = conn
 	sss.logger = Log
 
-	sss.seenHelo = false
+	sss.rcptCount = 0
 	sss.secured = secured
+	sss.seenHelo = false
+	sss.seenMail = false
+
 	// timeout
 	sss.exitasap = make(chan int, 1)
 	sss.timeout = time.Duration(Cfg.GetSmtpdTransactionTimeout()) * time.Second
 	sss.timer = time.AfterFunc(sss.timeout, sss.raiseTimeout)
 	sss.badRcptToCount = 0
-	sss.reset()
 	return
 }
 
@@ -89,7 +92,6 @@ func (s *SMTPServerSession) reset() {
 	s.seenMail = false
 	s.envelope.RcptTo = []string{}
 	s.rcptCount = 0
-	s.purgeConn()
 	s.resetTimeout()
 }
 
@@ -146,6 +148,7 @@ func (s *SMTPServerSession) pause(seconds int) {
 
 // smtpGreeting Greeting
 func (s *SMTPServerSession) smtpGreeting() {
+	s.log("greeting")
 	// Todo AS: verifier si il y a des data dans le buffer
 	// Todo desactiver server signature en option
 	// dans le cas ou l'on refuse la transaction on doit répondre par un 554 et attendre le quit
@@ -169,11 +172,10 @@ func (s *SMTPServerSession) smtpGreeting() {
 // helo do the common EHLO/HELO tasks
 func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
 	if s.seenHelo {
-		s.log("EHLO|HELO already recieved")
+		s.log("EHLO|HELO already received")
 		s.pause(1)
 		s.out("503 bad sequence, ehlo already recieved")
 		return false
-
 	}
 	s.helo = ""
 	if len(msg) > 1 {
@@ -241,15 +243,9 @@ func (s *SMTPServerSession) smtpEhlo(msg []string) {
 
 // MAIL FROM
 func (s *SMTPServerSession) smtpMailFrom(msg []string) {
-
+	extension := []string{}
 	// TODO prendre en compte le SIZE :
 	// MAIL FROM:<toorop@toorop.fr> SIZE=1671
-
-	if Cfg.getRFCHeloMandatory() && !s.seenHelo {
-		s.pause(2)
-		s.out("503 5.5.2 Send hello first")
-		return
-	}
 
 	// Si on a déja un mailFrom les RFC ne précise rien de particulier
 	// -> On accepte et on reinitialise
@@ -257,28 +253,74 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 	// Reset
 	s.reset()
 
-	// from ?
-	if len(msg) == 1 || !strings.HasPrefix(strings.ToLower(msg[1]), "from:") {
-		s.log(fmt.Sprintf("MAIL FROM - Bad syntax : %s ", strings.Join(msg, " ")))
-		s.out("501 5.5.4 Syntax: MAIL FROM:<address>")
+	// cmd EHLO ?
+	if Cfg.getRFCHeloMandatory() && !s.seenHelo {
+		s.pause(2)
+		s.out("503 5.5.2 Send hello first")
 		return
 	}
-	// mail from:<user>
-	if len(msg[1]) > 5 {
+	msgLen := len(msg)
+	// mail from ?
+	if msgLen == 1 || !strings.HasPrefix(strings.ToLower(msg[1]), "from:") || msgLen > 4 {
+		s.log(fmt.Sprintf("MAIL FROM - Bad syntax : %s ", strings.Join(msg, " ")))
+		s.pause(2)
+		s.out("501 5.5.4 Syntax: MAIL FROM:<address> [SIZE]")
+		return
+	}
+	// mail from:<user> EXT || mail from: <user> EXT
+	if len(msg[1]) > 5 { // mail from:<user> EXT
+		s.log("cas 1")
 		t := strings.Split(msg[1], ":")
 		s.envelope.MailFrom = t[1]
-	} else if len(msg) >= 3 { // mail from: user
+		if msgLen > 2 {
+			extension = append(extension, msg[2:]...)
+		}
+	} else if msgLen > 2 { // mail from: user EXT
 		s.envelope.MailFrom = msg[2]
-	} else {
-		s.log(fmt.Sprintf("MAIL FROM - Bad syntax : %s ", strings.Join(msg, " ")))
-		s.out("501 5.5.4 Syntax: MAIL FROM:<address>")
-	} // else mailFrom = null enveloppe sender
+		if msgLen > 3 {
+			extension = append(extension, msg[3:]...)
+		}
+	} else { // null sender
+		s.envelope.MailFrom = ""
+	}
 
-	// Extensions (TODO)
-	if len(msg) > 3 {
-		s.log(fmt.Sprintf("MAIL FROM - Unsuported option : %s ", strings.Join(msg, " ")))
-		s.out(fmt.Sprintf("555 5.5.4 Unsupported option : %s", strings.Join(msg[3:], " ")))
-		return
+	// Extensions size
+	if len(extension) != 0 {
+		s.log(fmt.Sprintf("%v", extension))
+		// Only SIZE is supported (and announced)
+		if len(extension) > 1 {
+			s.log(fmt.Sprintf("MAIL FROM - Bad syntax: %s ", strings.Join(msg, " ")))
+			s.pause(2)
+			s.out("501 5.5.4 Syntax: MAIL FROM:<address> [SIZE]")
+			return
+		}
+		// SIZE
+		extValue := strings.Split(extension[0], "=")
+		if len(extValue) != 2 {
+			s.log(fmt.Sprintf("MAIL FROM - Bad syntax : %s ", strings.Join(msg, " ")))
+			s.pause(2)
+			s.out("501 5.5.4 Syntax: MAIL FROM:<address> [SIZE]")
+			return
+		}
+		if strings.ToLower(extValue[0]) != "size" {
+			s.log(fmt.Sprintf("MAIL FROM - Unsuported extension : %s ", extValue[0]))
+			s.out("501 5.5.4 Invalid arguments")
+			s.pause(2)
+			return
+		}
+		size, err := strconv.ParseInt(extValue[1], 10, 64)
+		if err != nil {
+			s.log(fmt.Sprintf("MAIL FROM - bad value for size extension SIZE=%v", extValue[1]))
+			s.out("501 5.5.4 Invalid arguments")
+			s.pause(2)
+			return
+		}
+		if int(size) > Cfg.GetSmtpdMaxDataBytes() {
+			s.log(fmt.Sprintf("MAIL FROM - message exceeds fixed maximum message size %d/%d", size, Cfg.GetSmtpdMaxDataBytes()))
+			s.out("552 message exceeds fixed maximum message size")
+			s.pause(1)
+			return
+		}
 	}
 
 	// Clean <>
@@ -879,7 +921,7 @@ func (s *SMTPServerSession) noop() {
 
 // Handle SMTP session
 func (s *SMTPServerSession) handle() {
-
+	s.log("handle")
 	// Recover on panic
 	defer func() {
 		if err := recover(); err != nil {
@@ -890,8 +932,6 @@ func (s *SMTPServerSession) handle() {
 
 	// Init some var
 	var msg []byte
-	//var closeCon bool = false
-	//s.helo = ""
 
 	buffer := make([]byte, 1)
 
