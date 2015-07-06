@@ -89,6 +89,7 @@ func (s *SMTPServerSession) reset() {
 	s.seenMail = false
 	s.envelope.RcptTo = []string{}
 	s.rcptCount = 0
+	s.purgeConn()
 	s.resetTimeout()
 }
 
@@ -433,7 +434,6 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 // DATA
 // TODO : plutot que de stocker en RAM on pourrait envoyer directement les danat
 // dans un fichier ne queue
-// C'est je crois ce que fait qmail
 // Si il y a une erreur on supprime le fichier
 // Voir un truc comme DATA -> temp file -> mv queue file
 func (s *SMTPServerSession) smtpData(msg []string) (err error) {
