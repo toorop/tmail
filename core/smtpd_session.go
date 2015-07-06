@@ -517,20 +517,18 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 // dans un fichier ne queue
 // Si il y a une erreur on supprime le fichier
 // Voir un truc comme DATA -> temp file -> mv queue file
-func (s *SMTPServerSession) smtpData(msg []string) (err error) {
-	if !s.seenMail {
-		s.log("503 DATA before MAIL FROM")
-		s.out("503 MAIL first (#5.5.1)")
+func (s *SMTPServerSession) smtpData(msg []string) {
+	if !s.seenMail || len(s.envelope.RcptTo) == 0 {
+		s.log("DATA - out of sequence")
+		s.pause(2)
+		s.out("503 5.5.1 command out of sequence")
 		return
 	}
-	if len(s.envelope.RcptTo) == 0 {
-		s.log("503 DATA before RCPT TO")
-		s.out("503 RCPT first (#5.5.1)")
-		return
-	}
+
 	if len(msg) > 1 {
-		s.log(fmt.Sprintf("501 Syntax DATA : %s", strings.Join(msg, " ")))
-		s.out("501 5.5.4 Syntax: DATA")
+		s.log("DATA - invalid syntax: " + strings.Join(msg, " "))
+		s.pause(2)
+		s.out("501 5.5.4 invalid syntax")
 		return
 	}
 	s.out("354 End data with <CR><LF>.<CR><LF>")
@@ -558,7 +556,12 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 		_, err := s.conn.Read(ch)
 		s.timer.Stop()
 		if err != nil {
-			break
+			// we will tryc to send an error message to client, but there is a LOT of
+			// chance that is gone
+			s.logError("DATA - unable to read byte from conn. " + err.Error())
+			s.out("454 something wrong append will reading data from you")
+			s.exitAsap()
+			return
 		}
 		if flagInHeader {
 			// Check hops
@@ -600,7 +603,7 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 		case 0:
 			if ch[0] == LF {
 				s.strayNewline()
-				return err
+				return
 			}
 			if ch[0] == CR {
 				state = 4
@@ -613,7 +616,7 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 		case 1:
 			if ch[0] == LF {
 				s.strayNewline()
-				return err
+				return
 			}
 			// "."
 			if ch[0] == 46 {
@@ -633,7 +636,7 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 		case 2:
 			if ch[0] == LF {
 				s.strayNewline()
-				return err
+				return
 			}
 			if ch[0] == CR {
 				state = 3
@@ -673,24 +676,23 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 		}
 		rawMessage = append(rawMessage, ch[0])
 		dataBytes++
-		//TRACE.Println(dataBytes)
 
 		// Max hops reached ?
 		if hops > Cfg.GetSmtpdMaxHops() {
-			s.log(fmt.Sprintf("Message is looping. Hops : %d", hops))
-			s.out("554 too many hops, this message is looping (#5.4.6)")
-			s.purgeConn()
+			s.log(fmt.Sprintf("MAIL - Message is looping. Hops : %d", hops))
+			s.out("554 5.4.6 too many hops, this message is looping")
+			//s.purgeConn()
 			s.reset()
-			return err
+			return
 		}
 
 		// Max databytes reached ?
 		if dataBytes > Cfg.GetSmtpdMaxDataBytes() {
-			s.log(fmt.Sprintf("552 Message size (%d) exceeds config.smtp.in.maxDataBytes (%d).", dataBytes, Cfg.GetSmtpdMaxDataBytes()))
-			s.out("552 sorry, that message size exceeds my databytes limit (#5.3.4)")
-			s.purgeConn()
+			s.log(fmt.Sprintf("MAIL - Message size (%d) exceeds maxDataBytes (%d).", dataBytes, Cfg.GetSmtpdMaxDataBytes()))
+			s.out("552 5.3.4 sorry, that message size exceeds my databytes limit")
+			//s.purgeConn()
 			s.reset()
-			return err
+			return
 		}
 	}
 
@@ -700,18 +702,18 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 		found, virusName, err := NewClamav().ScanStream(bytes.NewReader(rawMessage))
 		Log.Debug("clamav scan result", found, virusName, err)
 		if err != nil {
-			s.out("454 oops, scanner failure (#4.3.0)")
-			s.log("ERROR clamav: " + err.Error())
-			s.purgeConn()
+			s.logError("MAIL - clamav: " + err.Error())
+			s.out("454 4.3.0 scanner failure")
+			//s.purgeConn()
 			s.reset()
-			return err
+			return
 		}
 		if found {
-			s.out("554 message infected by " + virusName + " (#5.7.1)")
-			s.log("infected by " + virusName)
-			s.purgeConn()
+			s.out("554 5.7.1 message infected by " + virusName)
+			s.log("MAIL - infected by " + virusName)
+			//s.purgeConn()
 			s.reset()
-			return err
+			return
 		}
 	}
 
@@ -726,7 +728,7 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 		rawMessage = append([]byte(fmt.Sprintf("Message-ID: <%s>\r\n", HeaderMessageID)), rawMessage...)
 
 	}
-	s.log("Message-ID:", string(HeaderMessageID))
+	s.log("MAIL - Message-ID:", string(HeaderMessageID))
 
 	// Microservice
 	stop, extraHeader := smtpdData(s, &rawMessage)
@@ -739,7 +741,6 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 		rawMessage = append([]byte(fmt.Sprintf("%s\r\n", h)), rawMessage...)
 	}
 
-	// recieved
 	// Add recieved header
 	remoteIP := strings.Split(s.conn.RemoteAddr().String(), ":")[0]
 	remoteHost := "no reverse"
@@ -796,11 +797,12 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 	}
 	id, err := QueueAddMessage(&rawMessage, s.envelope, authUser)
 	if err != nil {
-		s.logError("Unable to put message in queue -", err.Error())
+		s.logError("MAIL - unable to put message in queue -", err.Error())
 		s.out("451 temporary queue error")
-		return nil
+		s.reset()
+		return
 	}
-	s.log("message queued as", id)
+	s.log("MAIL - message queued as", id)
 	s.out(fmt.Sprintf("250 2.0.0 Ok: queued %s", id))
 	s.reset()
 	return
@@ -1020,11 +1022,6 @@ func (s *SMTPServerSession) handle() {
 				// get command, first word
 				verb := strings.ToLower(splittedMsg[0])
 				switch verb {
-
-				default:
-					rmsg = "502 unimplemented (#5.5.1)"
-					s.logError("Unimplemented command from client:", strMsg)
-					s.out(rmsg)
 				case "helo":
 					s.smtpHelo(splittedMsg)
 				case "ehlo":
@@ -1035,17 +1032,7 @@ func (s *SMTPServerSession) handle() {
 				case "rcpt":
 					s.smtpRcptTo(splittedMsg)
 				case "data":
-					err := s.smtpData(splittedMsg)
-					if err != nil {
-						if err == ErrNonAsciiCharDetected {
-							s.logError(ErrNonAsciiCharDetected.Error())
-							s.out(fmt.Sprintf("554 %s - %s", ErrNonAsciiCharDetected.Error(), s.uuid))
-						} else {
-							s.logError(err.Error())
-							s.out(fmt.Sprintf("554 oops something wrong hapenned - %s", s.uuid))
-						}
-						s.exitAsap()
-					}
+					s.smtpData(splittedMsg)
 				case "starttls":
 					s.smtpStartTLS()
 				case "auth":
@@ -1056,6 +1043,10 @@ func (s *SMTPServerSession) handle() {
 					s.noop()
 				case "quit":
 					s.smtpQuit()
+				default:
+					rmsg = "502 unimplemented (#5.5.1)"
+					s.log("MAIL - unimplemented command from client:", strMsg)
+					s.out(rmsg)
 				}
 				//s.resetTimeout()
 				msg = []byte{}
