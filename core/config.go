@@ -18,11 +18,12 @@ var c Config
 type Config struct {
 	sync.Mutex
 	cfg struct {
-		ClusterModeEnabled bool   `name:"cluster_mode_enabled" default:"false"`
-		Me                 string `name:"me" default:""`
-		TempDir            string `name:"tempdir" default:"/tmp"`
-		LogPath            string `name:"logpath" default:"stdout"`
-		DebugEnabled       bool   `name:"debug_enabled" default:"false"`
+		ClusterModeEnabled  bool   `name:"cluster_mode_enabled" default:"false"`
+		Me                  string `name:"me" default:""`
+		TempDir             string `name:"tempdir" default:"/tmp"`
+		LogPath             string `name:"logpath" default:"stdout"`
+		DebugEnabled        bool   `name:"debug_enabled" default:"false"`
+		HideServerSignature bool   `name:"hide_server_signature" default:"false"`
 
 		DbDriver string `name:"db_driver"`
 		DbSource string `name:"db_source"`
@@ -188,6 +189,13 @@ func (c *Config) GetDebugEnabled() bool {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.DebugEnabled
+}
+
+// GetHideServerSignature HideServerSignature
+func (c *Config) GetHideServerSignature() bool {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.HideServerSignature
 }
 
 // GetTempDir return temp directory

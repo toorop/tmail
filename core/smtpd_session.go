@@ -148,7 +148,6 @@ func (s *SMTPServerSession) pause(seconds int) {
 
 // smtpGreeting Greeting
 func (s *SMTPServerSession) smtpGreeting() {
-	s.log("greeting")
 	// Todo AS: verifier si il y a des data dans le buffer
 	// Todo desactiver server signature en option
 	// dans le cas ou l'on refuse la transaction on doit répondre par un 554 et attendre le quit
@@ -165,7 +164,13 @@ func (s *SMTPServerSession) smtpGreeting() {
 	if smtpdNewClient(s) {
 		return
 	}
-	s.out(fmt.Sprintf("220 %s tmail V %s ESMTP %s", Cfg.GetMe(), Version, s.uuid))
+
+	o := "220 " + Cfg.GetMe() + " ESMTP"
+	if !Cfg.GetHideServerSignature() {
+		o += " - tmail " + Version
+	}
+	o += " - " + s.uuid
+	s.out(o)
 }
 
 // EHLO HELO
@@ -949,7 +954,6 @@ func (s *SMTPServerSession) noop() {
 
 // Handle SMTP session
 func (s *SMTPServerSession) handle() {
-	s.log("handle")
 	// Recover on panic
 	defer func() {
 		if err := recover(); err != nil {

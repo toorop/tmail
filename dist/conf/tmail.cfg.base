@@ -7,6 +7,8 @@
 # Who am i (used in SMTP transaction for HELO)
 export TMAIL_ME="tmail.io"
 
+# Server signature
+export TMAIL_HIDE_SERVER_SIGNATURE=false
 
 # debug
 export TMAIL_DEBUG_ENABLED=false
