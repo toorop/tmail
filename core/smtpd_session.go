@@ -741,19 +741,19 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 
 	// recieved
 	// Add recieved header
-	remoteIp := strings.Split(s.conn.RemoteAddr().String(), ":")[0]
+	remoteIP := strings.Split(s.conn.RemoteAddr().String(), ":")[0]
 	remoteHost := "no reverse"
-	remoteHosts, err := net.LookupAddr(remoteIp)
+	remoteHosts, err := net.LookupAddr(remoteIP)
 	if err == nil {
 		remoteHost = remoteHosts[0]
 	}
-	localIp := strings.Split(s.conn.LocalAddr().String(), ":")[0]
+	localIP := strings.Split(s.conn.LocalAddr().String(), ":")[0]
 	localHost := "no reverse"
-	localHosts, err := net.LookupAddr(localIp)
+	localHosts, err := net.LookupAddr(localIP)
 	if err == nil {
 		localHost = localHosts[0]
 	}
-	recieved := fmt.Sprintf("Received: from %s (%s)", remoteIp, remoteHost)
+	recieved := fmt.Sprintf("Received: from %s (%s)", remoteIP, remoteHost)
 
 	// helo
 	if len(s.helo) != 0 {
@@ -766,7 +766,7 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 	}
 
 	// local
-	recieved += fmt.Sprintf(" by %s (%s)", localIp, localHost)
+	recieved += fmt.Sprintf(" by %s (%s)", localIP, localHost)
 
 	// Proto
 	if s.secured {
@@ -802,6 +802,7 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 	}
 	s.log("message queued as", id)
 	s.out(fmt.Sprintf("250 2.0.0 Ok: queued %s", id))
+	s.reset()
 	return
 }
 
@@ -812,12 +813,12 @@ func (s *SMTPServerSession) smtpQuit() {
 }
 
 // Starttls
-func (s *SMTPServerSession) smtpStartTls() {
+func (s *SMTPServerSession) smtpStartTLS() {
 	if s.secured {
 		s.out("454 - transaction is already secured via SSL")
 		return
 	}
-	s.out("220 Ready to start TLS")
+	//s.out("220 Ready to start TLS")
 	cert, err := tls.LoadX509KeyPair(path.Join(GetBasePath(), "ssl/server.crt"), path.Join(GetBasePath(), "ssl/server.key"))
 	if err != nil {
 		msg := "TLS failed unable to load server keys: " + err.Error()
@@ -831,6 +832,8 @@ func (s *SMTPServerSession) smtpStartTls() {
 		InsecureSkipVerify: true,
 	}
 	tlsConfig.Rand = rand.Reader
+
+	s.out("220 Ready to start TLS")
 
 	var tlsConn *tls.Conn
 	//tlsConn = tls.Server(client.socket, TLSconfig)
@@ -1044,7 +1047,7 @@ func (s *SMTPServerSession) handle() {
 						s.exitAsap()
 					}
 				case "starttls":
-					s.smtpStartTls()
+					s.smtpStartTLS()
 				case "auth":
 					s.smtpAuth(strMsg)
 				case "rset":
