@@ -55,7 +55,10 @@ type Config struct {
 		// RFC compliance
 		// RFC 5321 2.3.5: the domain name givent MUST be either a primary hostname
 		// (resovable) or an address
-		RFCHeloNeedsFqnOrAddress bool `name:"rfc_helo_need_fqn" default:"false"`
+		RFCHeloNeedsFqnOrAddress bool `name:"rfc_helo_need_fqn" default:"true"`
+		// RFC 5321 4.1.1.1 a client SHOULD start an SMTP session with the EHLO
+		// command
+		RFCHeloMandatory bool `name:"rfc_helo_mandatory" default:"false"`
 
 		// microservices
 		MsUriSmtpdNewClient string `name:"ms_smtpd_newclient" default:"_"`
@@ -316,6 +319,13 @@ func (c *Config) getRFCHeloNeedsFqnOrAddress() bool {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.RFCHeloNeedsFqnOrAddress
+}
+
+// returns RFCHeloMandatory
+func (c *Config) getRFCHeloMandatory() bool {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.RFCHeloMandatory
 }
 
 // nsqd

@@ -169,6 +169,12 @@ export TMAIL_DELIVERD_DKIM_SIGN=false
 
 ##
 # RFC compliance
+
+# RFC 5321 4.1.1.1 a client SHOULD start an SMTP session with the EHLO
+# command
+# default false
+export TMAIL_RFC_HELO_MANDATORY=false
+
 # RFC 5321 2.3.5: the domain name given MUST be either a primary hostname
 # (resovable) or an address
 # default: true (warning a lot of SMTP clients do not send a fqn|address )

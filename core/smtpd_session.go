@@ -138,6 +138,11 @@ func (s *SMTPServerSession) purgeConn() (err error) {
 	return
 }
 
+// add pause (ex if client seems to be illegitime)
+func (s *SMTPServerSession) pause(seconds int) {
+	time.Sleep(time.Duration(seconds) * time.Second)
+}
+
 // smtpGreeting Greeting
 func (s *SMTPServerSession) smtpGreeting() {
 	// Todo AS: verifier si il y a des data dans le buffer
@@ -164,6 +169,7 @@ func (s *SMTPServerSession) smtpGreeting() {
 func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
 	if s.seenHelo {
 		s.log("EHLO|HELO already recieved")
+		s.pause(1)
 		s.out("503 bad sequence, ehlo already recieved")
 		return false
 
@@ -208,43 +214,44 @@ func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
 
 // HELO
 func (s *SMTPServerSession) smtpHelo(msg []string) {
-	if !s.heloBase(msg) {
-		return
+	if s.heloBase(msg) {
+		s.out(fmt.Sprintf("250 %s", Cfg.GetMe()))
 	}
-	s.out(fmt.Sprintf("250 %s tmail %s", Cfg.GetMe(), Version))
 }
 
 // EHLO
 func (s *SMTPServerSession) smtpEhlo(msg []string) {
-	if !s.heloBase(msg) {
-		return
+	if s.heloBase(msg) {
+		s.out(fmt.Sprintf("250-%s", Cfg.GetMe()))
+		// Extensions
+		// Size
+		s.out(fmt.Sprintf("250-SIZE %d", Cfg.GetSmtpdMaxDataBytes()))
+
+		// STARTTLS
+		// TODO: si déja en tls/SSL ne pas renvoyer STARTTLS
+		if !s.secured {
+			s.out("250-STARTTLS")
+		}
+
+		// Auth
+		s.out("250 AUTH PLAIN")
 	}
-	s.out(fmt.Sprintf("250-%s tmail %s", Cfg.GetMe(), Version))
-
-	// Extensions
-	// Size
-	s.out(fmt.Sprintf("250-SIZE %d", Cfg.GetSmtpdMaxDataBytes()))
-
-	// STARTTLS
-	// TODO: si déja en tls/SSL ne pas renvoyer STARTTLS
-	if !s.secured {
-		s.out("250-STARTTLS")
-	}
-
-	// Auth
-	s.out("250 AUTH PLAIN")
-
-	//s.log("remote greets as", s.helo)
-
 }
 
 // MAIL FROM
 func (s *SMTPServerSession) smtpMailFrom(msg []string) {
-	// Si on a déja un mailFrom les RFC ne précise rien de particulier
-	// -> On accepte et on reinitialise
-	//
+
 	// TODO prendre en compte le SIZE :
 	// MAIL FROM:<toorop@toorop.fr> SIZE=1671
+
+	if Cfg.getRFCHeloMandatory() && !s.seenHelo {
+		s.pause(2)
+		s.out("503 5.5.2 Send hello first")
+		return
+	}
+
+	// Si on a déja un mailFrom les RFC ne précise rien de particulier
+	// -> On accepte et on reinitialise
 	//
 	// Reset
 	s.reset()
