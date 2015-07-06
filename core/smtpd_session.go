@@ -184,20 +184,10 @@ func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
 			if net.ParseIP(msg[1]) == nil {
 				ok, err := isFQN(msg[1])
 				if err != nil {
-					// temp failure
-					if err.(*net.DNSError).Temporary() || err.(*net.DNSError).Timeout() {
-						s.log("fail to do lookup on helo host. " + err.Error())
-						s.out("451 unable to resolve " + msg[1] + " due to timeout or srv failure")
-						return false
-					}
-					// If it's an other error it's probably a perm error
-					if !strings.HasSuffix(err.Error(), "no such host") {
-						s.log("fail to do lookup on helo host. " + err.Error())
-						s.out("504 unable to resolve " + msg[1] + ". Need fqn or address in helo command")
-						return false
-					}
+					s.log("fail to do lookup on helo host. " + err.Error())
+					s.out("404 unable to resolve " + msg[1] + ". Need fqdn or address in helo command")
+					return false
 				}
-				s.log(fmt.Sprintf("host: %s ok:%v err:%s", msg[1], ok, err))
 				if !ok {
 					s.log("helo command rejected, need fully-qualified hostname or address" + msg[1] + " given")
 					s.out("504 helo command rejected, need fully-qualified hostname or address #5.5.2")
@@ -308,35 +298,69 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 			s.pause(2)
 			return
 		}
-		size, err := strconv.ParseInt(extValue[1], 10, 64)
-		if err != nil {
-			s.log(fmt.Sprintf("MAIL FROM - bad value for size extension SIZE=%v", extValue[1]))
-			s.out("501 5.5.4 Invalid arguments")
-			s.pause(2)
-			return
-		}
-		if int(size) > Cfg.GetSmtpdMaxDataBytes() {
-			s.log(fmt.Sprintf("MAIL FROM - message exceeds fixed maximum message size %d/%d", size, Cfg.GetSmtpdMaxDataBytes()))
-			s.out("552 message exceeds fixed maximum message size")
-			s.pause(1)
-			return
+		if Cfg.GetSmtpdMaxDataBytes() != 0 {
+			size, err := strconv.ParseInt(extValue[1], 10, 64)
+			if err != nil {
+				s.log(fmt.Sprintf("MAIL FROM - bad value for size extension SIZE=%v", extValue[1]))
+				s.out("501 5.5.4 Invalid arguments")
+				s.pause(2)
+				return
+			}
+			if int(size) > Cfg.GetSmtpdMaxDataBytes() {
+				s.log(fmt.Sprintf("MAIL FROM - message exceeds fixed maximum message size %d/%d", size, Cfg.GetSmtpdMaxDataBytes()))
+				s.out("552 message exceeds fixed maximum message size")
+				s.pause(1)
+				return
+			}
 		}
 	}
 
-	// Clean <>
+	// remove <>
 	s.envelope.MailFrom = RemoveBrackets(s.envelope.MailFrom)
 
-	l := len(s.envelope.MailFrom)
-	if l > 0 { // 0 -> null reverse path (bounce)
-		if l > 254 { // semi arbitrary (local part must/should be < 64 & domain < 255)
-			s.log(fmt.Sprintf("MAIL FROM - Reverse path too long : %s ", strings.Join(msg, " ")))
-			s.out(fmt.Sprintf("550 email %s must be less than 255 char", s.envelope.MailFrom))
+	// mail from is valid ?
+	reversePathlen := len(s.envelope.MailFrom)
+	if reversePathlen > 0 { // 0 -> null reverse path (bounce)
+		if reversePathlen > 256 { // RFC 5321 4.3.5.1.3
+			s.log("MAIL - reverse path is too long: " + s.envelope.MailFrom)
+			s.out("550 reverse path must be lower than 255 char (RFC 5321 4.5.1.3.1)")
+			s.pause(2)
 			return
 		}
-
-		// If only local part add me
-		if strings.Count(s.envelope.MailFrom, "@") == 0 {
-			s.envelope.MailFrom = fmt.Sprintf("%s@%s", s.envelope.MailFrom, Cfg.GetMe())
+		localDomain := strings.Split(s.envelope.MailFrom, "@")
+		if len(localDomain) == 1 {
+			s.log("MAIL - invalid addresse " + localDomain[0])
+			s.pause(2)
+			s.out("501 5.1.7 Invalid address")
+			return
+			/*
+				localDomain = append(localDomain, Cfg.GetMe())
+				s.envelope.MailFrom = localDomain[0] + "@" + localDomain[1]
+			*/
+		}
+		if len(localDomain[0]) > 64 {
+			s.log("MAIL - local part is too long: " + s.envelope.MailFrom)
+			s.out("550 local part of reverse path MUST be lower than 65 char (RFC 5321 4.5.3.1.1)")
+			s.pause(2)
+			return
+		}
+		if len(localDomain[1]) > 255 {
+			s.log("MAIL - domain part is too long: " + s.envelope.MailFrom)
+			s.out("550 domain part of reverse path MUST be lower than 255 char (RFC 5321 4.5.3.1.2)")
+			s.pause(2)
+			return
+		}
+		// domain part should be FQDN
+		ok, err := isFQN(localDomain[1])
+		if err != nil {
+			s.log("MAIL - fail to do lookup on domain part " + err.Error())
+			s.out("451 unable to resolve " + localDomain[1] + " due to timeout or srv failure")
+			return
+		}
+		if !ok {
+			s.log("MAIL - need fully-qualified hostname. " + localDomain[1] + " given")
+			s.out("550 need fully-qualified hostname for domain part #5.5.2")
+			return
 		}
 	}
 	s.seenMail = true

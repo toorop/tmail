@@ -99,7 +99,7 @@ export TMAIL_SMTPD_DSNS="0.0.0.0:2525:false"
 export TMAIL_SMTPD_TRANSACTION_TIMEOUT=60
 
 # Max bytes for the data cmd (max size of incoming mail)
-# Default 50000000 (50M)
+# Default 0 unlimited
 export TMAIL_SMTPD_MAX_DATABYTES=50000000
 
 # Number of relays who previously take mail in charge
