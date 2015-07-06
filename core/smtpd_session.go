@@ -257,14 +257,13 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 	msgLen := len(msg)
 	// mail from ?
 	if msgLen == 1 || !strings.HasPrefix(strings.ToLower(msg[1]), "from:") || msgLen > 4 {
-		s.log(fmt.Sprintf("MAIL FROM - Bad syntax : %s ", strings.Join(msg, " ")))
+		s.log("MAIL - Bad syntax: %s" + strings.Join(msg, " "))
 		s.pause(2)
 		s.out("501 5.5.4 Syntax: MAIL FROM:<address> [SIZE]")
 		return
 	}
 	// mail from:<user> EXT || mail from: <user> EXT
 	if len(msg[1]) > 5 { // mail from:<user> EXT
-		s.log("cas 1")
 		t := strings.Split(msg[1], ":")
 		s.envelope.MailFrom = t[1]
 		if msgLen > 2 {
@@ -284,7 +283,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		s.log(fmt.Sprintf("%v", extension))
 		// Only SIZE is supported (and announced)
 		if len(extension) > 1 {
-			s.log(fmt.Sprintf("MAIL FROM - Bad syntax: %s ", strings.Join(msg, " ")))
+			s.log("MAIL - Bad syntax: " + strings.Join(msg, " "))
 			s.pause(2)
 			s.out("501 5.5.4 Syntax: MAIL FROM:<address> [SIZE]")
 			return
@@ -299,16 +298,16 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		}
 		if strings.ToLower(extValue[0]) != "size" {
 			s.log(fmt.Sprintf("MAIL FROM - Unsuported extension : %s ", extValue[0]))
-			s.out("501 5.5.4 Invalid arguments")
 			s.pause(2)
+			s.out("501 5.5.4 Invalid arguments")
 			return
 		}
 		if Cfg.GetSmtpdMaxDataBytes() != 0 {
 			size, err := strconv.ParseInt(extValue[1], 10, 64)
 			if err != nil {
 				s.log(fmt.Sprintf("MAIL FROM - bad value for size extension SIZE=%v", extValue[1]))
-				s.out("501 5.5.4 Invalid arguments")
 				s.pause(2)
+				s.out("501 5.5.4 Invalid arguments")
 				return
 			}
 			if int(size) > Cfg.GetSmtpdMaxDataBytes() {
@@ -358,13 +357,13 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		// domain part should be FQDN
 		ok, err := isFQN(localDomain[1])
 		if err != nil {
-			s.log("MAIL - fail to do lookup on domain part " + err.Error())
+			s.logError("MAIL - fail to do lookup on domain part. " + err.Error())
 			s.out("451 unable to resolve " + localDomain[1] + " due to timeout or srv failure")
 			return
 		}
 		if !ok {
 			s.log("MAIL - need fully-qualified hostname. " + localDomain[1] + " given")
-			s.out("550 need fully-qualified hostname for domain part #5.5.2")
+			s.out("550 5.5.2 need fully-qualified hostname for domain part")
 			return
 		}
 	}
@@ -377,89 +376,104 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	var err error
 	rcptto := ""
-
 	s.rcptCount++
 	s.logDebug(fmt.Sprintf("RCPT TO %d/%d", s.rcptCount, Cfg.GetSmtpdMaxRcptTo()))
 	if Cfg.GetSmtpdMaxRcptTo() != 0 && s.rcptCount > Cfg.GetSmtpdMaxRcptTo() {
 		s.log(fmt.Sprintf("max RCPT TO command reached (%d)", Cfg.GetSmtpdMaxRcptTo()))
-		s.out("451 max RCPT To commands reached for the sessions (#4.1.0)")
+		s.out("451 4.1.0 max RCPT To commands reached for this sessions")
 		return
 	}
-
+	// add pause if rcpt to > 10
+	if s.rcptCount > 10 {
+		s.pause(1)
+	}
 	if !s.seenMail {
-		s.log("503 RCPT TO before MAIL FROM")
-		s.out("503 MAIL first (#5.5.1)")
+		s.log("RCPT before MAIL")
+		s.pause(2)
+		s.out("503 5.5.1 bad sequence")
 		return
 	}
 
 	if len(msg) == 1 || !strings.HasPrefix(strings.ToLower(msg[1]), "to:") {
 		s.log(fmt.Sprintf("RCPT TO - Bad syntax : %s ", strings.Join(msg, " ")))
-		s.out("501 5.5.4 Syntax: RCPT TO:<address>")
+		s.pause(2)
+		s.out("501 5.5.4 syntax: RCPT TO:<address>")
 		return
 	}
 
+	// rcpt to: user
 	if len(msg[1]) > 3 {
 		t := strings.Split(msg[1], ":")
-		rcptto = t[1]
+		rcptto = strings.Join(t[1:], ":")
 	} else if len(msg) > 2 {
 		rcptto = msg[2]
 	}
+
 	if len(rcptto) == 0 {
-		s.log(fmt.Sprintf("RCPT TO - Bad syntax : %s ", strings.Join(msg, " ")))
-		s.out("501 5.5.4 Syntax: RCPT TO:<address>")
+		s.log("RCPT - Bad syntax : %s " + strings.Join(msg, " "))
+		s.pause(2)
+		s.out("501 5.5.4 syntax: RCPT TO:<address>")
 		return
 	}
+	s.log("rcptto " + rcptto)
 	rcptto = RemoveBrackets(rcptto)
 
-	// TODO : only local part
+	// We MUST recognize source route syntax but SHOULD strip off source routing
+	// RFC 5321 4.1.1.3
+	t := strings.SplitAfter(rcptto, ":")
+	rcptto = t[len(t)-1]
 
+	// if no domain part and local part is postmaster FRC 5321 2.3.5
+	if strings.ToLower(rcptto) == "postmaster" {
+		rcptto += "@" + Cfg.GetMe()
+	}
 	// Check validity
-	_, e := mail.ParseAddress(rcptto)
-	if e != nil {
-		s.log(fmt.Sprintf("RCPT TO - Bad email syntax : %s - %s ", strings.Join(msg, " "), e))
+	_, err = mail.ParseAddress(rcptto)
+	if err != nil {
+		s.log(fmt.Sprintf("RCPT - bad email format : %s - %s ", strings.Join(msg, " "), err))
+		s.pause(2)
 		s.out("501 5.5.4 Bad email format")
 		return
 	}
 
-	// On prend le mail en charge ?
+	// rcpt accepted ?
 	relay := false
-	t := strings.Split(rcptto, "@")
-	if len(t) != 2 {
-		s.log(fmt.Sprintf("RCPT TO - Bad email syntax : %s - %s ", strings.Join(msg, " "), e))
+	localDom := strings.Split(rcptto, "@")
+	if len(localDom) != 2 {
+		s.log(fmt.Sprintf("RCPT - Bad email format : %s ", strings.Join(msg, " ")))
+		s.pause(2)
 		s.out("501 5.5.4 Bad email format")
 		return
 	}
-	localPart := t[0]
-	domainPart := strings.ToLower(t[1])
-	rcptto = localPart + "@" + domainPart
+	// make domain part insensitive
+	rcptto = localDom[0] + "@" + strings.ToLower(localDom[1])
 	// check rcpthost
 	if !relay {
-		rcpthost, err := RcpthostGet(domainPart)
+		rcpthost, err := RcpthostGet(localDom[1])
 		if err != nil && err != gorm.RecordNotFound {
-			s.out("454 oops, problem with relay access (#4.3.0)")
-			s.log("ERROR relay access queriyng for rcpthost: " + err.Error())
+			s.logError("RCPT - relay access failed while queriyng for rcpthost. " + err.Error())
+			s.out("455 4.3.0 oops, problem with relay access")
 			return
 		}
 		if err == nil {
 			// rcpthost exists relay granted
 			relay = true
-
 			// if local check "mailbox" (destination)
 			if rcpthost.IsLocal {
-				s.logDebug("Le domaine est local")
+				s.logDebug(rcpthost.Hostname + " is local")
 				// check destination
 				exists, err := IsValidLocalRcpt(strings.ToLower(rcptto))
 				if err != nil {
-					s.out("454 oops, problem with relay access (#4.3.0)")
-					s.log("ERROR relay access checking validity of local rpctto " + err.Error())
+					s.logError("RCPT - relay access failed while checking validity of local rpctto. " + err.Error())
+					s.out("455 4.3.0 oops, problem with relay access")
 					return
 				}
 				if !exists {
-					s.log("No mailbox here by that name: " + rcptto)
-					s.out("551 Sorry, no mailbox here by that name. (#5.1.1)")
+					s.log("RCPT - no mailbox here by that name: " + rcptto)
+					s.out("550 5.5.1 Sorry, no mailbox here by that name")
 					s.badRcptToCount++
-					s.logDebug(fmt.Sprintf("bad rcpt: %d - max %d", s.badRcptToCount, Cfg.GetSmtpdMaxBadRcptTo()))
 					if Cfg.GetSmtpdMaxBadRcptTo() != 0 && s.badRcptToCount > Cfg.GetSmtpdMaxBadRcptTo() {
+						s.log("RCPT - too many bad rcpt to, connection droped")
 						s.exitAsap()
 					}
 					return
@@ -467,37 +481,33 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 			}
 		}
 	}
-	// Yes check if destination(mailbox,alias wildcard, catchall) exist
-
 	// User authentified & access granted ?
 	if !relay && s.user != nil {
 		relay = s.user.AuthRelay
 	}
 
-	// Remote IP authorized
+	// Remote IP authorised ?
 	if !relay {
 		relay, err = IpCanRelay(s.conn.RemoteAddr())
 		if err != nil {
-			s.out("454 oops, problem with relay access (#4.3.0)")
-			s.log("ERROR relay access: " + err.Error())
+			s.logError("RCPT - relay access failed while checking if IP is allowed to relay. " + err.Error())
+			s.out("455 4.3.0 oops, problem with relay access")
 			return
 		}
 	}
 
-	// Debug
-	//relay = false
 	// Relay denied
 	if !relay {
-		s.out(fmt.Sprintf("554 5.7.1 <%s>: Relay access denied", rcptto))
 		s.log("Relay access denied - from " + s.envelope.MailFrom + " to " + rcptto)
-		s.exitAsap()
+		s.out("554 5.7.1 Relay access denied")
+		s.pause(2)
 		return
 	}
 
 	// Check if there is already this recipient
 	if !IsStringInSlice(rcptto, s.envelope.RcptTo) {
 		s.envelope.RcptTo = append(s.envelope.RcptTo, rcptto)
-		s.log(fmt.Sprintf("rcpt to: %s", rcptto))
+		s.log("RCPT - + " + rcptto)
 	}
 	s.out("250 ok")
 }
