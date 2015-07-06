@@ -677,13 +677,17 @@ func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 	}
 
 	// Message-ID
-	HeaderMessageId := message.RawGetMessageId(&rawMessage)
-	if len(HeaderMessageId) == 0 {
-		HeaderMessageId = []byte(fmt.Sprintf("%d.%s@%s", time.Now().Unix(), s.uuid, strings.ToLower(strings.Split(s.envelope.MailFrom, "@")[1])))
-		rawMessage = append([]byte(fmt.Sprintf("Message-ID: <%s>\r\n", HeaderMessageId)), rawMessage...)
+	HeaderMessageID := message.RawGetMessageId(&rawMessage)
+	if len(HeaderMessageID) == 0 {
+		atDomain := Cfg.GetMe()
+		if strings.Count(s.envelope.MailFrom, "@") != 0 {
+			atDomain = strings.ToLower(strings.Split(s.envelope.MailFrom, "@")[1])
+		}
+		HeaderMessageID = []byte(fmt.Sprintf("%d.%s@%s", time.Now().Unix(), s.uuid, atDomain))
+		rawMessage = append([]byte(fmt.Sprintf("Message-ID: <%s>\r\n", HeaderMessageID)), rawMessage...)
 
 	}
-	s.log("Message-ID:", string(HeaderMessageId))
+	s.log("Message-ID:", string(HeaderMessageID))
 
 	// Microservice
 	stop, extraHeader := smtpdData(s, &rawMessage)
