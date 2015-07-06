@@ -52,6 +52,11 @@ type Config struct {
 		DeliverdQueueLifetime int    `name:"deliverd_queue_lifetime" default:"10080"`
 		DeliverdDkimSign      bool   `name:"deliverd_dkim_sign" default:"false"`
 
+		// RFC compliance
+		// RFC 5321 2.3.5: the domain name givent MUST be either a primary hostname
+		// (resovable) or an address
+		RFCHeloNeedsFqnOrAddress bool `name:"rfc_helo_need_fqn" default:"false"`
+
 		// microservices
 		MsUriSmtpdNewClient string `name:"ms_smtpd_newclient" default:"_"`
 		MsUriSmtpdData      string `name:"ms_smtpd_data" default:"_"`
@@ -302,6 +307,15 @@ func (c *Config) GetLaunchDeliverd() bool {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.LaunchDeliverd
+}
+
+// RFC
+
+// return getRFCHeloNeedsFqnOrAddress
+func (c *Config) getRFCHeloNeedsFqnOrAddress() bool {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.RFCHeloNeedsFqnOrAddress
 }
 
 // nsqd

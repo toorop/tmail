@@ -26,8 +26,8 @@ const (
 	//ZEROBYTE ="\\0"
 )
 
-// Session SMTP (server)
-type smtpServerSession struct {
+// SMTPServerSession retpresents a SMTP session (server)
+type SMTPServerSession struct {
 	uuid           string
 	conn           net.Conn
 	logger         *Logger
@@ -35,6 +35,7 @@ type smtpServerSession struct {
 	timeout        time.Duration
 	secured        bool
 	user           *User
+	seenHelo       bool
 	seenMail       bool
 	helo           string
 	envelope       message.Envelope
@@ -43,17 +44,18 @@ type smtpServerSession struct {
 	badRcptToCount int
 }
 
-// NewSmtpServerSession returns a new SMTP session
-func NewSMTPServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, err error) {
-	sss = new(smtpServerSession)
+// NewSMTPServerSession returns a new SMTP session
+func NewSMTPServerSession(conn net.Conn, secured bool) (sss *SMTPServerSession, err error) {
+	sss = new(SMTPServerSession)
 	sss.uuid, err = NewUUID()
 	if err != nil {
 		return
 	}
 	sss.conn = conn
 	sss.logger = Log
+
+	sss.seenHelo = false
 	sss.secured = secured
-	sss.seenMail = false
 	// timeout
 	sss.exitasap = make(chan int, 1)
 	sss.timeout = time.Duration(Cfg.GetSmtpdTransactionTimeout()) * time.Second
@@ -64,50 +66,51 @@ func NewSMTPServerSession(conn net.Conn, secured bool) (sss *smtpServerSession, 
 }
 
 // timeout
-func (s *smtpServerSession) raiseTimeout() {
+func (s *SMTPServerSession) raiseTimeout() {
 	s.log("client timeout")
 	s.out("420 Client timeout.")
 	s.exitAsap()
 }
 
 // exit asap
-func (s *smtpServerSession) exitAsap() {
+func (s *SMTPServerSession) exitAsap() {
 	s.timer.Stop()
 	s.exitasap <- 1
 }
 
 // resetTimeout reset timeout
-func (s *smtpServerSession) resetTimeout() {
+func (s *SMTPServerSession) resetTimeout() {
 	s.timer.Reset(s.timeout)
 }
 
 // Reset session
-func (s *smtpServerSession) reset() {
+func (s *SMTPServerSession) reset() {
 	s.envelope.MailFrom = ""
+	s.seenMail = false
 	s.envelope.RcptTo = []string{}
 	s.rcptCount = 0
 	s.resetTimeout()
 }
 
 // Out : to client
-func (s *smtpServerSession) out(msg string) {
+func (s *SMTPServerSession) out(msg string) {
 	s.conn.Write([]byte(msg + "\r\n"))
 	s.logDebug(">", msg)
 	s.resetTimeout()
 }
 
 // log helper for INFO log
-func (s *smtpServerSession) log(msg ...string) {
+func (s *SMTPServerSession) log(msg ...string) {
 	s.logger.Info("smtpd ", s.uuid, "-", s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
 
 // logError is a log helper for ERROR logs
-func (s *smtpServerSession) logError(msg ...string) {
+func (s *SMTPServerSession) logError(msg ...string) {
 	s.logger.Error("smtpd ", s.uuid, "-", s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
 
 // logError is a log helper for error logs
-func (s *smtpServerSession) logDebug(msg ...string) {
+func (s *SMTPServerSession) logDebug(msg ...string) {
 	if !Cfg.GetDebugEnabled() {
 		return
 	}
@@ -115,13 +118,13 @@ func (s *smtpServerSession) logDebug(msg ...string) {
 }
 
 // LF withour CR
-func (s *smtpServerSession) strayNewline() {
+func (s *SMTPServerSession) strayNewline() {
 	s.log("LF not preceded by CR")
-	s.out("451 You send me LF not preceded by a CR. Are you drunk ? If not your SMTP client is broken.")
+	s.out("451 You send me LF not preceded by a CR, your SMTP client is broken.")
 }
 
 // purgeConn Purge connexion buffer
-func (s *smtpServerSession) purgeConn() (err error) {
+func (s *SMTPServerSession) purgeConn() (err error) {
 	ch := make([]byte, 1)
 	for {
 		_, err = s.conn.Read(ch)
@@ -136,7 +139,7 @@ func (s *smtpServerSession) purgeConn() (err error) {
 }
 
 // smtpGreeting Greeting
-func (s *smtpServerSession) smtpGreeting() {
+func (s *SMTPServerSession) smtpGreeting() {
 	// Todo AS: verifier si il y a des data dans le buffer
 	// Todo desactiver server signature en option
 	// dans le cas ou l'on refuse la transaction on doit répondre par un 554 et attendre le quit
@@ -154,28 +157,69 @@ func (s *smtpServerSession) smtpGreeting() {
 		return
 	}
 	s.out(fmt.Sprintf("220 %s tmail V %s ESMTP %s", Cfg.GetMe(), Version, s.uuid))
+}
 
+// EHLO HELO
+// helo do the common EHLO/HELO tasks
+func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
+	if s.seenHelo {
+		s.log("EHLO|HELO already recieved")
+		s.out("503 bad sequence, ehlo already recieved")
+		return false
+
+	}
+	s.helo = ""
+	if len(msg) > 1 {
+		if Cfg.getRFCHeloNeedsFqnOrAddress() {
+			// if it's not an address check for fqn
+			if net.ParseIP(msg[1]) == nil {
+				ok, err := isFQN(msg[1])
+				if err != nil {
+					// temp failure
+					if err.(*net.DNSError).Temporary() || err.(*net.DNSError).Timeout() {
+						s.log("fail to do lookup on helo host. " + err.Error())
+						s.out("451 unable to resolve " + msg[1] + " due to timeout or srv failure")
+						return false
+					}
+					// If it's an other error it's probably a perm error
+					if !strings.HasSuffix(err.Error(), "no such host") {
+						s.log("fail to do lookup on helo host. " + err.Error())
+						s.out("504 unable to resolve " + msg[1] + ". Need fqn or address in helo command")
+						return false
+					}
+				}
+				s.log(fmt.Sprintf("host: %s ok:%v err:%s", msg[1], ok, err))
+				if !ok {
+					s.log("helo command rejected, need fully-qualified hostname or address" + msg[1] + " given")
+					s.out("504 helo command rejected, need fully-qualified hostname or address #5.5.2")
+					return false
+				}
+			}
+		}
+		s.helo = strings.Join(msg[1:], " ")
+	} else if Cfg.getRFCHeloNeedsFqnOrAddress() {
+		s.log("helo command rejected, need fully-qualified hostname. None given")
+		s.out("504 helo command rejected, need fully-qualified hostname or address #5.5.2")
+		return false
+	}
+	s.seenHelo = true
+	return true
 }
 
 // HELO
-func (s *smtpServerSession) smtpHelo(msg []string) {
-	// Todo Verifier si il y a des data dans le buffer
-	s.helo = ""
-	if len(msg) > 1 {
-		s.helo = strings.Join(msg[1:], " ")
+func (s *SMTPServerSession) smtpHelo(msg []string) {
+	if !s.heloBase(msg) {
+		return
 	}
-	s.out(fmt.Sprintf("250 %s", Cfg.GetMe()))
+	s.out(fmt.Sprintf("250 %s tmail %s", Cfg.GetMe(), Version))
 }
 
 // EHLO
-func (s *smtpServerSession) smtpEhlo(msg []string) {
-
-	// verifier le buffer
-	s.helo = ""
-	if len(msg) > 1 {
-		s.helo = strings.Join(msg[1:], " ")
+func (s *SMTPServerSession) smtpEhlo(msg []string) {
+	if !s.heloBase(msg) {
+		return
 	}
-	s.out(fmt.Sprintf("250-%s", Cfg.GetMe()))
+	s.out(fmt.Sprintf("250-%s tmail %s", Cfg.GetMe(), Version))
 
 	// Extensions
 	// Size
@@ -195,7 +239,7 @@ func (s *smtpServerSession) smtpEhlo(msg []string) {
 }
 
 // MAIL FROM
-func (s *smtpServerSession) smtpMailFrom(msg []string) {
+func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 	// Si on a déja un mailFrom les RFC ne précise rien de particulier
 	// -> On accepte et on reinitialise
 	//
@@ -251,7 +295,7 @@ func (s *smtpServerSession) smtpMailFrom(msg []string) {
 }
 
 // RCPT TO
-func (s *smtpServerSession) smtpRcptTo(msg []string) {
+func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	var err error
 	rcptto := ""
 
@@ -385,7 +429,7 @@ func (s *smtpServerSession) smtpRcptTo(msg []string) {
 // C'est je crois ce que fait qmail
 // Si il y a une erreur on supprime le fichier
 // Voir un truc comme DATA -> temp file -> mv queue file
-func (s *smtpServerSession) smtpData(msg []string) (err error) {
+func (s *SMTPServerSession) smtpData(msg []string) (err error) {
 	if !s.seenMail {
 		s.log("503 DATA before MAIL FROM")
 		s.out("503 MAIL first (#5.5.1)")
@@ -670,13 +714,13 @@ func (s *smtpServerSession) smtpData(msg []string) (err error) {
 }
 
 // QUIT
-func (s *smtpServerSession) smtpQuit() {
+func (s *SMTPServerSession) smtpQuit() {
 	s.out(fmt.Sprintf("221 2.0.0 Bye"))
 	s.exitAsap()
 }
 
 // Starttls
-func (s *smtpServerSession) smtpStartTls() {
+func (s *SMTPServerSession) smtpStartTls() {
 	if s.secured {
 		s.out("454 - transaction is already secured via SSL")
 		return
@@ -724,7 +768,7 @@ func (s *smtpServerSession) smtpStartTls() {
 // SMTP AUTH
 // Return boolean closeCon
 // Pour le moment in va juste implémenter PLAIN
-func (s *smtpServerSession) smtpAuth(rawMsg string) {
+func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 	// TODO si pas TLS
 	//var authType, user, passwd string
 	// TODO si pas plain
@@ -815,19 +859,19 @@ func (s *smtpServerSession) smtpAuth(rawMsg string) {
 }
 
 // RSET SMTP ahandler
-func (s *smtpServerSession) rset() {
+func (s *SMTPServerSession) rset() {
 	s.reset()
 	s.out("250 2.0.0 ok")
 }
 
 // NOOP SMTP handler
-func (s *smtpServerSession) noop() {
+func (s *SMTPServerSession) noop() {
 	s.resetTimeout()
 	s.out("250 2.0.0 ok")
 }
 
 // Handle SMTP session
-func (s *smtpServerSession) handle() {
+func (s *SMTPServerSession) handle() {
 
 	// Recover on panic
 	defer func() {

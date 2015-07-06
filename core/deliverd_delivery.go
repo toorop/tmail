@@ -405,7 +405,7 @@ func getSmtpClient(routes *[]Route) (*Client, *Route, error) {
 		for _, lIp := range localIps {
 			for _, remoteAddr := range remoteAddresses {
 				// on doit avopir de l'IPv4 en entré et sortie ou de l'IP6 en e/s
-				if IsIpV4(lIp.String()) != IsIpV4(remoteAddr.IP.String()) {
+				if IsIPV4(lIp.String()) != IsIPV4(remoteAddr.IP.String()) {
 					continue
 				}
 				// TODO timeout en config

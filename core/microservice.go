@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	//"path"
 	"strconv"
 	"strings"
 	"time"
@@ -117,7 +116,7 @@ func (ms *microservice) smtpdExec(data *[]byte) (*msproto.SmtpdResponse, error) 
 
 // smtpdBreakOnExecError handle error when calling a ms
 // it returns true if tmail must stop processing other ms
-func (ms *microservice) smtpdBreakOnExecError(err error, s *smtpServerSession) (stop bool) {
+func (ms *microservice) smtpdBreakOnExecError(err error, s *SMTPServerSession) (stop bool) {
 	if err == nil {
 		return false
 	}
@@ -137,7 +136,7 @@ func (ms *microservice) smtpdBreakOnExecError(err error, s *smtpServerSession) (
 }
 
 // smtpdHandleResponse common handling of msproto.SmtpdResponse
-func smtpdReturn(resp *msproto.SmtpdResponse, s *smtpServerSession) (stop bool) {
+func smtpdReturn(resp *msproto.SmtpdResponse, s *SMTPServerSession) (stop bool) {
 	s.logDebug(resp.String())
 	if resp.GetSmtpCode() != 0 && resp.GetSmtpMsg() != "" {
 		outMsg := fmt.Sprintf("%d %s", resp.GetSmtpCode(), resp.GetSmtpMsg())
@@ -152,7 +151,7 @@ func smtpdReturn(resp *msproto.SmtpdResponse, s *smtpServerSession) (stop bool) 
 }
 
 // smtpdNewClient execute microservices for smtpdnewclient hook
-func smtpdNewClient(s *smtpServerSession) (stop bool) {
+func smtpdNewClient(s *SMTPServerSession) (stop bool) {
 	if len(Cfg.GetMicroservicesUri("smtpdnewclient")) == 0 {
 		return false
 	}
@@ -204,7 +203,7 @@ func smtpdNewClient(s *smtpServerSession) (stop bool) {
 }
 
 // smtpdData executes microservices for the smtpdData hook
-func smtpdData(s *smtpServerSession, rawMail *[]byte) (stop bool, extraHeaders *[]string) {
+func smtpdData(s *SMTPServerSession, rawMail *[]byte) (stop bool, extraHeaders *[]string) {
 	extraHeaders = &[]string{}
 
 	if len(Cfg.GetMicroservicesUri("smtpddata")) == 0 {

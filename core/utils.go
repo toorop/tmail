@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,20 +39,20 @@ func IsStringInSlice(str string, s []string) (found bool) {
 	return
 }
 
-// stripQuotes remove trailing and ending "
+// StripQuotes remove trailing and ending "
 func StripQuotes(s string) string {
 	if s == "" {
 		return s
 	}
-
 	if s[0] == '"' && s[len(s)-1] == '"' {
 		return s[1 : len(s)-1]
 	}
 	return s
 }
 
-// IsIpv4 return true if ip is ipV4
-func IsIpV4(ip string) bool {
+// IsIPV4 return true if ip is ipV4
+// todo: refactor
+func IsIPV4(ip string) bool {
 	if len(ip) > 15 {
 		return false
 	}
@@ -78,4 +79,13 @@ func Unix2dos(ch *[]byte) (err error) {
 	}
 	*ch, err = ioutil.ReadAll(dos)
 	return nil
+}
+
+// isFQN checks if domain is FQN
+func isFQN(host string) (bool, error) {
+	_, err := net.LookupHost(host)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

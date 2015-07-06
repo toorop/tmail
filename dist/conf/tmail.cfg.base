@@ -168,6 +168,13 @@ export TMAIL_DELIVERD_QUEUE_LIFETIME=60400
 export TMAIL_DELIVERD_DKIM_SIGN=false
 
 ##
+# RFC compliance
+# RFC 5321 2.3.5: the domain name given MUST be either a primary hostname
+# (resovable) or an address
+# default: true (warning a lot of SMTP clients do not send a fqn|address )
+export TMAIL_RFC_HELO_NEED_FQN=false
+
+##
 # users
 
 # Base path for users "home". Currently ysed to store mailboxes
