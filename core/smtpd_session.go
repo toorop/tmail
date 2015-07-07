@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/mail"
 	"path"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -43,6 +42,7 @@ type SMTPServerSession struct {
 	exitasap       chan int
 	rcptCount      int
 	badRcptToCount int
+	vrfyCount      int
 }
 
 // NewSMTPServerSession returns a new SMTP session
@@ -56,6 +56,8 @@ func NewSMTPServerSession(conn net.Conn, secured bool) (sss *SMTPServerSession, 
 	sss.logger = Log
 
 	sss.rcptCount = 0
+	sss.badRcptToCount = 0
+	sss.vrfyCount = 0
 	sss.secured = secured
 	sss.seenHelo = false
 	sss.seenMail = false
@@ -64,7 +66,7 @@ func NewSMTPServerSession(conn net.Conn, secured bool) (sss *SMTPServerSession, 
 	sss.exitasap = make(chan int, 1)
 	sss.timeout = time.Duration(Cfg.GetSmtpdTransactionTimeout()) * time.Second
 	sss.timer = time.AfterFunc(sss.timeout, sss.raiseTimeout)
-	sss.badRcptToCount = 0
+
 	return
 }
 
@@ -380,7 +382,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	s.logDebug(fmt.Sprintf("RCPT TO %d/%d", s.rcptCount, Cfg.GetSmtpdMaxRcptTo()))
 	if Cfg.GetSmtpdMaxRcptTo() != 0 && s.rcptCount > Cfg.GetSmtpdMaxRcptTo() {
 		s.log(fmt.Sprintf("max RCPT TO command reached (%d)", Cfg.GetSmtpdMaxRcptTo()))
-		s.out("451 4.1.0 max RCPT To commands reached for this sessions")
+		s.out("451 4.5.3 max RCPT To commands reached for this sessions")
 		return
 	}
 	// add pause if rcpt to > 10
@@ -415,7 +417,6 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 		s.out("501 5.5.4 syntax: RCPT TO:<address>")
 		return
 	}
-	s.log("rcptto " + rcptto)
 	rcptto = RemoveBrackets(rcptto)
 
 	// We MUST recognize source route syntax but SHOULD strip off source routing
@@ -510,6 +511,100 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 		s.log("RCPT - + " + rcptto)
 	}
 	s.out("250 ok")
+}
+
+// SMTPVrfy VRFY SMTP command
+func (s *SMTPServerSession) SMTPVrfy(msg []string) {
+	rcptto := ""
+	s.vrfyCount++
+	s.logDebug(fmt.Sprintf("VRFY -  %d/%d", s.vrfyCount, Cfg.GetSmtpdMaxVrfy()))
+	if Cfg.GetSmtpdMaxVrfy() != 0 && s.vrfyCount > Cfg.GetSmtpdMaxVrfy() {
+		s.log(fmt.Sprintf(" VRFY - max command reached (%d)", Cfg.GetSmtpdMaxVrfy()))
+		s.out("551 5.5.3 too many VRFY commands for this sessions")
+		return
+	}
+	// add pause if rcpt to > 10
+	if s.vrfyCount > 10 {
+		s.pause(1)
+	} else if s.vrfyCount > 20 {
+		s.pause(2)
+	}
+
+	if len(msg) > 2 {
+		s.log("VRFY - Bad syntax : %s " + strings.Join(msg, " "))
+		s.pause(2)
+		s.out("551 5.5.4 syntax: VRFY <address>")
+		return
+	}
+
+	// vrfy: user
+	rcptto = msg[1]
+	if len(rcptto) == 0 {
+		s.log("VRFY - Bad syntax : %s " + strings.Join(msg, " "))
+		s.pause(2)
+		s.out("551 5.5.4 syntax: VRFY <address>")
+		return
+	}
+
+	rcptto = RemoveBrackets(rcptto)
+
+	// if no domain part and local part is postmaster FRC 5321 2.3.5
+	if strings.ToLower(rcptto) == "postmaster" {
+		rcptto += "@" + Cfg.GetMe()
+	}
+	// Check validity
+	_, err := mail.ParseAddress(rcptto)
+	if err != nil {
+		s.log(fmt.Sprintf("VRFY - bad email format : %s - %s ", strings.Join(msg, " "), err))
+		s.pause(2)
+		s.out("551 5.5.4 Bad email format")
+		return
+	}
+
+	// rcpt accepted ?
+	localDom := strings.Split(rcptto, "@")
+	if len(localDom) != 2 {
+		s.log("VRFY - Bad email format : " + rcptto)
+		s.pause(2)
+		s.out("551 5.5.4 Bad email format")
+		return
+	}
+	// make domain part insensitive
+	rcptto = localDom[0] + "@" + strings.ToLower(localDom[1])
+	// check rcpthost
+
+	rcpthost, err := RcpthostGet(localDom[1])
+	if err != nil && err != gorm.RecordNotFound {
+		s.logError("VRFY - relay access failed while queriyng for rcpthost. " + err.Error())
+		s.out("455 4.3.0 oops, internal failure")
+		return
+	}
+	if err == nil {
+		// if local check "mailbox" (destination)
+		if rcpthost.IsLocal {
+			s.logDebug("VRFY - " + rcpthost.Hostname + " is local")
+			// check destination
+			exists, err := IsValidLocalRcpt(strings.ToLower(rcptto))
+			if err != nil {
+				s.logError("VRFY - relay access failed while checking validity of local rpctto. " + err.Error())
+				s.out("455 4.3.0 oops, internal failure")
+				return
+			}
+			if !exists {
+				s.log("VRFY - no mailbox here by that name: " + rcptto)
+				s.out("551 5.5.1 <" + rcptto + "> no mailbox here by that name")
+				return
+			}
+			s.out("250 <" + rcptto + ">")
+			// relay
+		} else {
+			s.out("252 <" + rcptto + ">")
+		}
+	} else {
+		s.log("VRFY - no mailbox here by that name: " + rcptto)
+		s.out("551 5.5.1 <" + rcptto + "> no mailbox here by that name")
+		return
+	}
 }
 
 // DATA
@@ -972,8 +1067,9 @@ func (s *SMTPServerSession) handle() {
 	// Recover on panic
 	defer func() {
 		if err := recover(); err != nil {
-			s.logError(fmt.Sprintf("PANIC: %s - Stack: %s", err.(error).Error(), debug.Stack()))
-			s.conn.Close()
+			return
+			//s.logError(fmt.Sprintf("PANIC: %s - Stack: %s", err.(error).Error(), debug.Stack()))
+			//s.conn.Close()
 		}
 	}()
 
@@ -1029,6 +1125,8 @@ func (s *SMTPServerSession) handle() {
 					s.smtpEhlo(splittedMsg)
 				case "mail":
 					s.smtpMailFrom(splittedMsg)
+				case "vrfy":
+					s.SMTPVrfy(splittedMsg)
 				case "rcpt":
 					s.smtpRcptTo(splittedMsg)
 				case "data":
@@ -1044,8 +1142,8 @@ func (s *SMTPServerSession) handle() {
 				case "quit":
 					s.smtpQuit()
 				default:
-					rmsg = "502 unimplemented (#5.5.1)"
-					s.log("MAIL - unimplemented command from client:", strMsg)
+					rmsg = "502 5.5.1 unimplemented"
+					s.log("unimplemented command from client:", strMsg)
 					s.out(rmsg)
 				}
 				//s.resetTimeout()

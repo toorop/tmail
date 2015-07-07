@@ -42,6 +42,7 @@ type Config struct {
 		SmtpdMaxHops             int    `name:"smtpd_max_hops" default:"10"`
 		SmtpdMaxRcptTo           int    `name:"smtpd_max_rcpt" default:"0"`
 		SmtpdMaxBadRcptTo        int    `name:"smtpd_max_bad_rcpt" default:"0"`
+		SmtpdMaxVrfy             int    `name:"smtpd_max_vrfy" default:"0"`
 		SmtpdClamavEnabled       bool   `name:"smtpd_scan_clamav_enabled" default:"false"`
 		SmtpdClamavDsns          string `name:"smtpd_scan_clamav_dsns" default:""`
 		SmtpdConcurrencyIncoming int    `name:"smtpd_concurrency_incoming" default:"20"`
@@ -290,6 +291,13 @@ func (c *Config) GetSmtpdMaxBadRcptTo() int {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.SmtpdMaxBadRcptTo
+}
+
+// GetSmtpdMaxVrfy return GetSmtpdMaxVrfy
+func (c *Config) GetSmtpdMaxVrfy() int {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.SmtpdMaxVrfy
 }
 
 // GetSmtpdClamavEnabled returns if clamav scan is enable
