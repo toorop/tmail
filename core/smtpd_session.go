@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/mail"
 	"path"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -77,6 +78,15 @@ func (s *SMTPServerSession) raiseTimeout() {
 	s.exitAsap()
 }
 
+// recoverOnPanic handles panic
+func (s *SMTPServerSession) recoverOnPanic() {
+	if err := recover(); err != nil {
+		s.logError(fmt.Sprintf("PANIC: %s - Stack: %s", err.(error).Error(), debug.Stack()))
+		s.out("421 sorry I have an emergency")
+		s.exitAsap()
+	}
+}
+
 // exit asap
 func (s *SMTPServerSession) exitAsap() {
 	s.timer.Stop()
@@ -136,11 +146,10 @@ func (s *SMTPServerSession) purgeConn() (err error) {
 		if err != nil {
 			return
 		}
-		if ch[0] == 10 {
+		/*if ch[0] == 10 {
 			break
-		}
+		}*/
 	}
-	return
 }
 
 // add pause (ex if client seems to be illegitime)
@@ -150,12 +159,13 @@ func (s *SMTPServerSession) pause(seconds int) {
 
 // smtpGreeting Greeting
 func (s *SMTPServerSession) smtpGreeting() {
+	defer s.recoverOnPanic()
 	// Todo AS: verifier si il y a des data dans le buffer
 	// Todo desactiver server signature en option
 	// dans le cas ou l'on refuse la transaction on doit répondre par un 554 et attendre le quit
 	time.Sleep(100 * time.Nanosecond)
 	if SmtpSessionsCount > Cfg.GetSmtpdConcurrencyIncoming() {
-		s.log(fmt.Sprintf("max connections reached %d/%d", SmtpSessionsCount, Cfg.GetSmtpdConcurrencyIncoming()))
+		s.log(fmt.Sprintf("GREETING - max connections reached %d/%d", SmtpSessionsCount, Cfg.GetSmtpdConcurrencyIncoming()))
 		s.out(fmt.Sprintf("421 sorry, the maximum number of connections has been reached, try again later %s", s.uuid))
 		s.exitAsap()
 		return
@@ -178,6 +188,7 @@ func (s *SMTPServerSession) smtpGreeting() {
 // EHLO HELO
 // helo do the common EHLO/HELO tasks
 func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
+	defer s.recoverOnPanic()
 	if s.seenHelo {
 		s.log("EHLO|HELO already received")
 		s.pause(1)
@@ -214,6 +225,7 @@ func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
 
 // HELO
 func (s *SMTPServerSession) smtpHelo(msg []string) {
+	defer s.recoverOnPanic()
 	if s.heloBase(msg) {
 		s.out(fmt.Sprintf("250 %s", Cfg.GetMe()))
 	}
@@ -221,6 +233,7 @@ func (s *SMTPServerSession) smtpHelo(msg []string) {
 
 // EHLO
 func (s *SMTPServerSession) smtpEhlo(msg []string) {
+	defer s.recoverOnPanic()
 	if s.heloBase(msg) {
 		s.out(fmt.Sprintf("250-%s", Cfg.GetMe()))
 		// Extensions
@@ -240,6 +253,7 @@ func (s *SMTPServerSession) smtpEhlo(msg []string) {
 
 // MAIL FROM
 func (s *SMTPServerSession) smtpMailFrom(msg []string) {
+	defer s.recoverOnPanic()
 	extension := []string{}
 	// TODO prendre en compte le SIZE :
 	// MAIL FROM:<toorop@toorop.fr> SIZE=1671
@@ -376,6 +390,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 
 // RCPT TO
 func (s *SMTPServerSession) smtpRcptTo(msg []string) {
+	defer s.recoverOnPanic()
 	var err error
 	rcptto := ""
 	s.rcptCount++
@@ -515,6 +530,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 
 // SMTPVrfy VRFY SMTP command
 func (s *SMTPServerSession) SMTPVrfy(msg []string) {
+	defer s.recoverOnPanic()
 	rcptto := ""
 	s.vrfyCount++
 	s.logDebug(fmt.Sprintf("VRFY -  %d/%d", s.vrfyCount, Cfg.GetSmtpdMaxVrfy()))
@@ -530,7 +546,7 @@ func (s *SMTPServerSession) SMTPVrfy(msg []string) {
 		s.pause(2)
 	}
 
-	if len(msg) > 2 {
+	if len(msg) != 2 {
 		s.log("VRFY - Bad syntax : %s " + strings.Join(msg, " "))
 		s.pause(2)
 		s.out("551 5.5.4 syntax: VRFY <address>")
@@ -613,6 +629,7 @@ func (s *SMTPServerSession) SMTPVrfy(msg []string) {
 // Si il y a une erreur on supprime le fichier
 // Voir un truc comme DATA -> temp file -> mv queue file
 func (s *SMTPServerSession) smtpData(msg []string) {
+	defer s.recoverOnPanic()
 	if !s.seenMail || len(s.envelope.RcptTo) == 0 {
 		s.log("DATA - out of sequence")
 		s.pause(2)
@@ -961,6 +978,7 @@ func (s *SMTPServerSession) smtpStartTLS() {
 // Return boolean closeCon
 // Pour le moment in va juste implémenter PLAIN
 func (s *SMTPServerSession) smtpAuth(rawMsg string) {
+	defer s.recoverOnPanic()
 	// TODO si pas TLS
 	//var authType, user, passwd string
 	// TODO si pas plain
@@ -1064,14 +1082,7 @@ func (s *SMTPServerSession) noop() {
 
 // Handle SMTP session
 func (s *SMTPServerSession) handle() {
-	// Recover on panic
-	defer func() {
-		if err := recover(); err != nil {
-			return
-			//s.logError(fmt.Sprintf("PANIC: %s - Stack: %s", err.(error).Error(), debug.Stack()))
-			//s.conn.Close()
-		}
-	}()
+	defer s.recoverOnPanic()
 
 	// Init some var
 	var msg []byte
