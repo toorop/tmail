@@ -94,11 +94,11 @@ export TMAIL_SMTPD_LAUNCH=true;
 # 	- one listening on 127.0.0.1:4656 with encryption
 export TMAIL_SMTPD_DSNS="0.0.0.0:2525:false"
 
-# smtp transaction timeout in seconds
+# smtp server timeout in seconds
 # throw a timeout if smtp client does not show signs of life
 # after this delay
-# Default 60
-export TMAIL_SMTPD_TRANSACTION_TIMEOUT=60
+# Default 300 (RFC 5321 4.5.3.2.7)
+export TMAIL_SMTPD_SERVER_TIMEOUT=60
 
 # Max bytes for the data cmd (max size of incoming mail)
 # Default 0 unlimited

@@ -37,7 +37,7 @@ type Config struct {
 
 		LaunchSmtpd              bool   `name:"smtpd_launch" default:"false"`
 		SmtpdDsns                string `name:"smtpd_dsns" default:""`
-		SmtpdTransactionTimeout  int    `name:"smtpd_transaction_timeout" default:"60"`
+		SmtpdServerTimeout       int    `name:"smtpd_transaction_timeout" default:"300"`
 		SmtpdMaxDataBytes        int    `name:"smtpd_max_databytes" default:"0"`
 		SmtpdMaxHops             int    `name:"smtpd_max_hops" default:"10"`
 		SmtpdMaxRcptTo           int    `name:"smtpd_max_rcpt" default:"0"`
@@ -259,10 +259,10 @@ func (c *Config) GetSmtpdDsns() string {
 }
 
 // GetSmtpdTransactionTimeout return smtpdTransactionTimeout
-func (c *Config) GetSmtpdTransactionTimeout() int {
+func (c *Config) GetSmtpdServerTimeout() int {
 	c.Lock()
 	defer c.Unlock()
-	return c.cfg.SmtpdTransactionTimeout
+	return c.cfg.SmtpdServerTimeout
 }
 
 // GetSmtpdMaxDataBytes returns max size of accepted email

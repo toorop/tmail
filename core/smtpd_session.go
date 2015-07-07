@@ -65,7 +65,7 @@ func NewSMTPServerSession(conn net.Conn, secured bool) (sss *SMTPServerSession, 
 
 	// timeout
 	sss.exitasap = make(chan int, 1)
-	sss.timeout = time.Duration(Cfg.GetSmtpdTransactionTimeout()) * time.Second
+	sss.timeout = time.Duration(Cfg.GetSmtpdServerTimeout()) * time.Second
 	sss.timer = time.AfterFunc(sss.timeout, sss.raiseTimeout)
 
 	return
@@ -996,7 +996,7 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 		s.out("334 ")
 		// get encoded by reading next line
 		for {
-			s.timer.Reset(time.Duration(Cfg.GetSmtpdTransactionTimeout()) * time.Second)
+			s.timer.Reset(time.Duration(Cfg.GetSmtpdServerTimeout()) * time.Second)
 			_, err := s.conn.Read(ch)
 			s.timer.Stop()
 			if err != nil {
