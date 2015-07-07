@@ -623,6 +623,12 @@ func (s *SMTPServerSession) SMTPVrfy(msg []string) {
 	}
 }
 
+// SMTPExpn EXPN SMTP command
+func (s *SMTPServerSession) SMTPExpn(msg []string) {
+	s.out("252")
+	return
+}
+
 // DATA
 // TODO : plutot que de stocker en RAM on pourrait envoyer directement les danat
 // dans un fichier ne queue
@@ -1138,6 +1144,8 @@ func (s *SMTPServerSession) handle() {
 					s.smtpMailFrom(splittedMsg)
 				case "vrfy":
 					s.SMTPVrfy(splittedMsg)
+				case "expn":
+					s.SMTPExpn(splittedMsg)
 				case "rcpt":
 					s.smtpRcptTo(splittedMsg)
 				case "data":

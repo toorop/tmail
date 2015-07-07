@@ -29,9 +29,6 @@ type delivery struct {
 }
 
 // processMsg processes message
-// TODO :
-// - ajout header recieved
-// - ajout header tmail-msg-id
 func (d *delivery) processMsg() {
 	var err error
 	flagBounce := false
@@ -110,7 +107,6 @@ func (d *delivery) processMsg() {
 		// TODO
 		// On va considerer que c'est une erreur temporaire
 		// il se peut que le store soit momentanément injoignable
-		// A terme on peut regarder le
 		Log.Error(fmt.Sprintf("deliverd %s : unable to get rawmail of queued message %s from store (key: %s)- %s", d.id, d.qMsg.Uuid, d.qMsg.Key, err))
 		d.requeue()
 		return

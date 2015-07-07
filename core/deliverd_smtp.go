@@ -17,7 +17,6 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
-	//"fmt"
 	"io"
 	"net"
 	"net/textproto"
@@ -63,15 +62,14 @@ func Dial(addr string) (*Client, error) {
 
 // Dialz returns a new Client connected to an SMTP server at addr.
 // The diff
-func Dialz(addr net.TCPAddr, lIp string, heloHost string, timeout int) (*Client, error) {
+func Dialz(addr net.TCPAddr, lIP string, heloHost string, timeout int) (*Client, error) {
 	var laddr *net.TCPAddr
 	var conn *net.TCPConn
 	var err error
-	laddr, err = net.ResolveTCPAddr("tcp", lIp+":0")
+	laddr, err = net.ResolveTCPAddr("tcp", lIP+":0")
 	if err != nil {
 		return nil, err
 	}
-
 	// Dial timeout
 	connectTimer := time.NewTimer(time.Duration(timeout) * time.Second)
 	done := make(chan error, 1)
@@ -85,9 +83,8 @@ func Dialz(addr net.TCPAddr, lIp string, heloHost string, timeout int) (*Client,
 	case err = <-done:
 		if err == nil {
 			return NewClientz(conn, addr.IP.String(), heloHost)
-		} else {
-			return nil, err
 		}
+		return nil, err
 	// Timeout
 	case <-connectTimer.C:
 		return nil, errors.New("connect timeout")

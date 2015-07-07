@@ -14,7 +14,7 @@ import (
 func deliverRemote(d *delivery) {
 	Log.Info(fmt.Sprintf("delivery-remote %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
 
-	// gatling
+	// gatling tests
 	//Log.Info(fmt.Sprintf("deliverd-remote %s: done for gatling test", d.id))
 	//d.dieOk()
 	//return
@@ -29,7 +29,6 @@ func deliverRemote(d *delivery) {
 
 	// Get client
 	c, r, err := getSmtpClient(routes)
-	//Log.Debug(c, r, err)
 	if err != nil {
 		// TODO
 		d.dieTemp("unable to get client")
