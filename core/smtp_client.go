@@ -1,3 +1,5 @@
+// strongly inspired by http://golang.org/src/net/smtp/smtp.go
+
 package core
 
 import (
