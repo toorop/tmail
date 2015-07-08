@@ -166,6 +166,20 @@ export TMAIL_DELIVERD_MAX_IN_FLIGHT=20
 # discard if bounce failed
 export TMAIL_DELIVERD_QUEUE_LIFETIME=60400
 
+# TMAIL_DELIVERD_REMOTE_TLS_SKIPVERIFY controls whether a client verifies the
+# server's certificate chain and host name.
+# If TMAIL_DELIVERD_REMOTE_TLS_SKIPVERIFY is true, TLS accepts any certificate
+# presented by the server and any host name in that certificate.
+# In this mode, TLS is susceptible to man-in-the-middle attacks.
+# Unfortunatly a lot of SMTP server have selfs signed certs so if you use tmail
+# for sending mail you should set this value to true
+export TMAIL_DELIVERD_REMOTE_TLS_SKIPVERIFY=true
+
+# Fallback (downgrade) to clear transaction if STARTTLS negociation failed
+# default: false
+export TMAIL_DELIVERD_REMOTE_TLS_FALLBACK=true
+
+
 # DKIM sign outgoing (remote) emails
 export TMAIL_DELIVERD_DKIM_SIGN=false
 

@@ -3,15 +3,10 @@ package core
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
-	"net"
 	"path"
 	"runtime/debug"
-	"strconv"
-	"strings"
 	"text/template"
 	"time"
 
@@ -114,14 +109,16 @@ func (d *delivery) processMsg() {
 	//d.qStore = qStore
 	dataReader, err := d.qStore.Get(d.qMsg.Key)
 	if err != nil {
-		d.dieTemp("unable to retrieve raw mail from store. " + err.Error())
+		Log.Error("unable to retrieve raw mail from store. " + err.Error())
+		d.dieTemp("unable to retrieve raw mail from store", false)
 		return
 	}
 
 	// get rawData
 	t, err := ioutil.ReadAll(dataReader)
 	if err != nil {
-		d.dieTemp("unable to read raw mail from dataReader. " + err.Error())
+		Log.Error("unable to read raw mail from dataReader. " + err.Error())
+		d.dieTemp("unable to read raw mail from dataReader", false)
 		return
 	}
 	d.rawData = &t
@@ -138,10 +135,10 @@ func (d *delivery) processMsg() {
 
 	local, err := isLocalDelivery(d.qMsg.RcptTo)
 	if err != nil {
-		d.dieTemp("unable to check if it's local delivery. " + err.Error())
+		Log.Error("unable to check if it's local delivery. " + err.Error())
+		d.dieTemp("unable to check if it's local delivery", false)
 		return
 	}
-
 	if local {
 		deliverLocal(d)
 	} else {
@@ -159,19 +156,23 @@ func (d *delivery) dieOk() {
 }
 
 // dieTemp die when a 4** error occured
-func (d *delivery) dieTemp(msg string) {
-	Log.Info("deliverd " + d.id + ": temp failure - " + msg)
+func (d *delivery) dieTemp(msg string, logit bool) {
+	if logit {
+		Log.Info("deliverd " + d.id + ": temp failure - " + msg)
+	}
 	if time.Since(d.qMsg.AddedAt) < time.Duration(Cfg.GetDeliverdQueueLifetime())*time.Minute {
 		d.requeue()
 		return
 	}
 	msg += "\r\nI'm not going to try again, this message has been in the queue for too long."
-	d.diePerm(msg)
+	d.diePerm(msg, logit)
 }
 
 // diePerm when a 5** error occured
-func (d *delivery) diePerm(msg string) {
-	Log.Info("deliverd " + d.id + ": perm failure - " + msg)
+func (d *delivery) diePerm(msg string, logit bool) {
+	if logit {
+		Log.Info("deliverd " + d.id + ": perm failure - " + msg)
+	}
 	// bounce message
 	d.bounce(msg)
 	return
@@ -261,7 +262,7 @@ func (d *delivery) bounce(errMsg string) {
 	}
 
 	// enqueue
-	envelope := message.Envelope{"", []string{d.qMsg.MailFrom}}
+	envelope := message.Envelope{MailFrom: "", RcptTo: []string{d.qMsg.MailFrom}}
 	/*message, err := message.New(&b)
 	if err != nil {
 		Log.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
@@ -311,130 +312,10 @@ func (d *delivery) requeue(newStatus ...uint32) {
 }
 
 // handleSmtpError handles SMTP error response
-func (d *delivery) handleSmtpError(smtpErr, remoteIp string) {
-	smtpResponse, err := parseSmtpResponse(smtpErr)
-	if err != nil { // invalid smtp response
-		d.dieTemp(err.Error())
-	}
-	if smtpResponse.Code > 499 {
-		d.diePerm("remote " + remoteIp + " reply: " + smtpResponse.Msg)
-	} else {
-		d.dieTemp("remote " + remoteIp + " reply: " + smtpResponse.Msg)
-	}
-}
-
-// getSmtpClient returns a smtp client
-// On doit faire un choix de priorité entre les locales et les remotes
-// La priorité sera basée sur l'ordre des remotes
-// Donc on testes d'abord toutes les IP locales sur les remotes
-func getSmtpClient(routes *[]Route) (*Client, *Route, error) {
-	//var err error
-	for _, route := range *routes {
-		localIps := []net.IP{}
-		remoteAddresses := []net.TCPAddr{}
-		// no mix beetween & and |
-		failover := strings.Count(route.LocalIp.String, "&") != 0
-		roundRobin := strings.Count(route.LocalIp.String, "|") != 0
-
-		if failover && roundRobin {
-			return nil, &route, errors.New("mixing & and | are not allowed in localIP routes: " + route.LocalIp.String)
-		}
-
-		// Contient les IP sous forme de string
-		var sIps []string
-
-		// On a une seule IP locale
-		if !failover && !roundRobin {
-			sIps = append(sIps, route.LocalIp.String)
-		} else { // multiple locales ips
-			var sep string
-			if failover {
-				sep = "&"
-			} else {
-				sep = "|"
-			}
-			sIps = strings.Split(route.LocalIp.String, sep)
-
-			// if roundRobin we need tu schuffle IP
-			rSIps := make([]string, len(sIps))
-			perm := rand.Perm(len(sIps))
-			for i, v := range perm {
-				rSIps[v] = sIps[i]
-			}
-			sIps = rSIps
-			rSIps = nil
-		}
-
-		// IP string to net.IP
-		for _, ipStr := range sIps {
-			ip := net.ParseIP(ipStr)
-			if ip == nil {
-				return nil, &route, errors.New("invalid IP " + ipStr + " found in localIp routes: " + route.LocalIp.String)
-			}
-			localIps = append(localIps, ip)
-		}
-
-		// On defini remoteAdresses
-
-		//addr := net.TCPAddr{}
-		// Hostname or IP
-		ip := net.ParseIP(route.RemoteHost)
-		if ip != nil { // ip
-			remoteAddresses = append(remoteAddresses, net.TCPAddr{
-				IP:   ip,
-				Port: int(route.RemotePort.Int64),
-			})
-		} else { // hostname
-			ips, err := net.LookupIP(route.RemoteHost)
-			if err != nil {
-				return nil, &route, err
-			}
-			for _, i := range ips {
-				remoteAddresses = append(remoteAddresses, net.TCPAddr{
-					IP:   i,
-					Port: int(route.RemotePort.Int64),
-				})
-			}
-		}
-
-		// On essaye de trouver une route qui fonctionne
-		for _, lIp := range localIps {
-			for _, remoteAddr := range remoteAddresses {
-				// on doit avopir de l'IPv4 en entré et sortie ou de l'IP6 en e/s
-				if IsIPV4(lIp.String()) != IsIPV4(remoteAddr.IP.String()) {
-					continue
-				}
-				// TODO timeout en config
-				c, err := Dialz(remoteAddr, lIp.String(), Cfg.GetMe(), 30)
-				if err == nil {
-					return c, &route, nil
-				} else {
-					Log.Debug("deliverd.getSmtpClient: unable to get a client", lIp, "->", remoteAddr.IP.String(), ":", remoteAddr.Port, "-", err)
-				}
-			}
-		}
-	}
-	// All routes have been tested -> Fail !
-	return nil, nil, errors.New("deliverd.getSmtpClient: unable to get a client, all routes have been tested")
-}
-
-// smtpResponse represents a SMTP response
-type smtpResponse struct {
-	Code int
-	Msg  string
-}
-
-// parseSmtpResponse parse an smtp response
-// warning ça parse juste une ligne et ne tient pas compte des continued (si line[4]=="-")
-func parseSmtpResponse(line string) (response smtpResponse, err error) {
-	err = errors.New("invalid smtp response from remote server: " + line)
-	if len(line) < 4 || line[3] != ' ' && line[3] != '-' {
+func (d *delivery) handleSMTPError(code int, message string) {
+	if code > 499 {
+		d.diePerm(message, false)
 		return
 	}
-	response.Code, err = strconv.Atoi(line[0:3])
-	if err != nil {
-		return
-	}
-	response.Msg = line[4:]
-	return
+	d.dieTemp(message, false)
 }

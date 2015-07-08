@@ -241,11 +241,9 @@ func (s *SMTPServerSession) smtpEhlo(msg []string) {
 		s.out(fmt.Sprintf("250-SIZE %d", Cfg.GetSmtpdMaxDataBytes()))
 
 		// STARTTLS
-		// TODO: si déja en tls/SSL ne pas renvoyer STARTTLS
 		if !s.secured {
 			s.out("250-STARTTLS")
 		}
-
 		// Auth
 		s.out("250 AUTH PLAIN")
 	}
@@ -255,12 +253,7 @@ func (s *SMTPServerSession) smtpEhlo(msg []string) {
 func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 	defer s.recoverOnPanic()
 	extension := []string{}
-	// TODO prendre en compte le SIZE :
-	// MAIL FROM:<toorop@toorop.fr> SIZE=1671
 
-	// Si on a déja un mailFrom les RFC ne précise rien de particulier
-	// -> On accepte et on reinitialise
-	//
 	// Reset
 	s.reset()
 
@@ -529,7 +522,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 }
 
 // SMTPVrfy VRFY SMTP command
-func (s *SMTPServerSession) SMTPVrfy(msg []string) {
+func (s *SMTPServerSession) smtpVrfy(msg []string) {
 	defer s.recoverOnPanic()
 	rcptto := ""
 	s.vrfyCount++
@@ -624,13 +617,13 @@ func (s *SMTPServerSession) SMTPVrfy(msg []string) {
 }
 
 // SMTPExpn EXPN SMTP command
-func (s *SMTPServerSession) SMTPExpn(msg []string) {
+func (s *SMTPServerSession) smtpExpn(msg []string) {
 	s.out("252")
 	return
 }
 
 // DATA
-// TODO : plutot que de stocker en RAM on pourrait envoyer directement les danat
+// plutot que de stocker en RAM on pourrait envoyer directement les danat
 // dans un fichier ne queue
 // Si il y a une erreur on supprime le fichier
 // Voir un truc comme DATA -> temp file -> mv queue file
@@ -978,6 +971,7 @@ func (s *SMTPServerSession) smtpStartTLS() {
 	// I can convert tlsConn back in to a net.Conn type
 	s.conn = net.Conn(tlsConn)
 	s.secured = true
+	s.seenHelo = false
 }
 
 // SMTP AUTH
@@ -1143,9 +1137,9 @@ func (s *SMTPServerSession) handle() {
 				case "mail":
 					s.smtpMailFrom(splittedMsg)
 				case "vrfy":
-					s.SMTPVrfy(splittedMsg)
+					s.smtpVrfy(splittedMsg)
 				case "expn":
-					s.SMTPExpn(splittedMsg)
+					s.smtpExpn(splittedMsg)
 				case "rcpt":
 					s.smtpRcptTo(splittedMsg)
 				case "data":

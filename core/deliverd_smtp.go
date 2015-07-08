@@ -1,5 +1,6 @@
 package core
 
+/*
 // Modified version on the standard smtp.go librarie
 
 // Copyright 2010 The Go Authors. All rights reserved.
@@ -324,18 +325,6 @@ type dataCloser struct {
 	io.WriteCloser
 }
 
-/*func (d *dataCloser) Close() error {
-	d.WriteCloser.Close()
-	return nil
-	code, msg, e := d.c.Text.ReadResponse(250)
-	// bad hack
-	errMsg := ""
-	if e != nil {
-		errMsg = e.Error()
-	}
-	return errors.New(fmt.Sprintf("%dé%sé%s", code, msg, errMsg))
-}*/
-
 // Data issues a DATA command to the server and returns a writer that
 // can be used to write the data. The caller should close the writer
 // before calling any more methods on c.
@@ -439,3 +428,4 @@ func (c *Client) Quit() error {
 	}
 	return c.Text.Close()
 }
+*/

@@ -1,21 +1,19 @@
 package core
 
-// put: err := storage.disk.put(key, io.reader).Error
-// get: io.reader, err := storage.disk.get(id)
-
 import (
 	"errors"
 	"io"
 )
 
-// storer is a interface for stores
+// Storer is a interface for stores
 type Storer interface {
+	//TODO should return perm or temp failure
 	Get(key string) (io.Reader, error)
 	Put(key string, reader io.Reader) error
 	Del(key string) error
 }
 
-// New return a new srore
+// NewStore return a new srore
 func NewStore(driver, source string) (Storer, error) {
 	switch driver {
 	case "disk":

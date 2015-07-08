@@ -121,7 +121,7 @@ func DelRoute(id int64) error {
 	return DB.Delete(&r).Error
 }
 
-// getRoute return matchingRoutes for the specified destination host
+// getRoutes returns matchingRoutes for the specified destination host
 func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 	routes := []Route{}
 	// Get mail from domain
