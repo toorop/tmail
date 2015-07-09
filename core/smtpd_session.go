@@ -249,7 +249,7 @@ func (s *SMTPServerSession) smtpEhlo(msg []string) {
 		// Extensions
 		// Size
 		s.out(fmt.Sprintf("250-SIZE %d", Cfg.GetSmtpdMaxDataBytes()))
-
+		s.out("250-X-PEPPER")
 		// STARTTLS
 		if !s.tls {
 			s.out("250-STARTTLS")
