@@ -31,10 +31,12 @@ const (
 type SMTPServerSession struct {
 	uuid           string
 	conn           net.Conn
+	connTLS        *tls.Conn
 	logger         *Logger
 	timer          *time.Timer // for timeout
 	timeout        time.Duration
-	secured        bool
+	tls            bool
+	tlsVersion     string
 	user           *User
 	seenHelo       bool
 	seenMail       bool
@@ -47,19 +49,25 @@ type SMTPServerSession struct {
 }
 
 // NewSMTPServerSession returns a new SMTP session
-func NewSMTPServerSession(conn net.Conn, secured bool) (sss *SMTPServerSession, err error) {
+func NewSMTPServerSession(conn net.Conn, isTLS bool) (sss *SMTPServerSession, err error) {
 	sss = new(SMTPServerSession)
 	sss.uuid, err = NewUUID()
 	if err != nil {
 		return
 	}
+
 	sss.conn = conn
+	if isTLS {
+		sss.connTLS = conn.(*tls.Conn)
+		sss.tls = true
+	}
+
 	sss.logger = Log
 
 	sss.rcptCount = 0
 	sss.badRcptToCount = 0
 	sss.vrfyCount = 0
-	sss.secured = secured
+
 	sss.seenHelo = false
 	sss.seenMail = false
 
@@ -171,7 +179,6 @@ func (s *SMTPServerSession) smtpGreeting() {
 		return
 	}
 	s.log(fmt.Sprintf("starting new transaction %d/%d", SmtpSessionsCount, Cfg.GetSmtpdConcurrencyIncoming()))
-
 	// Microservices
 	if smtpdNewClient(s) {
 		return
@@ -183,6 +190,9 @@ func (s *SMTPServerSession) smtpGreeting() {
 	}
 	o += " - " + s.uuid
 	s.out(o)
+	if s.tls {
+		s.log("secured via " + tlsGetVersion(s.connTLS.ConnectionState().Version) + " " + tlsGetCipherSuite(s.connTLS.ConnectionState().CipherSuite))
+	}
 }
 
 // EHLO HELO
@@ -241,7 +251,7 @@ func (s *SMTPServerSession) smtpEhlo(msg []string) {
 		s.out(fmt.Sprintf("250-SIZE %d", Cfg.GetSmtpdMaxDataBytes()))
 
 		// STARTTLS
-		if !s.secured {
+		if !s.tls {
 			s.out("250-STARTTLS")
 		}
 		// Auth
@@ -289,7 +299,6 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 
 	// Extensions size
 	if len(extension) != 0 {
-		s.log(fmt.Sprintf("%v", extension))
 		// Only SIZE is supported (and announced)
 		if len(extension) > 1 {
 			s.log("MAIL - Bad syntax: " + strings.Join(msg, " "))
@@ -881,8 +890,8 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	recieved += fmt.Sprintf(" by %s (%s)", localIP, localHost)
 
 	// Proto
-	if s.secured {
-		recieved += " with ESMTPS; "
+	if s.tls {
+		recieved += " with ESMTPS " + tlsGetVersion(s.connTLS.ConnectionState().Version) + " " + tlsGetCipherSuite(s.connTLS.ConnectionState().CipherSuite) + ";"
 	} else {
 		recieved += " whith SMTP; "
 	}
@@ -927,8 +936,8 @@ func (s *SMTPServerSession) smtpQuit() {
 
 // Starttls
 func (s *SMTPServerSession) smtpStartTLS() {
-	if s.secured {
-		s.out("454 - transaction is already secured via SSL")
+	if s.tls {
+		s.out("454 - transaction is already over SSL/TLS")
 		return
 	}
 	//s.out("220 Ready to start TLS")
@@ -946,18 +955,17 @@ func (s *SMTPServerSession) smtpStartTLS() {
 	}
 	tlsConfig.Rand = rand.Reader
 
-	s.out("220 Ready to start TLS")
+	s.out("220 Ready to start TLS nego")
 
-	var tlsConn *tls.Conn
+	//var tlsConn *tls.Conn
 	//tlsConn = tls.Server(client.socket, TLSconfig)
-	tlsConn = tls.Server(s.conn, &tlsConfig)
+	s.connTLS = tls.Server(s.conn, &tlsConfig)
 	// run a handshake
 	// errors.New("tls: unsupported SSLv2 handshake received")
-	err = tlsConn.Handshake()
+	err = s.connTLS.Handshake()
 	if err != nil {
 		msg := "454 - TLS handshake failed: " + err.Error()
 		if err.Error() == "tls: unsupported SSLv2 handshake received" {
-			//s.logError(msg)
 			s.log(msg)
 		} else {
 			s.logError(msg)
@@ -965,12 +973,10 @@ func (s *SMTPServerSession) smtpStartTLS() {
 		s.out(msg)
 		return
 	}
-
-	// Here is the trick. Since I do not need to access
-	// any of the TLS functions anymore,
-	// I can convert tlsConn back in to a net.Conn type
-	s.conn = net.Conn(tlsConn)
-	s.secured = true
+	s.log("connection upgraded to " + tlsGetVersion(s.connTLS.ConnectionState().Version) + " " + tlsGetCipherSuite(s.connTLS.ConnectionState().CipherSuite))
+	//s.conn = net.Conn(tlsConn)
+	s.conn = s.connTLS
+	s.tls = true
 	s.seenHelo = false
 }
 
@@ -981,7 +987,7 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 	defer s.recoverOnPanic()
 	// TODO si pas TLS
 	//var authType, user, passwd string
-	// TODO si pas plain
+	//TODO si pas plain
 
 	//
 	splitted := strings.Split(rawMsg, " ")

@@ -1,31 +1,27 @@
 package core
 
 import (
-	"crypto/rand"
 	"crypto/tls"
-	/*_ "github.com/go-sql-driver/mysql"
-	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-sqlite3"*/
 	"log"
 	"net"
 	"path"
 )
 
-// SmtpServer SMTP Server
+// Smtpd SMTP Server
 type Smtpd struct {
 	dsn dsn
 }
 
-// New returns a new SmtpServer
+// NewSmtpd returns a new SmtpServer
 func NewSmtpd(d dsn) *Smtpd {
 	return &Smtpd{d}
 }
 
 // ListenAndServe launch server
 func (s *Smtpd) ListenAndServe() {
-	var netListen net.Listener
+	var listener net.Listener
 	var err error
-	secured := false
+	var tlsConfig *tls.Config
 	// SSL ?
 	if s.dsn.ssl {
 		cert, err := tls.LoadX509KeyPair(path.Join(GetBasePath(), "ssl/server.crt"), path.Join(GetBasePath(), "ssl/server.key"))
@@ -33,29 +29,33 @@ func (s *Smtpd) ListenAndServe() {
 			log.Fatalln("unable to load SSL keys for smtpd.", "dsn:", s.dsn.tcpAddr, "ssl", s.dsn.ssl, "err:", err)
 		}
 		// TODO: http://fastah.blackbuck.mobi/blog/securing-https-in-go/
-		tlsConfig := tls.Config{
+		tlsConfig = &tls.Config{
 			Certificates:       []tls.Certificate{cert},
 			InsecureSkipVerify: true,
 		}
-		tlsConfig.Rand = rand.Reader
-		netListen, err = tls.Listen(s.dsn.tcpAddr.Network(), s.dsn.tcpAddr.String(), &tlsConfig)
-		secured = true
+		listener, err = tls.Listen(s.dsn.tcpAddr.Network(), s.dsn.tcpAddr.String(), tlsConfig)
+		if err != nil {
+			log.Fatalln("unable to create TLS listener.", err)
+		}
 	} else {
-		netListen, err = net.Listen(s.dsn.tcpAddr.Network(), s.dsn.tcpAddr.String())
+		listener, err = net.Listen(s.dsn.tcpAddr.Network(), s.dsn.tcpAddr.String())
+		if err != nil {
+			log.Fatalln("unable to create listener")
+		}
 	}
 	if err != nil {
 		log.Fatalln(err)
 	} else {
-		defer netListen.Close()
+		defer listener.Close()
 		for {
-			conn, error := netListen.Accept()
+			conn, error := listener.Accept()
 			if error != nil {
 				log.Println("Client error: ", error)
 			} else {
 				go func(conn net.Conn) {
 					ChSmtpSessionsCount <- 1
 					defer func() { ChSmtpSessionsCount <- -1 }()
-					sss, err := NewSMTPServerSession(conn, secured)
+					sss, err := NewSMTPServerSession(conn, s.dsn.ssl)
 					if err != nil {
 						log.Println("unable to get new SmtpServerSession.", err)
 					} else {

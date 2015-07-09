@@ -31,6 +31,8 @@ func tlsGetCipherSuite(cs uint16) string {
 		0xc014: "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
 		0xc02f: "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 		0xc02b: "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+		0xc030: "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+		0xc02c: "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
 		// TLS_FALLBACK_SCSV isn't a standard cipher suite but an indicator
 		// that the client is doing version fallback. See
 		// https://tools.ietf.org/html/draft-ietf-tls-downgrade-scsv-00.

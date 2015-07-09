@@ -57,7 +57,7 @@ func deliverRemote(d *delivery) {
 	if ok, _ := client.Extension("STARTTLS"); ok {
 		var config tls.Config
 		config.InsecureSkipVerify = Cfg.GetDeliverdRemoteTLSSkipVerify()
-		config.ServerName = Cfg.GetMe()
+		//config.ServerName = Cfg.GetMe()
 		code, msg, err = client.StartTLS(&config)
 		if err != nil {
 			Log.Info(fmt.Sprintf("deliverd-remote %s - %s - TLS negociation failed %d - %s - %v .", d.id, client.conn.RemoteAddr().String(), code, msg, err))
