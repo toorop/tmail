@@ -11,11 +11,11 @@ import (
 	"github.com/toorop/tmail/message"
 )
 
+// QMessage represents a message in queue
 type QMessage struct {
 	sync.Mutex
 	Id                      int64
-	Uuid                    string
-	Key                     string // identifier  -> store.Get(key) - hash of msg
+	Uuid                    string // Unique ID common to all QMessage, representing the queued ID of the message
 	MailFrom                string
 	AuthUser                string // Si il y a eu authentification SMTP contient le login/user sert pour le routage
 	RcptTo                  string
@@ -37,10 +37,9 @@ func (q *QMessage) Delete() error {
 	if err = DB.Delete(q).Error; err != nil {
 		return err
 	}
-
 	// If there is no other reference in DB, remove raw message from store
 	var c uint
-	if err = DB.Model(QMessage{}).Where("`key` = ?", q.Key).Count(&c).Error; err != nil {
+	if err = DB.Model(QMessage{}).Where("`key` = ?", q.Uuid).Count(&c).Error; err != nil {
 		return err
 	}
 	if c != 0 {
@@ -50,7 +49,7 @@ func (q *QMessage) Delete() error {
 	if err != nil {
 		return err
 	}
-	err = qStore.Del(q.Key)
+	err = qStore.Del(q.Uuid)
 	// Si le fichier n'existe pas ce n'est pas une véritable erreur
 	if err != nil && strings.Contains(err.Error(), "no such file") {
 		err = nil
@@ -95,7 +94,7 @@ func (q *QMessage) Bounce() error {
 	return q.SaveInDb()
 }
 
-// GetMessageByKey return a message from is key
+// QueueGetMessageById return a message from is key
 func QueueGetMessageById(id int64) (msg QMessage, err error) {
 	msg = QMessage{}
 	err = DB.Where("id = ?", id).First(&msg).Error
@@ -105,36 +104,18 @@ func QueueGetMessageById(id int64) (msg QMessage, err error) {
 	return
 }
 
-// Add add a new mail in queue
+// QueueAddMessage add a new mail in queue
 func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string) (uuid string, err error) {
 	qStore, err := NewStore(Cfg.GetStoreDriver(), Cfg.GetStoreSource())
 	if err != nil {
 		return
 	}
-	/*rawMess, err := msg.GetRaw()
-	if err != nil {
-		return
-	}*/
 
-	// generate key useless
-	// TODO keep only UUID
-	/*hasher := sha1.New()
-	if _, err = io.Copy(hasher, bytes.NewReader(*rawMess)); err != nil {
-		return
-	}
-	key := fmt.Sprintf("%x", hasher.Sum(nil))
-	err = qStore.Put(key, bytes.NewReader(*rawMess))
-	if err != nil {
-		return
-	}
-	*/
 	uuid, err = NewUUID()
 	if err != nil {
 		return
 	}
-	key := uuid
-
-	err = qStore.Put(key, bytes.NewReader(*rawMess))
+	err = qStore.Put(uuid, bytes.NewReader(*rawMess))
 	if err != nil {
 		return
 	}
@@ -146,7 +127,6 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 	for _, rcptTo := range envelope.RcptTo {
 		qm := QMessage{
 			Uuid:                    uuid,
-			Key:                     key,
 			AuthUser:                authUser,
 			MailFrom:                envelope.MailFrom,
 			RcptTo:                  rcptTo,
@@ -163,35 +143,22 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 		err = DB.Create(&qm).Error
 		if err != nil {
 			if cloop == 0 {
-				qStore.Del(key)
+				qStore.Del(uuid)
 			}
 			return
 		}
-		/*tx := DB.Begin()
-		err = tx.Create(&qm).Error
-		if err != nil {
-			tx.Rollback()
-			// Rollback on storage
-			if cloop == 0 {
-				qStore.Del(key)
-			}
-			return
-		}
-		err = tx.Commit().Error
-		if err != nil {
-			return
-		}*/
 		cloop++
 		qmessages = append(qmessages, qm)
 	}
 
+	// publish qmessage
+	// TODO: to avoid the copy of the Lock -> qmsg.Publish()
 	for _, qmsg := range qmessages {
-		// publish
 		var jMsg []byte
 		jMsg, err = json.Marshal(qmsg)
 		if err != nil {
 			if cloop == 1 {
-				qStore.Del(key)
+				qStore.Del(uuid)
 			}
 			DB.Delete(&qmsg)
 			return
@@ -200,7 +167,7 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 		err = NsqQueueProducer.Publish("todeliver", jMsg)
 		if err != nil {
 			if cloop == 1 {
-				qStore.Del(key)
+				qStore.Del(uuid)
 			}
 			DB.Delete(&qmsg)
 			return
@@ -209,7 +176,7 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 	return
 }
 
-// ListMessage return all message in queue
+// QueueListMessages return all message in queue
 func QueueListMessages() ([]QMessage, error) {
 	messages := []QMessage{}
 	err := DB.Find(&messages).Error

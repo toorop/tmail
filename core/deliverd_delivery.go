@@ -102,12 +102,12 @@ func (d *delivery) processMsg() {
 		// TODO
 		// On va considerer que c'est une erreur temporaire
 		// il se peut que le store soit momentanément injoignable
-		Log.Error(fmt.Sprintf("deliverd %s : unable to get rawmail of queued message %s from store (key: %s)- %s", d.id, d.qMsg.Uuid, d.qMsg.Key, err))
+		Log.Error(fmt.Sprintf("deliverd %s : unable to get rawmail of queued message %s from store- %s", d.id, d.qMsg.Uuid, err))
 		d.requeue()
 		return
 	}
 	//d.qStore = qStore
-	dataReader, err := d.qStore.Get(d.qMsg.Key)
+	dataReader, err := d.qStore.Get(d.qMsg.Uuid)
 	if err != nil {
 		Log.Error("unable to retrieve raw mail from store. " + err.Error())
 		d.dieTemp("unable to retrieve raw mail from store", false)
@@ -150,7 +150,7 @@ func (d *delivery) processMsg() {
 func (d *delivery) dieOk() {
 	Log.Info("deliverd " + d.id + ": success")
 	if err := d.qMsg.Delete(); err != nil {
-		Log.Error("deliverd " + d.id + ": unable remove queued message " + d.qMsg.Uuid + " from queue. (key " + d.qMsg.Key + ") " + err.Error())
+		Log.Error("deliverd " + d.id + ": unable remove queued message " + d.qMsg.Uuid + " from queue." + err.Error())
 	}
 	d.nsqMsg.Finish()
 }
@@ -208,7 +208,7 @@ func (d *delivery) bounce(errMsg string) {
 	if d.qMsg.MailFrom == "#@[]" {
 		Log.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " triple bounce: discarding")
 		if err := d.qMsg.Delete(); err != nil {
-			Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Key + " from queue. " + err.Error())
+			Log.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Uuid + " from queue. " + err.Error())
 			d.requeue(1)
 		} else {
 			d.nsqMsg.Finish()
