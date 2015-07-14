@@ -1,3 +1,8 @@
 #!/bin/sh
 
-. conf/tmail.cfg && ./tmail
+if [ `uname -a | grep x86_64` = ''] ;
+  then
+    . conf/tmail.cfg && ./tmail32
+  else
+    . conf/tmail.cfg && ./tmail
+fi
