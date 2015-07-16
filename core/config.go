@@ -37,7 +37,7 @@ type Config struct {
 
 		LaunchSmtpd              bool   `name:"smtpd_launch" default:"false"`
 		SmtpdDsns                string `name:"smtpd_dsns" default:""`
-		SmtpdServerTimeout       int    `name:"smtpd_transaction_timeout" default:"300"`
+		SmtpdServerTimeout       int    `name:"smtpd_server_timeout" default:"300"`
 		SmtpdMaxDataBytes        int    `name:"smtpd_max_databytes" default:"0"`
 		SmtpdMaxHops             int    `name:"smtpd_max_hops" default:"10"`
 		SmtpdMaxRcptTo           int    `name:"smtpd_max_rcpt" default:"0"`

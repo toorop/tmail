@@ -1069,7 +1069,6 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 		s.exitAsap()
 		return
 	}
-
 	s.log("auth succeed for user " + s.user.Login)
 	s.out("235 ok, go ahead (#2.0.0)")
 }

@@ -15,7 +15,7 @@ func GetBasePath() string {
 	return p
 }
 
-// Remove trailing and ending brackets (<string> -> string)
+// RemoveBrackets removes trailing and ending brackets (<string> -> string)
 func RemoveBrackets(s string) string {
 	if strings.HasPrefix(s, "<") {
 		s = s[1:]
@@ -26,8 +26,8 @@ func RemoveBrackets(s string) string {
 	return s
 }
 
-// TODO: replace by sort package
 // Check if a string is in a Slice of string
+// TODO: replace by sort package
 func IsStringInSlice(str string, s []string) (found bool) {
 	found = false
 	for _, t := range s {
@@ -81,14 +81,20 @@ func Unix2dos(ch *[]byte) (err error) {
 	return nil
 }
 
-// isFQN checks if domain is FQN
+// isFQN checks if domain is FQN (MX or A record)
 func isFQN(host string) (bool, error) {
-	_, err := net.LookupHost(host)
+	_, err := net.LookupMX(host)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), "no such host") {
-			return false, nil
+			// Try A
+			_, err = net.LookupHost(host)
+			if err != nil {
+				if strings.HasSuffix(err.Error(), "no such host") {
+					return false, nil
+				}
+				return false, err
+			}
 		}
-		return false, err
 	}
 	return true, nil
 }
