@@ -12,10 +12,11 @@ import (
 
 // Simple logger package to log to stdout
 
+// Logger is the tmail log service
 type Logger struct {
 	debugEnabled bool
-	debug        *log.Logger
-	info         *log.Logger
+	DebugLogger  *log.Logger
+	InfoLogger   *log.Logger
 	err          *log.Logger
 	trace        *log.Logger
 }
@@ -24,8 +25,8 @@ func NewLogger(out io.Writer, debugEnabled bool) (*Logger, error) {
 	hostname, _ := os.Hostname()
 	return &Logger{
 		debugEnabled: debugEnabled,
-		debug:        log.New(out, "["+hostname+"] ", log.Ldate|log.Ltime|log.Lmicroseconds),
-		info:         log.New(out, "["+hostname+"] ", log.Ldate|log.Ltime|log.Lmicroseconds),
+		DebugLogger:  log.New(out, "["+hostname+"] ", log.Ldate|log.Ltime|log.Lmicroseconds),
+		InfoLogger:   log.New(out, "["+hostname+"] ", log.Ldate|log.Ltime|log.Lmicroseconds),
 		err:          log.New(out, "["+hostname+"] ", log.Ldate|log.Ltime|log.Lmicroseconds),
 		trace:        log.New(out, "["+hostname+"] ", log.Ldate|log.Ltime|log.Lshortfile),
 	}, nil
@@ -39,7 +40,7 @@ func (l *Logger) Debug(v ...interface{}) {
 	for i := range v {
 		msg = fmt.Sprintf("%s %v", msg, v[i])
 	}
-	l.debug.Println(msg)
+	l.DebugLogger.Println(msg)
 }
 
 func (l *Logger) Info(v ...interface{}) {
@@ -47,7 +48,7 @@ func (l *Logger) Info(v ...interface{}) {
 	for i := range v {
 		msg = fmt.Sprintf("%s %v", msg, v[i])
 	}
-	l.info.Println(msg)
+	l.InfoLogger.Println(msg)
 }
 
 func (l *Logger) Error(v ...interface{}) {

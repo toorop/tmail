@@ -45,11 +45,11 @@ func (q *QMessage) Delete() error {
 	if c != 0 {
 		return nil
 	}
-	qStore, err := NewStore(Cfg.GetStoreDriver(), Cfg.GetStoreSource())
+	/*qStore, err := NewStore(Cfg.GetStoreDriver(), Cfg.GetStoreSource())
 	if err != nil {
 		return err
-	}
-	err = qStore.Del(q.Uuid)
+	}*/
+	err = Store.Del(q.Uuid)
 	// Si le fichier n'existe pas ce n'est pas une véritable erreur
 	if err != nil && strings.Contains(err.Error(), "no such file") {
 		err = nil

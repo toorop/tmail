@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 
@@ -11,8 +12,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
-	//_ "github.com/mattn/go-sqlite3"
+
 	_ "github.com/toorop/go-sqlite3"
+	"github.com/toorop/gopenstack/context"
+	"github.com/toorop/gopenstack/identity"
 )
 
 const (
@@ -27,11 +30,12 @@ var (
 	NsqQueueProducer    *nsq.Producer
 	SmtpSessionsCount   int
 	ChSmtpSessionsCount chan int
+	Store               Storer
 )
 
 // Boostrap DB, config,...
 // TODO check validity of each element
-func ScopeBootstrap() (err error) {
+func Bootstrap() (err error) {
 	// Load config
 	Cfg, err = InitConfig("tmail")
 	if err != nil {
@@ -65,15 +69,17 @@ func ScopeBootstrap() (err error) {
 	DB.SetLogger(Log)
 	DB.LogMode(Cfg.GetDebugEnabled())
 
-	// ping
+	// ping DB
 	if DB.DB().Ping() != nil {
-		err = errors.New("I could not access to database " + Cfg.GetDbDriver() + " " + Cfg.GetDbSource())
-		return
+		return errors.New("I could not access to database " + Cfg.GetDbDriver() + " " + Cfg.GetDbSource())
 	}
 
 	// init NSQ MailQueueProducer (Nmqp)
 	if Cfg.GetLaunchSmtpd() {
 		err = initMailQueueProducer()
+		if err != nil {
+			return err
+		}
 	}
 
 	// SMTP in sessions counter
@@ -84,6 +90,27 @@ func ScopeBootstrap() (err error) {
 			SmtpSessionsCount += <-ChSmtpSessionsCount
 		}
 	}()
+
+	// openstack
+	if Cfg.GetOpenstackEnable() {
+		if !context.Keyring.IsPopulate() {
+			log.Fatalln("No credentials found from ENV. See http://docs.openstack.org/cli-reference/content/cli_openrc.html")
+		}
+		// Do auth
+		err = identity.DoAuth()
+		if err != nil {
+			return err
+		}
+		// auto update Token
+		identity.AutoUpdate(30, Log.InfoLogger)
+	}
+
+	// init store
+	Store, err = NewStore(Cfg.GetStoreDriver(), Cfg.GetStoreSource())
+	if err != nil {
+		return err
+	}
+
 	return
 }
 
@@ -91,7 +118,6 @@ func ScopeBootstrap() (err error) {
 func initMailQueueProducer() (err error) {
 	nsqCfg := nsq.NewConfig()
 	nsqCfg.UserAgent = "tmail.queue"
-
 	NsqQueueProducer, err = nsq.NewProducer("127.0.0.1:4150", nsqCfg)
 	if Cfg.GetDebugEnabled() {
 		NsqQueueProducer.SetLogger(Log, 0)

@@ -23,13 +23,14 @@ import (
 )
 
 const (
+	// TmailVersion version og tmail
 	TmailVersion = "0.0.1"
 )
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	var err error
-	if err = core.ScopeBootstrap(); err != nil {
+	if err = core.Bootstrap(); err != nil {
 		log.Fatalln(err)
 	}
 	core.Version = TmailVersion

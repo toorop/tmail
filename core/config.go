@@ -68,6 +68,9 @@ type Config struct {
 		MsUriSmtpdNewClient string `name:"ms_smtpd_newclient" default:"_"`
 		MsUriSmtpdData      string `name:"ms_smtpd_data" default:"_"`
 
+		// Openstack
+		OpenstackEnable bool `name:"openstack_enable" default:"false"`
+
 		LaunchRestServer bool   `name:"rest_server_launch" default:"false"`
 		RestServerIp     string `name:"rest_server_ip" default:"127.0.0.1"`
 		RestServerPort   int    `name:"rest_server_port" default:"8080"`
@@ -380,6 +383,15 @@ func (c *Config) GetNSQLookupdHttpAddresses() (addr []string) {
 		addr = append(addr, a)
 	}
 	return
+}
+
+// openstack
+
+// GetOpenstackEnable returns if openstack support is enabled
+func (c *Config) GetOpenstackEnable() bool {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.OpenstackEnable
 }
 
 // microservices
