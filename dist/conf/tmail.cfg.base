@@ -68,6 +68,10 @@ export TMAIL_DB_SOURCE="/home/tmail/dist/db/tmail.db?_busy_timeout=60000"
 #
 export TMAIL_STORE_DRIVER="disk"
 export TMAIL_STORE_SOURCE="/home/tmail/dist/store"
+# For openstack
+# export TMAIL_STORE_DRIVER="openstack"
+# export TMAIL_STORE_SOURCE="/SBG1/tmail"
+
 
 
 ###
@@ -236,6 +240,32 @@ export TMAIL_MS_SMTPD_NEWCLIENT=""
 
 # Call after DATA command
 export TMAIL_MS_SMTPD_DATA=""
+
+## Openstack
+## paste your rcfile here
+export TMAIL_OPENSTACK_ENABLE=false
+
+# Auth url
+export OS_AUTH_URL=https://auth.cloud.ovh.net/v2.0
+
+# With the addition of Keystone we have standardized on the term **tenant**
+# as the entity that owns the resources.
+export OS_TENANT_ID=tenant
+export OS_TENANT_NAME="name"
+
+# In addition to the owning entity (tenant), openstack stores the entity
+# performing the action as the **user**.
+export OS_USERNAME="username"
+
+# With Keystone you pass the keystone password.
+#echo "Please enter your OpenStack Password: "
+#read -sr OS_PASSWORD_INPUT
+export OS_PASSWORD="passwd"
+
+# If your configuration has multiple regions, we set that information here.
+# OS_REGION_NAME is optional and only valid in certain environments.
+export OS_REGION_NAME="GRA1"
+
 
 ##
 # Dovecot

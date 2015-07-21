@@ -72,7 +72,6 @@ func (s *openstackStore) Get(key string) (io.Reader, error) {
 
 // Del
 func (s *openstackStore) Del(key string) error {
-	return nil
 	if key == "" {
 		return errors.New("store.Del: key is empty")
 	}
