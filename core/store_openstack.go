@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"io"
+	"strings"
 
 	"github.com/toorop/gopenstack/objectstorage/v1"
 )
@@ -80,5 +81,9 @@ func (s *openstackStore) Del(key string) error {
 		Region:    s.Region,
 		Container: s.Container,
 	}
-	return object.Delete(false)
+	err := object.Delete(false)
+	if err != nil && strings.HasPrefix("404 Not Found", err.Error()) {
+		err = nil
+	}
+	return err
 }
