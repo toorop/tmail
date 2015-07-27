@@ -1,5 +1,9 @@
 V 0.0.10
-	- local aliases
+  - full RFC 5321 compliance
+	- new SMTP client for remote deliveries
+	- new store backend: openstack open storage
+	- alias
+	-
 
 V 0.0.9
 	- Better handling of smtpd TLS error

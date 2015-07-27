@@ -82,7 +82,7 @@ func (s *openstackStore) Del(key string) error {
 		Container: s.Container,
 	}
 	err := object.Delete(false)
-	if err != nil && strings.HasPrefix("404 Not Found", err.Error()) {
+	if err != nil && strings.HasPrefix(err.Error(), "404") {
 		err = nil
 	}
 	return err
