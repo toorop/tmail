@@ -39,7 +39,7 @@ func (q *QMessage) Delete() error {
 	}
 	// If there is no other reference in DB, remove raw message from store
 	var c uint
-	if err = DB.Model(QMessage{}).Where("`key` = ?", q.Uuid).Count(&c).Error; err != nil {
+	if err = DB.Model(QMessage{}).Where("`uuid` = ?", q.Uuid).Count(&c).Error; err != nil {
 		return err
 	}
 	if c != 0 {

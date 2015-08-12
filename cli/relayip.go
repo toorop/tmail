@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+
 	cgCli "github.com/codegangsta/cli"
 	"github.com/toorop/tmail/api"
 )
@@ -22,7 +23,6 @@ var RelayIP = cgCli.Command{
 				cliHandleErr(api.RelayIpAdd(c.Args().First()))
 			},
 		},
-
 		// List authorized IPs
 		{
 			Name:        "list",

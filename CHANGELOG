@@ -1,3 +1,7 @@
+V 0.0.11
+  - bugfix: "key" for queued message
+
+
 V 0.0.10
   - full RFC 5321 compliance
 	- new SMTP client for remote deliveries
