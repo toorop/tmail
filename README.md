@@ -1,5 +1,7 @@
 # tmail
 
+[![Join the chat at https://gitter.im/toorop/tmail](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/toorop/tmail?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 tmail is a SMTP server
 
 ## Features
