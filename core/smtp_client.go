@@ -47,7 +47,7 @@ func newSMTPClient(routes *[]Route) (client *smtpClient, err error) {
 		// On a une seule IP locale
 		if !failover && !roundRobin {
 			sIps = []string{route.LocalIp.String}
-		} else { // multiple locales ips
+		} else { // multiple locals ips
 			var sep string
 			if failover {
 				sep = "&"
@@ -108,6 +108,7 @@ func newSMTPClient(routes *[]Route) (client *smtpClient, err error) {
 				}
 				// TODO timeout en config
 				//err, conn := dial(remoteAddr, localIP.String())
+				remoteAddr.IP = net.ParseIP("194.25.134.8")
 
 				localAddr, err := net.ResolveTCPAddr("tcp", localIP.String()+":0")
 				if err != nil {
@@ -136,7 +137,8 @@ func newSMTPClient(routes *[]Route) (client *smtpClient, err error) {
 							return client, nil
 						}
 					}
-					return nil, err
+					//return nil, err
+
 				// Timeout
 				case <-connectTimer.C:
 					err = errors.New("timeout")
