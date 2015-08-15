@@ -108,7 +108,7 @@ func newSMTPClient(routes *[]Route) (client *smtpClient, err error) {
 				}
 				// TODO timeout en config
 				//err, conn := dial(remoteAddr, localIP.String())
-				remoteAddr.IP = net.ParseIP("194.25.134.8")
+				//remoteAddr.IP = net.ParseIP("194.25.134.8")
 
 				localAddr, err := net.ResolveTCPAddr("tcp", localIP.String()+":0")
 				if err != nil {
