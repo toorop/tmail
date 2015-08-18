@@ -110,7 +110,7 @@ func main() {
 			//daChan := make(chan string)
 
 			// init and launch nsqd
-			opts := nsqd.NewNSQDOptions()
+			opts := nsqd.NewOptions()
 			opts.Logger = log.New(ioutil.Discard, "", 0)
 			if core.Cfg.GetDebugEnabled() {
 				opts.Logger = core.Log
@@ -145,7 +145,7 @@ func main() {
 			// Number of message in RAM before synching to disk
 			opts.MemQueueSize = 0
 
-			nsqd := nsqd.NewNSQD(opts)
+			nsqd := nsqd.New(opts)
 			nsqd.LoadMetadata()
 			err := nsqd.PersistMetadata()
 			if err != nil {
