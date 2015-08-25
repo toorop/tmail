@@ -1098,6 +1098,7 @@ func (s *SMTPServerSession) handle() {
 	s.smtpGreeting()
 
 	go func() {
+		defer s.recoverOnPanic()
 		for {
 			_, err := s.conn.Read(buffer)
 			if err != nil {
@@ -1112,8 +1113,6 @@ func (s *SMTPServerSession) handle() {
 				break
 			}
 
-			//TRACE.Println(buffer[0])
-			//if buffer[0] == 13 || buffer[0] == 0x00 {
 			if buffer[0] == 0x00 {
 				continue
 			}
@@ -1123,8 +1122,8 @@ func (s *SMTPServerSession) handle() {
 				var rmsg string
 				strMsg := strings.TrimSpace(string(msg))
 				s.logDebug("<", strMsg)
-				splittedMsg := strings.Split(strMsg, " ")
-				splittedMsg = []string{}
+				//splittedMsg := strings.Split(strMsg, " ")
+				splittedMsg := []string{}
 				for _, m := range strings.Split(strMsg, " ") {
 					m = strings.TrimSpace(m)
 					if m != "" {
@@ -1132,37 +1131,39 @@ func (s *SMTPServerSession) handle() {
 					}
 				}
 				// get command, first word
-				verb := strings.ToLower(splittedMsg[0])
-				switch verb {
-				case "helo":
-					s.smtpHelo(splittedMsg)
-				case "ehlo":
-					//s.smtpEhlo(splittedMsg)
-					s.smtpEhlo(splittedMsg)
-				case "mail":
-					s.smtpMailFrom(splittedMsg)
-				case "vrfy":
-					s.smtpVrfy(splittedMsg)
-				case "expn":
-					s.smtpExpn(splittedMsg)
-				case "rcpt":
-					s.smtpRcptTo(splittedMsg)
-				case "data":
-					s.smtpData(splittedMsg)
-				case "starttls":
-					s.smtpStartTLS()
-				case "auth":
-					s.smtpAuth(strMsg)
-				case "rset":
-					s.rset()
-				case "noop":
-					s.noop()
-				case "quit":
-					s.smtpQuit()
-				default:
-					rmsg = "502 5.5.1 unimplemented"
-					s.log("unimplemented command from client:", strMsg)
-					s.out(rmsg)
+				if len(splittedMsg) != 0 {
+					verb := strings.ToLower(splittedMsg[0])
+					switch verb {
+					case "helo":
+						s.smtpHelo(splittedMsg)
+					case "ehlo":
+						//s.smtpEhlo(splittedMsg)
+						s.smtpEhlo(splittedMsg)
+					case "mail":
+						s.smtpMailFrom(splittedMsg)
+					case "vrfy":
+						s.smtpVrfy(splittedMsg)
+					case "expn":
+						s.smtpExpn(splittedMsg)
+					case "rcpt":
+						s.smtpRcptTo(splittedMsg)
+					case "data":
+						s.smtpData(splittedMsg)
+					case "starttls":
+						s.smtpStartTLS()
+					case "auth":
+						s.smtpAuth(strMsg)
+					case "rset":
+						s.rset()
+					case "noop":
+						s.noop()
+					case "quit":
+						s.smtpQuit()
+					default:
+						rmsg = "502 5.5.1 unimplemented"
+						s.log("unimplemented command from client:", strMsg)
+						s.out(rmsg)
+					}
 				}
 				//s.resetTimeout()
 				msg = []byte{}
