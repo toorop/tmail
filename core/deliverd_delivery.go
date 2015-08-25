@@ -303,6 +303,9 @@ func (d *delivery) requeue(newStatus ...uint32) {
 	//}
 	// Calcul du delais, pour le moment on accroit betement de 60 secondes a chaque tentative
 	delay := time.Duration(d.nsqMsg.Attempts*60) * time.Second
+	if delay > time.Hour {
+		delay = time.Duration(1 * time.Hour)
+	}
 	// Todo update next delivery en DB
 	d.qMsg.NextDeliveryScheduledAt = time.Now().Add(delay)
 	d.qMsg.Status = status
