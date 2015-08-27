@@ -24,7 +24,7 @@ import (
 
 const (
 	// TmailVersion version of tmail
-	TmailVersion = "0.0.11"
+	TmailVersion = "0.0.12"
 )
 
 func init() {
@@ -161,7 +161,6 @@ func main() {
 						log.Fatalln("Unable to connect to clamd -", err)
 					}
 				}
-
 				smtpdDsns, err := core.GetDsnsFromString(core.Cfg.GetSmtpdDsns())
 				if err != nil {
 					log.Fatalln("unable to parse smtpd dsn -", err)
