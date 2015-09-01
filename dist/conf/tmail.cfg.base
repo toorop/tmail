@@ -238,8 +238,14 @@ export TMAIL_REST_SERVER_PASSWD="passwd"
 # Call on new SMTP connection from client
 export TMAIL_MS_SMTPD_NEWCLIENT=""
 
+# Called after RCPT TO to check if relay is granted for this RCPT TO
+export TMAIL_MS_SMTPD_RCPTTO_ACCESS_IS_GRANTED=""
+
 # Call after DATA command
 export TMAIL_MS_SMTPD_DATA=""
+
+# Remote routes for deliverd
+export TMAIL_MS_DELIVERD_GET_ROUTES=""
 
 ## Openstack
 ## paste your rcfile here

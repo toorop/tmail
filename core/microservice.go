@@ -340,7 +340,7 @@ func msGetRoutes(d *delivery) (routes *[]Route, err error) {
 		return nil, err
 	}
 	// no routes found
-	if len(*routes) == 0 {
+	if len(msResponse.GetRoutes()) == 0 {
 		return nil, nil
 	}
 	for _, route := range msResponse.GetRoutes() {
