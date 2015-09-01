@@ -4,9 +4,9 @@ message SmtpdResponse {
 	required int32 smtp_code = 1; 			// SMTP code (ignored if eq 0)
 	required string smtp_msg = 2; 			// SMTP message (ignored if eq "")
 
-	optional bool close_connection = 16;	// if true connection is closed 
-	optional string data_link = 17; 		// link for downloading additional (large) data 
-	repeated string extra_headers = 18; 	// headers to add 
+	optional bool close_connection = 16;	// if true connection is closed
+	optional string data_link = 17; 		// link for downloading additional (large) data
+	repeated string extra_headers = 18; 	// headers to add
 }
 
 
@@ -21,4 +21,28 @@ message SmtpdNewClientMsg {
 message SmtpdDataMsg {
 	required string session_id = 1;
 	required string data_link = 2;
+}
+
+// deliverd
+
+// Get routes query
+message DeliverdGetRoutesQuery {
+	required string deliverd_id = 1;
+	required string mailfrom = 2;
+	required string rcptto =  3;
+	optional string authentified_user = 4;
+}
+
+// get routes response
+message deliverdGetRoutesResponse {
+	message Route {
+		required string remote_host = 1;
+		required int64 remote_port = 2;
+		optional string local_ip = 3;
+		optional int32 priority = 4;
+		optional string smtpauth_login = 5;
+		optional string smtpauth_password = 6;
+	}
+	required string deliverd_id = 1;
+	repeated Route routes = 2;
 }

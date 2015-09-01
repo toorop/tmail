@@ -12,6 +12,7 @@ import (
 )
 
 func deliverRemote(d *delivery) {
+	var err error
 	Log.Info(fmt.Sprintf("delivery-remote %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
 
 	// gatling tests
@@ -20,10 +21,27 @@ func deliverRemote(d *delivery) {
 	//return
 
 	// Get routes
-	routes, err := getRoutes(d.qMsg.MailFrom, d.qMsg.Host, d.qMsg.AuthUser)
-	Log.Debug("deliverd-remote: ", routes, err)
+	var routes *[]Route
+
+	// get from microservices
+	routes, err = msGetRoutes(d)
 	if err != nil {
-		d.dieTemp("unable to get route to host "+d.qMsg.Host+". "+err.Error(), true)
+		d.dieTemp("unable to get routes from mss - "+err.Error(), true)
+		return
+	}
+
+	// Default routes
+	if routes == nil {
+		routes, err = getRoutes(d.qMsg.MailFrom, d.qMsg.Host, d.qMsg.AuthUser)
+		if err != nil {
+			d.dieTemp("unable to get route to host "+d.qMsg.Host+". "+err.Error(), true)
+			return
+		}
+	}
+
+	// No routes ?? WTF !
+	if len(*routes) == 0 {
+		d.dieTemp("no route to host "+d.qMsg.Host, true)
 		return
 	}
 

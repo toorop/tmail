@@ -12,6 +12,8 @@ It has these top-level messages:
 	SmtpdResponse
 	SmtpdNewClientMsg
 	SmtpdDataMsg
+	DeliverdGetRoutesQuery
+	DeliverdGetRoutesResponse
 */
 package msproto
 
@@ -115,6 +117,128 @@ func (m *SmtpdDataMsg) GetSessionId() string {
 func (m *SmtpdDataMsg) GetDataLink() string {
 	if m != nil && m.DataLink != nil {
 		return *m.DataLink
+	}
+	return ""
+}
+
+// Get routes query
+type DeliverdGetRoutesQuery struct {
+	DeliverdId       *string `protobuf:"bytes,1,req,name=deliverd_id" json:"deliverd_id,omitempty"`
+	Mailfrom         *string `protobuf:"bytes,2,req,name=mailfrom" json:"mailfrom,omitempty"`
+	Rcptto           *string `protobuf:"bytes,3,req,name=rcptto" json:"rcptto,omitempty"`
+	AuthentifiedUser *string `protobuf:"bytes,4,opt,name=authentified_user" json:"authentified_user,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *DeliverdGetRoutesQuery) Reset()         { *m = DeliverdGetRoutesQuery{} }
+func (m *DeliverdGetRoutesQuery) String() string { return proto.CompactTextString(m) }
+func (*DeliverdGetRoutesQuery) ProtoMessage()    {}
+
+func (m *DeliverdGetRoutesQuery) GetDeliverdId() string {
+	if m != nil && m.DeliverdId != nil {
+		return *m.DeliverdId
+	}
+	return ""
+}
+
+func (m *DeliverdGetRoutesQuery) GetMailfrom() string {
+	if m != nil && m.Mailfrom != nil {
+		return *m.Mailfrom
+	}
+	return ""
+}
+
+func (m *DeliverdGetRoutesQuery) GetRcptto() string {
+	if m != nil && m.Rcptto != nil {
+		return *m.Rcptto
+	}
+	return ""
+}
+
+func (m *DeliverdGetRoutesQuery) GetAuthentifiedUser() string {
+	if m != nil && m.AuthentifiedUser != nil {
+		return *m.AuthentifiedUser
+	}
+	return ""
+}
+
+// get routes response
+type DeliverdGetRoutesResponse struct {
+	DeliverdId       *string                            `protobuf:"bytes,1,req,name=deliverd_id" json:"deliverd_id,omitempty"`
+	Routes           []*DeliverdGetRoutesResponse_Route `protobuf:"bytes,2,rep,name=routes" json:"routes,omitempty"`
+	XXX_unrecognized []byte                             `json:"-"`
+}
+
+func (m *DeliverdGetRoutesResponse) Reset()         { *m = DeliverdGetRoutesResponse{} }
+func (m *DeliverdGetRoutesResponse) String() string { return proto.CompactTextString(m) }
+func (*DeliverdGetRoutesResponse) ProtoMessage()    {}
+
+func (m *DeliverdGetRoutesResponse) GetDeliverdId() string {
+	if m != nil && m.DeliverdId != nil {
+		return *m.DeliverdId
+	}
+	return ""
+}
+
+func (m *DeliverdGetRoutesResponse) GetRoutes() []*DeliverdGetRoutesResponse_Route {
+	if m != nil {
+		return m.Routes
+	}
+	return nil
+}
+
+type DeliverdGetRoutesResponse_Route struct {
+	RemoteHost       *string `protobuf:"bytes,1,req,name=remote_host" json:"remote_host,omitempty"`
+	RemotePort       *int64  `protobuf:"varint,2,req,name=remote_port" json:"remote_port,omitempty"`
+	LocalIp          *string `protobuf:"bytes,3,opt,name=local_ip" json:"local_ip,omitempty"`
+	Priority         *int32  `protobuf:"varint,4,opt,name=priority" json:"priority,omitempty"`
+	SmtpauthLogin    *string `protobuf:"bytes,5,opt,name=smtpauth_login" json:"smtpauth_login,omitempty"`
+	SmtpauthPassword *string `protobuf:"bytes,6,opt,name=smtpauth_password" json:"smtpauth_password,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *DeliverdGetRoutesResponse_Route) Reset()         { *m = DeliverdGetRoutesResponse_Route{} }
+func (m *DeliverdGetRoutesResponse_Route) String() string { return proto.CompactTextString(m) }
+func (*DeliverdGetRoutesResponse_Route) ProtoMessage()    {}
+
+func (m *DeliverdGetRoutesResponse_Route) GetRemoteHost() string {
+	if m != nil && m.RemoteHost != nil {
+		return *m.RemoteHost
+	}
+	return ""
+}
+
+func (m *DeliverdGetRoutesResponse_Route) GetRemotePort() int64 {
+	if m != nil && m.RemotePort != nil {
+		return *m.RemotePort
+	}
+	return 0
+}
+
+func (m *DeliverdGetRoutesResponse_Route) GetLocalIp() string {
+	if m != nil && m.LocalIp != nil {
+		return *m.LocalIp
+	}
+	return ""
+}
+
+func (m *DeliverdGetRoutesResponse_Route) GetPriority() int32 {
+	if m != nil && m.Priority != nil {
+		return *m.Priority
+	}
+	return 0
+}
+
+func (m *DeliverdGetRoutesResponse_Route) GetSmtpauthLogin() string {
+	if m != nil && m.SmtpauthLogin != nil {
+		return *m.SmtpauthLogin
+	}
+	return ""
+}
+
+func (m *DeliverdGetRoutesResponse_Route) GetSmtpauthPassword() string {
+	if m != nil && m.SmtpauthPassword != nil {
+		return *m.SmtpauthPassword
 	}
 	return ""
 }

@@ -39,7 +39,7 @@ func GetAllRoutes() (routes []Route, err error) {
 	return
 }
 
-// add en new route
+// AddRoute add a new route
 func AddRoute(host, localIp, remoteHost string, remotePort, priority int, user, mailFrom, smtpAuthLogin, smtpAuthPasswd string) error {
 	var err error
 	route := new(Route)

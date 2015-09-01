@@ -4,6 +4,7 @@ package core
 
 import (
 	"crypto/tls"
+	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -34,7 +35,13 @@ func newSMTPClient(routes *[]Route) (client *smtpClient, err error) {
 	for _, route := range *routes {
 		localIPs := []net.IP{}
 		remoteAddresses := []net.TCPAddr{}
-		// no mix beetween failover and round robin for local IP
+
+		// If there is no local IP get defdault (as defined in config)
+		if route.LocalIp.String == "" {
+			route.LocalIp = sql.NullString{String: Cfg.GetLocalIps(), Valid: true}
+		}
+
+		// there should be no mix beetween failover and round robin for local IP
 		failover := strings.Count(route.LocalIp.String, "&") != 0
 		roundRobin := strings.Count(route.LocalIp.String, "|") != 0
 		if failover && roundRobin {
@@ -106,9 +113,6 @@ func newSMTPClient(routes *[]Route) (client *smtpClient, err error) {
 				if IsIPV4(localIP.String()) != IsIPV4(remoteAddr.IP.String()) {
 					continue
 				}
-				// TODO timeout en config
-				//err, conn := dial(remoteAddr, localIP.String())
-				//remoteAddr.IP = net.ParseIP("194.25.134.8")
 
 				localAddr, err := net.ResolveTCPAddr("tcp", localIP.String()+":0")
 				if err != nil {

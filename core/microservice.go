@@ -3,6 +3,7 @@ package core
 import (
 	// "errors"
 	"bytes"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -82,36 +83,40 @@ func (ms *microservice) doRequest(data *[]byte) (*http.Response, error) {
 		Timeout: time.Duration(ms.timeout) * time.Second,
 	}
 	return client.Do(req)
-
 }
 
-// smtpdExec exec microservice
-func (ms *microservice) smtpdExec(data *[]byte) (*msproto.SmtpdResponse, error) {
-
-	// HTTP resquest
+// call will call microservice
+func (ms *microservice) call(data *[]byte) (*[]byte, error) {
 	r, err := ms.doRequest(data)
 	if err != nil {
 		return nil, err
 	}
 	defer r.Body.Close()
-
-	body, err := ioutil.ReadAll(r.Body)
+	// always get returned data
+	rawBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}
-	// HTTP code > 399
+	// HTTP error handling
 	if r.StatusCode > 399 {
-		return nil, errors.New(string(body))
+		return nil, errors.New(r.Status + " - " + string(rawBody))
 	}
+	return &rawBody, nil
+}
 
-	// parse data as Smtpdresponse
-	resp := &msproto.SmtpdResponse{}
-	err = proto.Unmarshal(body, resp)
+// smtpdExec exec microservice
+func (ms *microservice) smtpdExec(data *[]byte) (*msproto.SmtpdResponse, error) {
+	response, err := ms.call(data)
 	if err != nil {
 		return nil, err
 	}
-
-	return resp, nil
+	// parse data as Smtpdresponse
+	msResponse := &msproto.SmtpdResponse{}
+	err = proto.Unmarshal(*response, msResponse)
+	if err != nil {
+		return nil, err
+	}
+	return msResponse, nil
 }
 
 // smtpdBreakOnExecError handle error when calling a ms
@@ -155,9 +160,7 @@ func smtpdNewClient(s *SMTPServerSession) (stop bool) {
 	if len(Cfg.GetMicroservicesUri("smtpdnewclient")) == 0 {
 		return false
 	}
-
 	stop = false
-
 	// serialize message to send
 	data, err := proto.Marshal(&msproto.SmtpdNewClientMsg{
 		SessionId: proto.String(s.uuid),
@@ -240,7 +243,6 @@ func smtpdData(s *SMTPServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 	})
 
 	for _, uri := range Cfg.GetMicroservicesUri("smtpddata") {
-
 		// parse uri
 		ms, err := newMicroservice(uri)
 		if err != nil {
@@ -262,8 +264,63 @@ func smtpdData(s *SMTPServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 			return true, extraHeaders
 		}
 	}
-
 	return false, extraHeaders
+}
+
+// msGetRoutesmsGetRoutes returns routes from microservices
+func msGetRoutes(d *delivery) (routes *[]Route, err error) {
+	r := []Route{}
+	routes = &r
+	msURI := Cfg.GetMicroservicesUri("deliverdgetroutes")
+	if len(msURI) == 0 {
+		return
+	}
+	// serialize data
+	msg, err := proto.Marshal(&msproto.DeliverdGetRoutesQuery{
+		DeliverdId:       proto.String(d.id),
+		Mailfrom:         proto.String(d.qMsg.MailFrom),
+		Rcptto:           proto.String(d.qMsg.RcptTo),
+		AuthentifiedUser: proto.String(d.qMsg.AuthUser),
+	})
+
+	// There should be only one URI for getroutes
+	// so we take msURI[0]
+	ms, err := newMicroservice(msURI[0])
+	if err != nil {
+		Log.Error("deliverd-ms " + d.id + ": unable to parse microservice url " + msURI[0] + " - " + err.Error())
+		return
+	}
+
+	response, err := ms.call(&msg)
+	if err != nil {
+		return nil, err
+	}
+
+	// parse resp
+	msResponse := &msproto.DeliverdGetRoutesResponse{}
+	if err := proto.Unmarshal(*response, msResponse); err != nil {
+		return nil, err
+	}
+	// no routes found
+	if len(*routes) == 0 {
+		return nil, nil
+	}
+	for _, route := range msResponse.GetRoutes() {
+		r := Route{
+			RemoteHost: route.GetRemoteHost(),
+		}
+		if route.GetLocalIp() != "" {
+			r.LocalIp = sql.NullString{String: route.GetLocalIp(), Valid: true}
+		}
+		if route.GetRemotePort() != 0 {
+			r.RemotePort = sql.NullInt64{Int64: int64(route.GetRemotePort()), Valid: true}
+		}
+		if route.GetPriority() != 0 {
+			r.Priority = sql.NullInt64{Int64: int64(route.GetPriority()), Valid: true}
+		}
+		*routes = append(*routes, r)
+	}
+	return
 }
 
 /*
