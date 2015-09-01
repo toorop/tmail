@@ -119,6 +119,18 @@ func (ms *microservice) smtpdExec(data *[]byte) (*msproto.SmtpdResponse, error) 
 	return msResponse, nil
 }
 
+// shouldWeStopOnError return if process wich call microserviuce should stop on error
+func (ms *microservice) shouldWeStopOnError() (stop bool) {
+	switch ms.onFailure {
+	case PERMFAIL:
+		return true
+	case TEMPFAIL:
+		return true
+	default:
+		return false
+	}
+}
+
 // smtpdStopOnError handle error for smtpd microservice
 // it returns true if tmail must stop processing other ms
 func (ms *microservice) smtpdStopOnError(err error, s *SMTPServerSession) (stop bool) {
@@ -306,7 +318,8 @@ func smtpdData(s *SMTPServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 }
 
 // msGetRoutesmsGetRoutes returns routes from microservices
-func msGetRoutes(d *delivery) (routes *[]Route, err error) {
+func msGetRoutes(d *delivery) (routes *[]Route, stop bool) {
+	stop = false
 	r := []Route{}
 	routes = &r
 	msURI := Cfg.GetMicroservicesUri("deliverdgetroutes")
@@ -325,23 +338,26 @@ func msGetRoutes(d *delivery) (routes *[]Route, err error) {
 	// so we take msURI[0]
 	ms, err := newMicroservice(msURI[0])
 	if err != nil {
-		Log.Error("deliverd-ms " + d.id + ": unable to parse microservice url " + msURI[0] + " - " + err.Error())
-		return
+		//Log.Error("deliverd-ms " + d.id + ": unable to parse microservice url " + msURI[0] + " - " + err.Error())
+		d.dieTemp("unable to get routes from mss - "+err.Error(), true)
+		return nil, ms.shouldWeStopOnError()
 	}
 
 	response, err := ms.call(&msg)
 	if err != nil {
-		return nil, err
+		d.dieTemp("unable to get routes from mss - "+err.Error(), true)
+		return nil, ms.shouldWeStopOnError()
 	}
 
 	// parse resp
 	msResponse := &msproto.DeliverdGetRoutesResponse{}
 	if err := proto.Unmarshal(*response, msResponse); err != nil {
-		return nil, err
+		d.dieTemp("unable to get routes from mss - "+err.Error(), true)
+		return routes, ms.shouldWeStopOnError()
 	}
 	// no routes found
 	if len(msResponse.GetRoutes()) == 0 {
-		return nil, nil
+		return nil, false
 	}
 	for _, route := range msResponse.GetRoutes() {
 		r := Route{
@@ -358,7 +374,7 @@ func msGetRoutes(d *delivery) (routes *[]Route, err error) {
 		}
 		*routes = append(*routes, r)
 	}
-	return
+	return routes, false
 }
 
 /*

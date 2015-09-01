@@ -22,11 +22,11 @@ func deliverRemote(d *delivery) {
 
 	// Get routes
 	var routes *[]Route
+	var shouldWeStop bool
 
 	// get from microservices
-	routes, err = msGetRoutes(d)
-	if err != nil {
-		d.dieTemp("unable to get routes from mss - "+err.Error(), true)
+	routes, shouldWeStop = msGetRoutes(d)
+	if shouldWeStop {
 		return
 	}
 
