@@ -470,7 +470,8 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	// make domain part insensitive
 	rcptto = localDom[0] + "@" + strings.ToLower(localDom[1])
 
-	// Relay granted ?
+	// Relay granted for this recipient ?
+	s.relayGranted = false
 
 	// check via micro service
 	shouldWeStopHere := msSmtpdRcptToRelayIsGranted(s, rcptto)
