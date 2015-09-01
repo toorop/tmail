@@ -16,6 +16,17 @@ message SmtpdNewClientMsg {
 }
 
 
+// smtpdRcpttoAccessIsGranted
+message smtpdRcpttoAccessIsGrantedQuery {
+	required string session_id = 1;
+	required string rcptto = 2;
+}
+
+// SmtpdRcpttoAccessIsGrantedResponse
+message SmtpdRcpttoAccessIsGrantedResponse {
+	required string session_id = 1;
+	required bool relay_granted = 2;
+}
 
 // smtpdDataMsg
 message SmtpdDataMsg {

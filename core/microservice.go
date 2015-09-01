@@ -119,9 +119,9 @@ func (ms *microservice) smtpdExec(data *[]byte) (*msproto.SmtpdResponse, error) 
 	return msResponse, nil
 }
 
-// smtpdBreakOnExecError handle error when calling a ms
+// smtpdStopOnError handle error for smtpd microservice
 // it returns true if tmail must stop processing other ms
-func (ms *microservice) smtpdBreakOnExecError(err error, s *SMTPServerSession) (stop bool) {
+func (ms *microservice) smtpdStopOnError(err error, s *SMTPServerSession) (stop bool) {
 	if err == nil {
 		return false
 	}
@@ -155,12 +155,13 @@ func smtpdReturn(resp *msproto.SmtpdResponse, s *SMTPServerSession) (stop bool) 
 	return false
 }
 
-// smtpdNewClient execute microservices for smtpdnewclient hook
-func smtpdNewClient(s *SMTPServerSession) (stop bool) {
+// msSmtpdNewClient execute microservices for smtpdnewclient hook
+func msSmtpdNewClient(s *SMTPServerSession) (stop bool) {
 	if len(Cfg.GetMicroservicesUri("smtpdnewclient")) == 0 {
 		return false
 	}
 	stop = false
+
 	// serialize message to send
 	data, err := proto.Marshal(&msproto.SmtpdNewClientMsg{
 		SessionId: proto.String(s.uuid),
@@ -193,7 +194,7 @@ func smtpdNewClient(s *SMTPServerSession) (stop bool) {
 		resp, err := ms.smtpdExec(&data)
 
 		// Handle error from MS
-		if ms.smtpdBreakOnExecError(err, s) {
+		if ms.smtpdStopOnError(err, s) {
 			return true
 		}
 
@@ -203,6 +204,43 @@ func smtpdNewClient(s *SMTPServerSession) (stop bool) {
 		}
 	}
 	return
+}
+
+// msSmtpdRcptToRelayIsGranted check if relay is granted by using rcpt to
+func msSmtpdRcptToRelayIsGranted(s *SMTPServerSession, rcpt string) (stop bool) {
+	msURI := Cfg.GetMicroservicesUri("smtpdrcptorelayisgranted")
+	if len(msURI) == 0 {
+		return false
+	}
+
+	ms, err := newMicroservice(msURI[0])
+	if err != nil {
+		return ms.smtpdStopOnError(err, s)
+	}
+
+	s.log(s.uuid, rcpt)
+
+	msg, err := proto.Marshal(&msproto.SmtpdRcpttoAccessIsGrantedQuery{
+		SessionId: proto.String(s.uuid),
+		Rcptto:    proto.String(rcpt),
+	})
+	if err != nil {
+		return ms.smtpdStopOnError(err, s)
+	}
+
+	response, err := ms.call(&msg)
+	if err != nil {
+		return ms.smtpdStopOnError(err, s)
+	}
+
+	// parse resp
+	msResponse := &msproto.SmtpdRcpttoAccessIsGrantedResponse{}
+	err = proto.Unmarshal(*response, msResponse)
+	if err != nil {
+		return ms.smtpdStopOnError(err, s)
+	}
+	s.relayGranted = msResponse.GetRelayGranted()
+	return false
 }
 
 // smtpdData executes microservices for the smtpdData hook
@@ -256,7 +294,7 @@ func smtpdData(s *SMTPServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 
 		resp, err := ms.smtpdExec(&msg)
 		// Handle error from MS
-		if ms.smtpdBreakOnExecError(err, s) {
+		if ms.smtpdStopOnError(err, s) {
 			return true, nil
 		}
 		*extraHeaders = append(*extraHeaders, resp.GetExtraHeaders()...)

@@ -11,6 +11,8 @@ It is generated from these files:
 It has these top-level messages:
 	SmtpdResponse
 	SmtpdNewClientMsg
+	SmtpdRcpttoAccessIsGrantedQuery
+	SmtpdRcpttoAccessIsGrantedResponse
 	SmtpdDataMsg
 	DeliverdGetRoutesQuery
 	DeliverdGetRoutesResponse
@@ -94,6 +96,56 @@ func (m *SmtpdNewClientMsg) GetRemoteIp() string {
 		return *m.RemoteIp
 	}
 	return ""
+}
+
+// smtpdRcpttoAccessIsGranted
+type SmtpdRcpttoAccessIsGrantedQuery struct {
+	SessionId        *string `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
+	Rcptto           *string `protobuf:"bytes,2,req,name=rcptto" json:"rcptto,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *SmtpdRcpttoAccessIsGrantedQuery) Reset()         { *m = SmtpdRcpttoAccessIsGrantedQuery{} }
+func (m *SmtpdRcpttoAccessIsGrantedQuery) String() string { return proto.CompactTextString(m) }
+func (*SmtpdRcpttoAccessIsGrantedQuery) ProtoMessage()    {}
+
+func (m *SmtpdRcpttoAccessIsGrantedQuery) GetSessionId() string {
+	if m != nil && m.SessionId != nil {
+		return *m.SessionId
+	}
+	return ""
+}
+
+func (m *SmtpdRcpttoAccessIsGrantedQuery) GetRcptto() string {
+	if m != nil && m.Rcptto != nil {
+		return *m.Rcptto
+	}
+	return ""
+}
+
+// SmtpdRcpttoAccessIsGrantedResponse
+type SmtpdRcpttoAccessIsGrantedResponse struct {
+	SessionId        *string `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
+	RelayGranted     *bool   `protobuf:"varint,2,req,name=relay_granted" json:"relay_granted,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *SmtpdRcpttoAccessIsGrantedResponse) Reset()         { *m = SmtpdRcpttoAccessIsGrantedResponse{} }
+func (m *SmtpdRcpttoAccessIsGrantedResponse) String() string { return proto.CompactTextString(m) }
+func (*SmtpdRcpttoAccessIsGrantedResponse) ProtoMessage()    {}
+
+func (m *SmtpdRcpttoAccessIsGrantedResponse) GetSessionId() string {
+	if m != nil && m.SessionId != nil {
+		return *m.SessionId
+	}
+	return ""
+}
+
+func (m *SmtpdRcpttoAccessIsGrantedResponse) GetRelayGranted() bool {
+	if m != nil && m.RelayGranted != nil {
+		return *m.RelayGranted
+	}
+	return false
 }
 
 // smtpdDataMsg
