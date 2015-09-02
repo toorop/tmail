@@ -120,7 +120,7 @@ func newSMTPClient(routes *[]Route) (client *smtpClient, err error) {
 				}
 
 				// Dial timeout
-				connectTimer := time.NewTimer(time.Duration(15) * time.Second)
+				connectTimer := time.NewTimer(time.Duration(30) * time.Second)
 				done := make(chan error, 1)
 				var conn net.Conn
 				go func() {
@@ -147,7 +147,7 @@ func newSMTPClient(routes *[]Route) (client *smtpClient, err error) {
 				case <-connectTimer.C:
 					err = errors.New("timeout")
 				}
-				Log.Debug("unable to get a SMTP client", localIP, "->", remoteAddr.IP.String(), ":", remoteAddr.Port, "-", err.Error())
+				Log.Info("unable to get a SMTP client", localIP, "->", remoteAddr.IP.String(), ":", remoteAddr.Port, "-", err.Error())
 			}
 		}
 	}
