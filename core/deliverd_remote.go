@@ -12,8 +12,11 @@ import (
 )
 
 func deliverRemote(d *delivery) {
+	ChDeliverdRemoteCount <- 1
+	defer func() { ChDeliverdRemoteCount <- -1 }()
 	var err error
-	Log.Info(fmt.Sprintf("delivery-remote %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
+	time.Sleep(100 * time.Nanosecond)
+	Log.Info(fmt.Sprintf("delivery-remote %s: starting new delivery %d/%d from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, DeliverdRemoteCount, Cfg.GetDeliverdMaxInFlight(), d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
 
 	// gatling tests
 	//Log.Info(fmt.Sprintf("deliverd-remote %s: done for gatling test", d.id))
