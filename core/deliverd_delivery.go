@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"path"
 	"runtime/debug"
 	"text/template"
@@ -302,7 +303,9 @@ func (d *delivery) requeue(newStatus ...uint32) {
 	//	return
 	//}
 	// Calcul du delais, pour le moment on accroit betement de 60 secondes a chaque tentative
-	delay := time.Duration(d.nsqMsg.Attempts*60) * time.Second
+	// + random
+	rand.Seed(time.Now().Unix())
+	delay := time.Duration(d.nsqMsg.Attempts*uint16(rand.Intn(180)+60)) * time.Second
 	if delay > time.Hour {
 		delay = time.Duration(1 * time.Hour)
 	}
