@@ -135,7 +135,7 @@ func newSMTPClient(routes *[]Route) (client *smtpClient, err error) {
 							conn: conn,
 						}
 						client.text = textproto.NewConn(conn)
-						_, _, err := client.text.ReadCodeLine(220)
+						_, _, err = client.text.ReadCodeLine(220)
 						if err == nil {
 							client.route = &route
 							return client, nil
