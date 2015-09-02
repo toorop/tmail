@@ -230,8 +230,6 @@ func msSmtpdRcptToRelayIsGranted(s *SMTPServerSession, rcpt string) (stop bool) 
 		return ms.smtpdStopOnError(err, s)
 	}
 
-	s.log(s.uuid, rcpt)
-
 	msg, err := proto.Marshal(&msproto.SmtpdRcpttoAccessIsGrantedQuery{
 		SessionId: proto.String(s.uuid),
 		Rcptto:    proto.String(rcpt),

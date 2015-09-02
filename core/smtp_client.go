@@ -120,7 +120,7 @@ func newSMTPClient(routes *[]Route) (client *smtpClient, err error) {
 				}
 
 				// Dial timeout
-				connectTimer := time.NewTimer(time.Duration(30) * time.Second)
+				connectTimer := time.NewTimer(time.Duration(15) * time.Second)
 				done := make(chan error, 1)
 				var conn net.Conn
 				go func() {

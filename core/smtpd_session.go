@@ -390,7 +390,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		}
 	}
 	s.seenMail = true
-	s.log(fmt.Sprintf("new mail from %s", s.envelope.MailFrom))
+	s.log("MAIL FROM " + s.envelope.MailFrom)
 	s.out("250 ok")
 }
 
@@ -862,7 +862,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		rawMessage = append([]byte(fmt.Sprintf("Message-ID: <%s>\r\n", HeaderMessageID)), rawMessage...)
 
 	}
-	s.log("MAIL - Message-ID:", string(HeaderMessageID))
+	s.log("message-id:", string(HeaderMessageID))
 
 	// Microservice
 	stop, extraHeader := smtpdData(s, &rawMessage)
@@ -936,7 +936,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		s.reset()
 		return
 	}
-	s.log("MAIL - message queued as", id)
+	s.log("message queued as", id)
 	s.out(fmt.Sprintf("250 2.0.0 Ok: queued %s", id))
 	s.reset()
 	return
