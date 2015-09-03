@@ -815,7 +815,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		if hops > Cfg.GetSmtpdMaxHops() {
 			s.log(fmt.Sprintf("MAIL - Message is looping. Hops : %d", hops))
 			s.out("554 5.4.6 too many hops, this message is looping")
-			//s.purgeConn()
+			s.purgeConn()
 			s.reset()
 			return
 		}
@@ -824,7 +824,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		if dataBytes > Cfg.GetSmtpdMaxDataBytes() {
 			s.log(fmt.Sprintf("MAIL - Message size (%d) exceeds maxDataBytes (%d).", dataBytes, Cfg.GetSmtpdMaxDataBytes()))
 			s.out("552 5.3.4 sorry, that message size exceeds my databytes limit")
-			//s.purgeConn()
+			s.purgeConn()
 			s.reset()
 			return
 		}

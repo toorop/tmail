@@ -34,7 +34,7 @@ func deliverRemote(d *delivery) {
 	}
 
 	// Default routes
-	if routes == nil {
+	if routes == nil || len(*routes) == 0 {
 		routes, err = getRoutes(d.qMsg.MailFrom, d.qMsg.Host, d.qMsg.AuthUser)
 		if err != nil {
 			d.dieTemp("unable to get route to host "+d.qMsg.Host+". "+err.Error(), true)

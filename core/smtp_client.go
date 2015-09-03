@@ -31,6 +31,7 @@ type smtpClient struct {
 }
 
 // newSMTPClient return a connected SMTP client
+// TODO cache for IPKO
 func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error) {
 	for _, route := range *routes {
 		localIPs := []net.IP{}
@@ -146,10 +147,7 @@ func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error)
 					err = errors.New("timeout")
 					// todo si c'est un timeout pas la peine d'essayer les autres IP locales
 				}
-				//allErrors = append(allErrors, fmt.Sprintf("%s->%s:%d %s", localIP, remoteAddr.IP.String(), remoteAddr.Port, err.Error()))
-				Log.Info(fmt.Sprintf("deliverd-remote %s - unable to get a SMTP client for %s->%s%d - %s ", d.id, localIP, remoteAddr.IP.String(), remoteAddr.Port, err.Error()))
-
-				//Log.Info("deliverd-remote - unable to get a SMTP client for ", localIP, "->", remoteAddr.IP.String(), ":", remoteAddr.Port, "-", err.Error())
+				Log.Info(fmt.Sprintf("deliverd-remote %s - unable to get a SMTP client for %s->%s:%d - %s ", d.id, localIP, remoteAddr.IP.String(), remoteAddr.Port, err.Error()))
 			}
 		}
 	}
