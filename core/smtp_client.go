@@ -300,7 +300,7 @@ func (s *smtpClient) StartTLS(config *tls.Config) (code int, msg string, err err
 // AUTH
 func (s *smtpClient) Auth(a DeliverdAuth) (code int, msg string, err error) {
 	encoding := base64.StdEncoding
-	mech, resp, err := a.Start(&ServerInfo{Cfg.GetMe(), s.tls, s.auth})
+	mech, resp, err := a.Start(&ServerInfo{s.route.RemoteHost, s.tls, s.auth})
 	if err != nil {
 		s.Quit()
 		return
