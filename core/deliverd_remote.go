@@ -49,9 +49,9 @@ func deliverRemote(d *delivery) {
 	}
 
 	// Get client
-	client, err := newSMTPClient(routes)
+	client, err := newSMTPClient(d, routes)
 	if err != nil {
-		Log.Error(fmt.Sprintf("deliverd-remote %s - unable to get SMTP client. %v", d.id, err.Error()))
+		Log.Error(fmt.Sprintf("deliverd-remote %s - %s", d.id, err.Error()))
 		d.dieTemp("unable to get client", false)
 		return
 	}
@@ -85,9 +85,9 @@ func deliverRemote(d *delivery) {
 			if Cfg.GetDeliverdRemoteTLSFallback() {
 				// fall back to noTLS
 				client.close()
-				client, err = newSMTPClient(routes)
+				client, err = newSMTPClient(d, routes)
 				if err != nil {
-					Log.Error(fmt.Sprintf("deliverd-remote %s - unable to get connected SMTP client - %v", d.id, err.Error()))
+					Log.Error(fmt.Sprintf("deliverd-remote %s - %s", d.id, err.Error()))
 					d.dieTemp("unable to get client", false)
 					return
 				}
