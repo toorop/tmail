@@ -135,19 +135,18 @@ func newSMTPClient(routes *[]Route) (client *smtpClient, err error) {
 							conn: conn,
 						}
 						client.text = textproto.NewConn(conn)
-						_, _, err = client.text.ReadCodeLine(220)
+						_, _, err = client.text.ReadResponse(220)
 						if err == nil {
 							client.route = &route
 							return client, nil
 						}
 					}
-					//return nil, err
-
 				// Timeout
 				case <-connectTimer.C:
 					err = errors.New("timeout")
+					// todo si c'est un timeout pas la peine d'essayer les autres IP locales
 				}
-				Log.Info("unable to get a SMTP client", localIP, "->", remoteAddr.IP.String(), ":", remoteAddr.Port, "-", err.Error())
+				Log.Info("deliverd-remote - unable to get a SMTP client for ", localIP, "->", remoteAddr.IP.String(), ":", remoteAddr.Port, "-", err.Error())
 			}
 		}
 	}

@@ -307,8 +307,8 @@ func (d *delivery) requeue(newStatus ...uint32) {
 	rand.Seed(time.Now().Unix())
 	randDuration := rand.Intn(180) + 60
 	delay := time.Duration(d.nsqMsg.Attempts*uint16(randDuration)) * time.Second
-	if delay > time.Hour {
-		delay = time.Duration(3600+randDuration) * time.Second
+	if delay >= time.Hour {
+		delay = time.Duration(3500-randDuration) * time.Second
 	}
 	// Todo update next delivery en DB
 	d.qMsg.NextDeliveryScheduledAt = time.Now().Add(delay)
