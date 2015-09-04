@@ -337,23 +337,24 @@ func msGetRoutes(d *delivery) (routes *[]Route, stop bool) {
 	ms, err := newMicroservice(msURI[0])
 	if err != nil {
 		//Log.Error("deliverd-ms " + d.id + ": unable to parse microservice url " + msURI[0] + " - " + err.Error())
-		d.dieTemp("unable to get routes from mss - "+err.Error(), true)
+		Log.Error(fmt.Sprintf("deliverd-remote %s - msGetRoutes - unable to init new ms: %s", d.id, err.Error()))
 		return nil, ms.shouldWeStopOnError()
 	}
 
 	response, err := ms.call(&msg)
 	if err != nil {
-		d.dieTemp("unable to get routes from mss - "+err.Error(), true)
+		Log.Error(fmt.Sprintf("deliverd-remote %s - msGetRoutes - unable to call ms: %s", d.id, err.Error()))
 		return nil, ms.shouldWeStopOnError()
 	}
 
 	// parse resp
 	msResponse := &msproto.DeliverdGetRoutesResponse{}
 	if err := proto.Unmarshal(*response, msResponse); err != nil {
-		d.dieTemp("unable to get routes from mss - "+err.Error(), true)
+		Log.Error(fmt.Sprintf("deliverd-remote %s - msGetRoutes - unable to unmarshall response: %s", d.id, err.Error()))
 		return routes, ms.shouldWeStopOnError()
 	}
 	// no routes found
+	Log.Info(msResponse.GetRoutes())
 	if len(msResponse.GetRoutes()) == 0 {
 		return nil, false
 	}
