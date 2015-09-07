@@ -21,6 +21,7 @@ import (
 
 type onfailure int
 
+// what to do on failure
 const (
 	CONTINUE onfailure = 1 + iota
 	TEMPFAIL
@@ -104,23 +105,8 @@ func (ms *microservice) call(data *[]byte) (*[]byte, error) {
 	return &rawBody, nil
 }
 
-// smtpdExec exec microservice
-func (ms *microservice) smtpdExec(data *[]byte) (*msproto.SmtpdResponse, error) {
-	response, err := ms.call(data)
-	if err != nil {
-		return nil, err
-	}
-	// parse data as Smtpdresponse
-	msResponse := &msproto.SmtpdResponse{}
-	err = proto.Unmarshal(*response, msResponse)
-	if err != nil {
-		return nil, err
-	}
-	return msResponse, nil
-}
-
 // shouldWeStopOnError return if process wich call microserviuce should stop on error
-func (ms *microservice) shouldWeStopOnError() (stop bool) {
+func (ms *microservice) stopOnError() (stop bool) {
 	switch ms.onFailure {
 	case PERMFAIL:
 		return true
@@ -133,18 +119,17 @@ func (ms *microservice) shouldWeStopOnError() (stop bool) {
 
 // smtpdStopOnError handle error for smtpd microservice
 // it returns true if tmail must stop processing other ms
-func (ms *microservice) smtpdStopOnError(err error, s *SMTPServerSession) (stop bool) {
+// handleSMTPError
+func (ms *microservice) handleSMTPError(err error, s *SMTPServerSession) (stop bool) {
 	if err == nil {
 		return false
 	}
-	s.logError("ms " + ms.url + " failed. " + err.Error())
+	s.logError("microservice " + ms.url + " failed. " + err.Error())
 	switch ms.onFailure {
 	case PERMFAIL:
 		s.out("550 sorry something wrong happened")
-		s.exitAsap()
 		return true
 	case TEMPFAIL:
-		s.exitAsap()
 		s.out("450 sorry something wrong happened")
 		return true
 	default:
@@ -152,40 +137,40 @@ func (ms *microservice) smtpdStopOnError(err error, s *SMTPServerSession) (stop 
 	}
 }
 
-// smtpdHandleResponse common handling of msproto.SmtpdResponse
-func smtpdReturn(resp *msproto.SmtpdResponse, s *SMTPServerSession) (stop bool) {
-	s.logDebug(resp.String())
-	if resp.GetSmtpCode() != 0 && resp.GetSmtpMsg() != "" {
-		outMsg := fmt.Sprintf("%d %s", resp.GetSmtpCode(), resp.GetSmtpMsg())
-		s.log("ms smtp response: " + outMsg)
-		s.out(outMsg)
-		if resp.GetCloseConnection() {
-			s.exitAsap()
-		}
-		return true
+// handleSmtpResponse common handling of msproto.SmtpdResponse
+func handleSMTPResponse(smtpResponse *msproto.SmtpResponse, s *SMTPServerSession) (stop bool) {
+	if smtpResponse == nil {
+		return
 	}
-	return false
+	if smtpResponse.GetCode() != 0 && smtpResponse.GetMsg() != "" {
+		reply := fmt.Sprintf("%d %s", smtpResponse.GetCode(), smtpResponse.GetMsg())
+		s.out(reply)
+		s.log("smtp response from microservice sent to client: " + reply)
+		// if reply is sent we do not continue processing this command
+		stop = true
+	}
+	return
 }
 
 // msSmtpdNewClient execute microservices for smtpdnewclient hook
+// Warning: error are not returned to client
 func msSmtpdNewClient(s *SMTPServerSession) (stop bool) {
 	if len(Cfg.GetMicroservicesUri("smtpdnewclient")) == 0 {
 		return false
 	}
-	stop = false
 
 	// serialize message to send
-	data, err := proto.Marshal(&msproto.SmtpdNewClientMsg{
+	msg, err := proto.Marshal(&msproto.SmtpdNewClientQuery{
 		SessionId: proto.String(s.uuid),
 		RemoteIp:  proto.String(s.conn.RemoteAddr().String()),
 	})
 	if err != nil {
-		s.logError("unable to serialize ms data as SmtpdNewClientMsg. " + err.Error())
+		s.logError("unable to serialize data as SmtpdNewClientMsg. " + err.Error())
 		return
 	}
 
 	for _, uri := range Cfg.GetMicroservicesUri("smtpdnewclient") {
-		// parse uri
+		stop = false
 		ms, err := newMicroservice(uri)
 		if err != nil {
 			s.logError("unable to parse microservice url " + uri + ". " + err.Error())
@@ -197,21 +182,40 @@ func msSmtpdNewClient(s *SMTPServerSession) (stop bool) {
 		}
 
 		// call ms
-		s.log("call ms " + uri)
+		s.log("calling " + ms.url)
 		if ms.fireAndForget {
-			go ms.smtpdExec(&data)
+			go ms.call(&msg)
 			continue
 		}
 
-		resp, err := ms.smtpdExec(&data)
-
-		// Handle error from MS
-		if ms.smtpdStopOnError(err, s) {
-			return true
+		response, err := ms.call(&msg)
+		if err != nil {
+			s.logError("microservice " + ms.url + " failed. " + err.Error())
+			if ms.stopOnError() {
+				return
+			}
+			continue
 		}
 
-		// Handle response
-		if smtpdReturn(resp, s) {
+		// parse resp
+		msResponse := &msproto.SmtpdNewClientResponse{}
+		err = proto.Unmarshal(*response, msResponse)
+		if err != nil {
+			s.logError("microservice " + ms.url + " failed. " + err.Error())
+			if ms.stopOnError() {
+				return
+			}
+			continue
+		}
+
+		// send reply (or not)
+		stop = handleSMTPResponse(msResponse.GetSmtpResponse(), s)
+		// drop ?
+		if msResponse.GetDropConnection() {
+			s.exitAsap()
+			stop = true
+		}
+		if stop {
 			return true
 		}
 	}
@@ -219,44 +223,77 @@ func msSmtpdNewClient(s *SMTPServerSession) (stop bool) {
 }
 
 // msSmtpdRcptToRelayIsGranted check if relay is granted by using rcpt to
-func msSmtpdRcptToRelayIsGranted(s *SMTPServerSession, rcpt string) (stop bool) {
-	msURI := Cfg.GetMicroservicesUri("smtpdrcptorelayisgranted")
-	if len(msURI) == 0 {
+func msSmtpdRcptTo(s *SMTPServerSession, rcptTo string) (stop bool) {
+	if len(Cfg.GetMicroservicesUri("smtpdrcptto")) == 0 {
 		return false
 	}
-
-	ms, err := newMicroservice(msURI[0])
-	if err != nil {
-		return ms.smtpdStopOnError(err, s)
-	}
-
-	msg, err := proto.Marshal(&msproto.SmtpdRcpttoAccessIsGrantedQuery{
+	msg, err := proto.Marshal(&msproto.SmtpdRcptToQuery{
 		SessionId: proto.String(s.uuid),
-		Rcptto:    proto.String(rcpt),
+		Rcptto:    proto.String(rcptTo),
 	})
 	if err != nil {
-		return ms.smtpdStopOnError(err, s)
+		s.logError("unable to serialize data as SmtpdRcptToQuery. " + err.Error())
+		return
 	}
 
-	response, err := ms.call(&msg)
-	if err != nil {
-		return ms.smtpdStopOnError(err, s)
-	}
+	for _, uri := range Cfg.GetMicroservicesUri("smtpdrcptto") {
+		stop = false
+		ms, err := newMicroservice(uri)
+		if err != nil {
+			s.logError("unable to parse microservice url " + uri + ". " + err.Error())
+			continue
+		}
 
-	// parse resp
-	msResponse := &msproto.SmtpdRcpttoAccessIsGrantedResponse{}
-	err = proto.Unmarshal(*response, msResponse)
-	if err != nil {
-		return ms.smtpdStopOnError(err, s)
+		if s.user != nil && ms.skipAuthentifiedUser {
+			continue
+		}
+
+		// call ms
+		s.log("calling " + ms.url)
+		if ms.fireAndForget {
+			go ms.call(&msg)
+			continue
+		}
+
+		response, err := ms.call(&msg)
+		if err != nil {
+			if stop := ms.handleSMTPError(err, s); stop {
+				return true
+			}
+			continue
+		}
+
+		// parse resp
+		msResponse := &msproto.SmtpdRcptToResponse{}
+		err = proto.Unmarshal(*response, msResponse)
+		if err != nil {
+			if stop := ms.handleSMTPError(err, s); stop {
+				return true
+			}
+			continue
+		}
+
+		// Relay granted
+		s.relayGranted = msResponse.GetRelayGranted()
+
+		// send reply (or not)
+		stop = handleSMTPResponse(msResponse.GetSmtpResponse(), s)
+		// drop ?
+		if msResponse.GetDropConnection() {
+			s.exitAsap()
+			stop = true
+		}
+		if stop {
+			return true
+		}
+
 	}
-	s.relayGranted = msResponse.GetRelayGranted()
-	return false
+	return stop
 }
 
 // smtpdData executes microservices for the smtpdData hook
 func smtpdData(s *SMTPServerSession, rawMail *[]byte) (stop bool, extraHeaders *[]string) {
 	extraHeaders = &[]string{}
-
 	if len(Cfg.GetMicroservicesUri("smtpddata")) == 0 {
 		return false, extraHeaders
 	}
@@ -285,10 +322,14 @@ func smtpdData(s *SMTPServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 	}
 
 	// serialize data
-	msg, err := proto.Marshal(&msproto.SmtpdDataMsg{
+	msg, err := proto.Marshal(&msproto.SmtpdDataQuery{
 		SessionId: proto.String(s.uuid),
 		DataLink:  proto.String(link),
 	})
+	if err != nil {
+		s.logError("unable to serialize data as SmtpdDataQuery. " + err.Error())
+		return
+	}
 
 	for _, uri := range Cfg.GetMicroservicesUri("smtpddata") {
 		// parse uri
@@ -300,15 +341,36 @@ func smtpdData(s *SMTPServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 		if s.user != nil && ms.skipAuthentifiedUser {
 			continue
 		}
-		s.log("call ms " + uri)
 
-		resp, err := ms.smtpdExec(&msg)
-		// Handle error from MS
-		if ms.smtpdStopOnError(err, s) {
-			return true, nil
+		s.log("calling " + ms.url)
+		response, err := ms.call(&msg)
+		if err != nil {
+			if stop := ms.handleSMTPError(err, s); stop {
+				return true, extraHeaders
+			}
+			continue
 		}
-		*extraHeaders = append(*extraHeaders, resp.GetExtraHeaders()...)
-		if smtpdReturn(resp, s) {
+
+		// parse resp
+		msResponse := &msproto.SmtpdDataResponse{}
+		err = proto.Unmarshal(*response, msResponse)
+		if err != nil {
+			if stop := ms.handleSMTPError(err, s); stop {
+				return true, extraHeaders
+			}
+			continue
+		}
+
+		*extraHeaders = append(*extraHeaders, msResponse.GetExtraHeaders()...)
+
+		// send reply (or not)
+		stop = handleSMTPResponse(msResponse.GetSmtpResponse(), s)
+		// drop ?
+		if msResponse.GetDropConnection() {
+			s.exitAsap()
+			stop = true
+		}
+		if stop {
 			return true, extraHeaders
 		}
 	}
@@ -338,23 +400,22 @@ func msGetRoutes(d *delivery) (routes *[]Route, stop bool) {
 	if err != nil {
 		//Log.Error("deliverd-ms " + d.id + ": unable to parse microservice url " + msURI[0] + " - " + err.Error())
 		Log.Error(fmt.Sprintf("deliverd-remote %s - msGetRoutes - unable to init new ms: %s", d.id, err.Error()))
-		return nil, ms.shouldWeStopOnError()
+		return nil, ms.stopOnError()
 	}
-
+	Log.Info(fmt.Sprintf("deliverd-remote %s - msGetRoutes - call ms: %s", d.id, ms.url))
 	response, err := ms.call(&msg)
 	if err != nil {
 		Log.Error(fmt.Sprintf("deliverd-remote %s - msGetRoutes - unable to call ms: %s", d.id, err.Error()))
-		return nil, ms.shouldWeStopOnError()
+		return nil, ms.stopOnError()
 	}
 
 	// parse resp
 	msResponse := &msproto.DeliverdGetRoutesResponse{}
 	if err := proto.Unmarshal(*response, msResponse); err != nil {
 		Log.Error(fmt.Sprintf("deliverd-remote %s - msGetRoutes - unable to unmarshall response: %s", d.id, err.Error()))
-		return routes, ms.shouldWeStopOnError()
+		return routes, ms.stopOnError()
 	}
 	// no routes found
-	Log.Info(msResponse.GetRoutes())
 	if len(msResponse.GetRoutes()) == 0 {
 		return nil, false
 	}
@@ -375,18 +436,3 @@ func msGetRoutes(d *delivery) (routes *[]Route, stop bool) {
 	}
 	return routes, false
 }
-
-/*
-// smtpdFunc map of function corresponding to a hook
-var smtpdFunc = map[string]func(i ...interface{}) (stop, sendDefaultReply bool){
-	"smtpdNewClient": smtpdNewClient,
-}
-
-// msSmtptdCall call a microservice fro smtpd session
-func msSmtptdCall(hookId string, i ...interface{}) (stop, sendDefaultReply bool) {
-	if fn, ok := smtpdFunc[hookId]; ok {
-		return fn(i)
-	}
-	return false, true
-}
-*/

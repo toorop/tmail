@@ -65,10 +65,10 @@ type Config struct {
 		RFCHeloMandatory bool `name:"rfc_helo_mandatory" default:"false"`
 
 		// microservices
-		MsUriSmtpdNewClient             string `name:"ms_smtpd_newclient" default:"_"`
-		MsUriSmtpdRcpttoAccessIsGranted string `name:"ms_smtpd_rcptto_access_is_granted" default:"_"`
-		MsUriSmtpdData                  string `name:"ms_smtpd_data" default:"_"`
-		MsUrideliverdGetRoutes          string `name:"ms_deliverd_get_routes" default:"_"`
+		MsUriSmtpdNewClient    string `name:"ms_smtpd_newclient" default:"_"`
+		MsUriSmtpdRcptTo       string `name:"ms_smtpd_rcptto" default:"_"`
+		MsUriSmtpdData         string `name:"ms_smtpd_data" default:"_"`
+		MsUrideliverdGetRoutes string `name:"ms_deliverd_get_routes" default:"_"`
 
 		// Openstack
 		OpenstackEnable bool `name:"openstack_enable" default:"false"`
@@ -407,9 +407,9 @@ func (c *Config) GetMicroservicesUri(hookId string) []string {
 		if c.cfg.MsUriSmtpdNewClient != "_" {
 			return strings.Split(c.cfg.MsUriSmtpdNewClient, ";")
 		}
-	case "smtpdrcptorelayisgranted":
-		if c.cfg.MsUriSmtpdRcpttoAccessIsGranted != "_" {
-			return strings.Split(c.cfg.MsUriSmtpdRcpttoAccessIsGranted, ";")
+	case "smtpdrcptto":
+		if c.cfg.MsUriSmtpdRcptTo != "_" {
+			return strings.Split(c.cfg.MsUriSmtpdRcptTo, ";")
 		}
 	case "smtpddata":
 		if c.cfg.MsUriSmtpdData != "_" {

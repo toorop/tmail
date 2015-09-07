@@ -25,16 +25,14 @@ func deliverRemote(d *delivery) {
 
 	// Get routes
 	var routes *[]Route
-	var shouldWeStop bool
+	var stop bool
 
 	// get from microservices
-	routes, shouldWeStop = msGetRoutes(d)
-	if shouldWeStop {
+	routes, stop = msGetRoutes(d)
+	if stop {
 		d.dieTemp("unable to get routes from mss", true)
 		return
 	}
-
-	Log.Info(*routes)
 
 	// Default routes
 	if routes == nil || len(*routes) == 0 {

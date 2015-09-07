@@ -1,41 +1,63 @@
 package msproto;
 
-message SmtpdResponse {
-	required int32 smtp_code = 1; 			// SMTP code (ignored if eq 0)
-	required string smtp_msg = 2; 			// SMTP message (ignored if eq "")
+// SMTP response for smtpd hooks
+message SmtpResponse {
+	required int32 code = 1; 			// SMTP code (ignored if eq 0)
+	required string msg = 2; 			// SMTP message (ignored if eq "")
 
-	optional bool close_connection = 16;	// if true connection is closed
-	optional string data_link = 17; 		// link for downloading additional (large) data
-	repeated string extra_headers = 18; 	// headers to add
+	//optional bool close_connection = 16;	// if true connection is closed
+	//optional string data_link = 17; 		// link for downloading additional (large) data
+	//repeated string extra_headers = 18; 	// headers to add
 }
 
 
-message SmtpdNewClientMsg {
+// Hook SMTPd New client
+// SmtpdNewClientQuery
+message SmtpdNewClientQuery {
 	required string session_id = 1; // smtpd session ID
 	required string remote_ip = 2; 	// remote (client) IP
 }
 
+// SmtpdNewClientResponse
+message SmtpdNewClientResponse {
+	required string session_id = 1;
+	optional SmtpResponse smtp_response = 2;
+	optional bool drop_connection = 3;
+}
 
-// smtpdRcpttoAccessIsGranted
-message smtpdRcpttoAccessIsGrantedQuery {
+// Hook smtpd RCPT TO command
+// smtpdRcptToQuery
+message SmtpdRcptToQuery {
 	required string session_id = 1;
 	required string rcptto = 2;
 }
 
 // SmtpdRcpttoAccessIsGrantedResponse
-message SmtpdRcpttoAccessIsGrantedResponse {
+message SmtpdRcptToResponse {
 	required string session_id = 1;
-	required bool relay_granted = 2;
+	optional SmtpResponse smtp_response = 2;
+	optional bool drop_connection = 3;
+	optional bool relay_granted = 4;
 }
 
+// Hook smtpd DATA
 // smtpdDataMsg
-message SmtpdDataMsg {
+message SmtpdDataQuery {
 	required string session_id = 1;
 	required string data_link = 2;
 }
 
-// deliverd
+// smtpdDataMsg
+message SmtpdDataResponse {
+	required string session_id = 1;
+	optional SmtpResponse smtp_response = 2;
+	optional string data_link = 3;
+	optional bool drop_connection = 4;
+	repeated string extra_headers = 5;
+}
 
+
+// deliverd
 // Get routes query
 message DeliverdGetRoutesQuery {
 	required string deliverd_id = 1;
@@ -45,7 +67,7 @@ message DeliverdGetRoutesQuery {
 }
 
 // get routes response
-message deliverdGetRoutesResponse {
+message DeliverdGetRoutesResponse {
 	message Route {
 		required string remote_host = 1;
 		required int64 remote_port = 2;

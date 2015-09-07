@@ -473,9 +473,9 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	// Relay granted for this recipient ?
 	s.relayGranted = false
 
-	// check via micro service
-	shouldWeStopHere := msSmtpdRcptToRelayIsGranted(s, rcptto)
-	if shouldWeStopHere {
+	// Microservice: msSmtpdRcpTo
+	stopHere := msSmtpdRcptTo(s, rcptto)
+	if stopHere {
 		return
 	}
 
@@ -865,6 +865,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	s.log("message-id:", string(HeaderMessageID))
 
 	// Microservice
+
 	stop, extraHeader := smtpdData(s, &rawMessage)
 	if stop {
 		return

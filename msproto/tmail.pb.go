@@ -9,11 +9,13 @@ It is generated from these files:
 	tmail.proto
 
 It has these top-level messages:
-	SmtpdResponse
-	SmtpdNewClientMsg
-	SmtpdRcpttoAccessIsGrantedQuery
-	SmtpdRcpttoAccessIsGrantedResponse
-	SmtpdDataMsg
+	SmtpResponse
+	SmtpdNewClientQuery
+	SmtpdNewClientResponse
+	SmtpdRcptToQuery
+	SmtpdRcptToResponse
+	SmtpdDataQuery
+	SmtpdDataResponse
 	DeliverdGetRoutesQuery
 	DeliverdGetRoutesResponse
 */
@@ -26,97 +28,110 @@ import math "math"
 var _ = proto.Marshal
 var _ = math.Inf
 
-type SmtpdResponse struct {
-	SmtpCode         *int32   `protobuf:"varint,1,req,name=smtp_code" json:"smtp_code,omitempty"`
-	SmtpMsg          *string  `protobuf:"bytes,2,req,name=smtp_msg" json:"smtp_msg,omitempty"`
-	CloseConnection  *bool    `protobuf:"varint,16,opt,name=close_connection" json:"close_connection,omitempty"`
-	DataLink         *string  `protobuf:"bytes,17,opt,name=data_link" json:"data_link,omitempty"`
-	ExtraHeaders     []string `protobuf:"bytes,18,rep,name=extra_headers" json:"extra_headers,omitempty"`
-	XXX_unrecognized []byte   `json:"-"`
+// SMTP response for smtpd hooks
+type SmtpResponse struct {
+	Code             *int32  `protobuf:"varint,1,req,name=code" json:"code,omitempty"`
+	Msg              *string `protobuf:"bytes,2,req,name=msg" json:"msg,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *SmtpdResponse) Reset()         { *m = SmtpdResponse{} }
-func (m *SmtpdResponse) String() string { return proto.CompactTextString(m) }
-func (*SmtpdResponse) ProtoMessage()    {}
+func (m *SmtpResponse) Reset()         { *m = SmtpResponse{} }
+func (m *SmtpResponse) String() string { return proto.CompactTextString(m) }
+func (*SmtpResponse) ProtoMessage()    {}
 
-func (m *SmtpdResponse) GetSmtpCode() int32 {
-	if m != nil && m.SmtpCode != nil {
-		return *m.SmtpCode
+func (m *SmtpResponse) GetCode() int32 {
+	if m != nil && m.Code != nil {
+		return *m.Code
 	}
 	return 0
 }
 
-func (m *SmtpdResponse) GetSmtpMsg() string {
-	if m != nil && m.SmtpMsg != nil {
-		return *m.SmtpMsg
+func (m *SmtpResponse) GetMsg() string {
+	if m != nil && m.Msg != nil {
+		return *m.Msg
 	}
 	return ""
 }
 
-func (m *SmtpdResponse) GetCloseConnection() bool {
-	if m != nil && m.CloseConnection != nil {
-		return *m.CloseConnection
-	}
-	return false
-}
-
-func (m *SmtpdResponse) GetDataLink() string {
-	if m != nil && m.DataLink != nil {
-		return *m.DataLink
-	}
-	return ""
-}
-
-func (m *SmtpdResponse) GetExtraHeaders() []string {
-	if m != nil {
-		return m.ExtraHeaders
-	}
-	return nil
-}
-
-type SmtpdNewClientMsg struct {
+// Hook SMTPd New client
+// SmtpdNewClientQuery
+type SmtpdNewClientQuery struct {
 	SessionId        *string `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
 	RemoteIp         *string `protobuf:"bytes,2,req,name=remote_ip" json:"remote_ip,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *SmtpdNewClientMsg) Reset()         { *m = SmtpdNewClientMsg{} }
-func (m *SmtpdNewClientMsg) String() string { return proto.CompactTextString(m) }
-func (*SmtpdNewClientMsg) ProtoMessage()    {}
+func (m *SmtpdNewClientQuery) Reset()         { *m = SmtpdNewClientQuery{} }
+func (m *SmtpdNewClientQuery) String() string { return proto.CompactTextString(m) }
+func (*SmtpdNewClientQuery) ProtoMessage()    {}
 
-func (m *SmtpdNewClientMsg) GetSessionId() string {
+func (m *SmtpdNewClientQuery) GetSessionId() string {
 	if m != nil && m.SessionId != nil {
 		return *m.SessionId
 	}
 	return ""
 }
 
-func (m *SmtpdNewClientMsg) GetRemoteIp() string {
+func (m *SmtpdNewClientQuery) GetRemoteIp() string {
 	if m != nil && m.RemoteIp != nil {
 		return *m.RemoteIp
 	}
 	return ""
 }
 
-// smtpdRcpttoAccessIsGranted
-type SmtpdRcpttoAccessIsGrantedQuery struct {
-	SessionId        *string `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
-	Rcptto           *string `protobuf:"bytes,2,req,name=rcptto" json:"rcptto,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
+// SmtpdNewClientResponse
+type SmtpdNewClientResponse struct {
+	SessionId        *string       `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
+	SmtpResponse     *SmtpResponse `protobuf:"bytes,2,opt,name=smtp_response" json:"smtp_response,omitempty"`
+	DropConnection   *bool         `protobuf:"varint,3,opt,name=drop_connection" json:"drop_connection,omitempty"`
+	XXX_unrecognized []byte        `json:"-"`
 }
 
-func (m *SmtpdRcpttoAccessIsGrantedQuery) Reset()         { *m = SmtpdRcpttoAccessIsGrantedQuery{} }
-func (m *SmtpdRcpttoAccessIsGrantedQuery) String() string { return proto.CompactTextString(m) }
-func (*SmtpdRcpttoAccessIsGrantedQuery) ProtoMessage()    {}
+func (m *SmtpdNewClientResponse) Reset()         { *m = SmtpdNewClientResponse{} }
+func (m *SmtpdNewClientResponse) String() string { return proto.CompactTextString(m) }
+func (*SmtpdNewClientResponse) ProtoMessage()    {}
 
-func (m *SmtpdRcpttoAccessIsGrantedQuery) GetSessionId() string {
+func (m *SmtpdNewClientResponse) GetSessionId() string {
 	if m != nil && m.SessionId != nil {
 		return *m.SessionId
 	}
 	return ""
 }
 
-func (m *SmtpdRcpttoAccessIsGrantedQuery) GetRcptto() string {
+func (m *SmtpdNewClientResponse) GetSmtpResponse() *SmtpResponse {
+	if m != nil {
+		return m.SmtpResponse
+	}
+	return nil
+}
+
+func (m *SmtpdNewClientResponse) GetDropConnection() bool {
+	if m != nil && m.DropConnection != nil {
+		return *m.DropConnection
+	}
+	return false
+}
+
+// Hook smtpd RCPT TO command
+// smtpdRcptToQuery
+type SmtpdRcptToQuery struct {
+	SessionId        *string `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
+	Rcptto           *string `protobuf:"bytes,2,req,name=rcptto" json:"rcptto,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *SmtpdRcptToQuery) Reset()         { *m = SmtpdRcptToQuery{} }
+func (m *SmtpdRcptToQuery) String() string { return proto.CompactTextString(m) }
+func (*SmtpdRcptToQuery) ProtoMessage()    {}
+
+func (m *SmtpdRcptToQuery) GetSessionId() string {
+	if m != nil && m.SessionId != nil {
+		return *m.SessionId
+	}
+	return ""
+}
+
+func (m *SmtpdRcptToQuery) GetRcptto() string {
 	if m != nil && m.Rcptto != nil {
 		return *m.Rcptto
 	}
@@ -124,55 +139,122 @@ func (m *SmtpdRcpttoAccessIsGrantedQuery) GetRcptto() string {
 }
 
 // SmtpdRcpttoAccessIsGrantedResponse
-type SmtpdRcpttoAccessIsGrantedResponse struct {
-	SessionId        *string `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
-	RelayGranted     *bool   `protobuf:"varint,2,req,name=relay_granted" json:"relay_granted,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
+type SmtpdRcptToResponse struct {
+	SessionId        *string       `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
+	SmtpResponse     *SmtpResponse `protobuf:"bytes,2,opt,name=smtp_response" json:"smtp_response,omitempty"`
+	DropConnection   *bool         `protobuf:"varint,3,opt,name=drop_connection" json:"drop_connection,omitempty"`
+	RelayGranted     *bool         `protobuf:"varint,4,opt,name=relay_granted" json:"relay_granted,omitempty"`
+	XXX_unrecognized []byte        `json:"-"`
 }
 
-func (m *SmtpdRcpttoAccessIsGrantedResponse) Reset()         { *m = SmtpdRcpttoAccessIsGrantedResponse{} }
-func (m *SmtpdRcpttoAccessIsGrantedResponse) String() string { return proto.CompactTextString(m) }
-func (*SmtpdRcpttoAccessIsGrantedResponse) ProtoMessage()    {}
+func (m *SmtpdRcptToResponse) Reset()         { *m = SmtpdRcptToResponse{} }
+func (m *SmtpdRcptToResponse) String() string { return proto.CompactTextString(m) }
+func (*SmtpdRcptToResponse) ProtoMessage()    {}
 
-func (m *SmtpdRcpttoAccessIsGrantedResponse) GetSessionId() string {
+func (m *SmtpdRcptToResponse) GetSessionId() string {
 	if m != nil && m.SessionId != nil {
 		return *m.SessionId
 	}
 	return ""
 }
 
-func (m *SmtpdRcpttoAccessIsGrantedResponse) GetRelayGranted() bool {
+func (m *SmtpdRcptToResponse) GetSmtpResponse() *SmtpResponse {
+	if m != nil {
+		return m.SmtpResponse
+	}
+	return nil
+}
+
+func (m *SmtpdRcptToResponse) GetDropConnection() bool {
+	if m != nil && m.DropConnection != nil {
+		return *m.DropConnection
+	}
+	return false
+}
+
+func (m *SmtpdRcptToResponse) GetRelayGranted() bool {
 	if m != nil && m.RelayGranted != nil {
 		return *m.RelayGranted
 	}
 	return false
 }
 
+// Hook smtpd DATA
 // smtpdDataMsg
-type SmtpdDataMsg struct {
+type SmtpdDataQuery struct {
 	SessionId        *string `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
 	DataLink         *string `protobuf:"bytes,2,req,name=data_link" json:"data_link,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *SmtpdDataMsg) Reset()         { *m = SmtpdDataMsg{} }
-func (m *SmtpdDataMsg) String() string { return proto.CompactTextString(m) }
-func (*SmtpdDataMsg) ProtoMessage()    {}
+func (m *SmtpdDataQuery) Reset()         { *m = SmtpdDataQuery{} }
+func (m *SmtpdDataQuery) String() string { return proto.CompactTextString(m) }
+func (*SmtpdDataQuery) ProtoMessage()    {}
 
-func (m *SmtpdDataMsg) GetSessionId() string {
+func (m *SmtpdDataQuery) GetSessionId() string {
 	if m != nil && m.SessionId != nil {
 		return *m.SessionId
 	}
 	return ""
 }
 
-func (m *SmtpdDataMsg) GetDataLink() string {
+func (m *SmtpdDataQuery) GetDataLink() string {
 	if m != nil && m.DataLink != nil {
 		return *m.DataLink
 	}
 	return ""
 }
 
+// smtpdDataMsg
+type SmtpdDataResponse struct {
+	SessionId        *string       `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
+	SmtpResponse     *SmtpResponse `protobuf:"bytes,2,opt,name=smtp_response" json:"smtp_response,omitempty"`
+	DataLink         *string       `protobuf:"bytes,3,opt,name=data_link" json:"data_link,omitempty"`
+	DropConnection   *bool         `protobuf:"varint,4,opt,name=drop_connection" json:"drop_connection,omitempty"`
+	ExtraHeaders     []string      `protobuf:"bytes,5,rep,name=extra_headers" json:"extra_headers,omitempty"`
+	XXX_unrecognized []byte        `json:"-"`
+}
+
+func (m *SmtpdDataResponse) Reset()         { *m = SmtpdDataResponse{} }
+func (m *SmtpdDataResponse) String() string { return proto.CompactTextString(m) }
+func (*SmtpdDataResponse) ProtoMessage()    {}
+
+func (m *SmtpdDataResponse) GetSessionId() string {
+	if m != nil && m.SessionId != nil {
+		return *m.SessionId
+	}
+	return ""
+}
+
+func (m *SmtpdDataResponse) GetSmtpResponse() *SmtpResponse {
+	if m != nil {
+		return m.SmtpResponse
+	}
+	return nil
+}
+
+func (m *SmtpdDataResponse) GetDataLink() string {
+	if m != nil && m.DataLink != nil {
+		return *m.DataLink
+	}
+	return ""
+}
+
+func (m *SmtpdDataResponse) GetDropConnection() bool {
+	if m != nil && m.DropConnection != nil {
+		return *m.DropConnection
+	}
+	return false
+}
+
+func (m *SmtpdDataResponse) GetExtraHeaders() []string {
+	if m != nil {
+		return m.ExtraHeaders
+	}
+	return nil
+}
+
+// deliverd
 // Get routes query
 type DeliverdGetRoutesQuery struct {
 	DeliverdId       *string `protobuf:"bytes,1,req,name=deliverd_id" json:"deliverd_id,omitempty"`
