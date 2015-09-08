@@ -304,7 +304,7 @@ func (d *delivery) requeue(newStatus ...uint32) {
 	//}
 	// Calcul du delais, pour le moment on accroit betement de 60 secondes a chaque tentative
 	// + random
-	rand.Seed(time.Now().Unix())
+	rand.Seed(rand.Int63())
 	delay := time.Duration(d.nsqMsg.Attempts*uint16(rand.Intn(180)+60)) * time.Second
 	if delay >= time.Hour {
 		delay = time.Duration(rand.Intn(2000)+1599) * time.Second
