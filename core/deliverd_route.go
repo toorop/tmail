@@ -4,7 +4,9 @@ import (
 	//"errors"
 	"database/sql"
 	"errors"
+	"math/rand"
 	"net"
+	"sort"
 	"strings"
 )
 
@@ -222,6 +224,7 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 			routes = append(routes, Route{
 				RemoteHost: mx.Host,
 				RemotePort: sql.NullInt64{25, true},
+				Priority:   sql.NullInt64{int64(mx.Pref), true},
 			})
 		}
 	}
@@ -244,7 +247,40 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 		}
 
 	}
-	//Log.Debug(routes)
+
+	// ordering routes
+	// if multiple routes with same priorities we have to random their order
+	byPriority := make(map[int64][]Route)
+	for _, route := range routes {
+		if _, ok := byPriority[route.Priority.Int64]; ok {
+			byPriority[route.Priority.Int64] = append(byPriority[route.Priority.Int64], route)
+		} else {
+			byPriority[route.Priority.Int64] = []Route{route}
+		}
+	}
+	priorities := make([]int, len(byPriority))
+	i := 0
+	for p := range byPriority {
+		priorities[i] = int(p)
+		i++
+	}
+	sort.Ints(priorities)
+
+	routes = []Route{}
+	rand.Seed(rand.Int63())
+	for k := range priorities {
+		if len(byPriority[int64(priorities[k])]) > 1 {
+			t := make([]Route, len(byPriority[int64(priorities[k])]))
+			order := rand.Perm(len(byPriority[int64(priorities[k])]))
+			for i, r := range byPriority[int64(priorities[k])] {
+				t[order[i]] = r
+			}
+			routes = append(routes, t...)
+		} else {
+			routes = append(routes, byPriority[int64(priorities[k])][0])
+		}
+	}
+	Log.Debug(routes)
 	r = &routes
 	return
 }

@@ -37,7 +37,7 @@ func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error)
 		localIPs := []net.IP{}
 		remoteAddresses := []net.TCPAddr{}
 
-		// If there is no local IP get defdault (as defined in config)
+		// If there is no local IP get default (as defined in config)
 		if route.LocalIp.String == "" {
 			route.LocalIp = sql.NullString{String: Cfg.GetLocalIps(), Valid: true}
 		}
