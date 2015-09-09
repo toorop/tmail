@@ -63,7 +63,7 @@ message DeliverdGetRoutesQuery {
 	required string deliverd_id = 1;
 	required string mailfrom = 2;
 	required string rcptto =  3;
-	optional string authentified_user = 4;
+	required string authentified_user = 4;
 }
 
 // get routes response

@@ -260,7 +260,7 @@ type DeliverdGetRoutesQuery struct {
 	DeliverdId       *string `protobuf:"bytes,1,req,name=deliverd_id" json:"deliverd_id,omitempty"`
 	Mailfrom         *string `protobuf:"bytes,2,req,name=mailfrom" json:"mailfrom,omitempty"`
 	Rcptto           *string `protobuf:"bytes,3,req,name=rcptto" json:"rcptto,omitempty"`
-	AuthentifiedUser *string `protobuf:"bytes,4,opt,name=authentified_user" json:"authentified_user,omitempty"`
+	AuthentifiedUser *string `protobuf:"bytes,4,req,name=authentified_user" json:"authentified_user,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
