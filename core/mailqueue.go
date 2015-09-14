@@ -184,7 +184,7 @@ func QueueListMessages() ([]QMessage, error) {
 }
 
 // QueueCount rerurn the number of message in queue
-func QueueCount() (c int32, err error) {
+func QueueCount() (c uint32, err error) {
 	c = 0
 	err = DB.Model(QMessage{}).Count(&c).Error
 	return

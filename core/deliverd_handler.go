@@ -1,8 +1,9 @@
 package core
 
 import (
-	"github.com/bitly/go-nsq"
 	"time"
+
+	"github.com/bitly/go-nsq"
 )
 
 type deliveryHandler struct {
@@ -15,10 +16,10 @@ func (h *deliveryHandler) HandleMessage(m *nsq.Message) error {
 	d.id, err = NewUUID()
 	if err != nil {
 		// TODO gerer mieux cette erreur
-		Log.Error("deliverd: unable to create new uuid")
+		Log.Error("deliverd: unable to create uuid for new delivery")
 		m.RequeueWithoutBackoff(10 * time.Minute)
 	}
-
+	d.startAt = time.Now()
 	d.nsqMsg = m
 	d.qMsg = new(QMessage)
 	// disable autoresponse otherwise no goroutines

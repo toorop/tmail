@@ -17,11 +17,18 @@ import (
 )
 
 type delivery struct {
-	id      string
-	nsqMsg  *nsq.Message
-	qMsg    *QMessage
-	rawData *[]byte
-	qStore  Storer
+	id                     string
+	nsqMsg                 *nsq.Message
+	qMsg                   *QMessage
+	rawData                *[]byte
+	qStore                 Storer
+	startAt                time.Time
+	isLocal                bool
+	localAddr              string
+	remoteAddr             string
+	remoteSMTPresponseCode int
+
+	success bool
 }
 
 // processMsg processes message
@@ -133,14 +140,13 @@ func (d *delivery) processMsg() {
 	//
 	// Local or  remote ?
 	//
-
-	local, err := isLocalDelivery(d.qMsg.RcptTo)
+	d.isLocal, err = isLocalDelivery(d.qMsg.RcptTo)
 	if err != nil {
 		Log.Error("unable to check if it's local delivery. " + err.Error())
 		d.dieTemp("unable to check if it's local delivery", false)
 		return
 	}
-	if local {
+	if d.isLocal {
 		deliverLocal(d)
 	} else {
 		deliverRemote(d)
@@ -149,6 +155,8 @@ func (d *delivery) processMsg() {
 }
 
 func (d *delivery) dieOk() {
+	d.success = true
+	d.sendTelemetry()
 	Log.Info("deliverd " + d.id + ": success")
 	if err := d.qMsg.Delete(); err != nil {
 		Log.Error("deliverd " + d.id + ": unable remove queued message " + d.qMsg.Uuid + " from queue." + err.Error())
@@ -324,4 +332,9 @@ func (d *delivery) handleSMTPError(code int, message string) {
 		return
 	}
 	d.dieTemp(message, false)
+}
+
+// sendTelemetry: send log data via microservice
+func (d *delivery) sendTelemetry() {
+	msDeliverdSendTelemetry(d)
 }

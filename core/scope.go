@@ -30,6 +30,7 @@ var (
 	NsqQueueProducer      *nsq.Producer
 	SmtpSessionsCount     int
 	ChSmtpSessionsCount   chan int
+	DeliverdLocalCount    int
 	DeliverdRemoteCount   int
 	ChDeliverdRemoteCount chan int
 	Store                 Storer

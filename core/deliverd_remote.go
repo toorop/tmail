@@ -57,8 +57,13 @@ func deliverRemote(d *delivery) {
 		return
 	}
 	defer client.close()
+
+	d.remoteAddr = client.RemoteAddr()
+	d.localAddr = client.LocalAddr()
+
 	// EHLO
 	code, msg, err := client.Hello()
+	d.remoteSMTPresponseCode = code
 	if err != nil {
 		switch {
 		case code > 399 && code < 500:
@@ -81,6 +86,7 @@ func deliverRemote(d *delivery) {
 		config.InsecureSkipVerify = Cfg.GetDeliverdRemoteTLSSkipVerify()
 		//config.ServerName = Cfg.GetMe()
 		code, msg, err = client.StartTLS(&config)
+		d.remoteSMTPresponseCode = code
 		if err != nil {
 			Log.Info(fmt.Sprintf("deliverd-remote %s - %s - TLS negociation failed %d - %s - %v .", d.id, client.conn.RemoteAddr().String(), code, msg, err))
 			if Cfg.GetDeliverdRemoteTLSFallback() {
@@ -137,6 +143,7 @@ func deliverRemote(d *delivery) {
 
 	// MAIL FROM
 	code, msg, err = client.Mail(d.qMsg.MailFrom)
+	d.remoteSMTPresponseCode = code
 	if err != nil {
 		message := fmt.Sprintf("deliverd-remote %s - %s - MAIL FROM %s failed %s - %s", d.id, client.RemoteAddr(), d.qMsg.MailFrom, msg, err)
 		Log.Error(message)
@@ -146,6 +153,7 @@ func deliverRemote(d *delivery) {
 
 	// RCPT TO
 	code, msg, err = client.Rcpt(d.qMsg.RcptTo)
+	d.remoteSMTPresponseCode = code
 	if err != nil {
 		message := fmt.Sprintf("deliverd-remote %s - %s - RCPT TO %s failed - %s - %s", d.id, client.RemoteAddr(), d.qMsg.RcptTo, msg, err)
 		Log.Error(message)
@@ -155,6 +163,7 @@ func deliverRemote(d *delivery) {
 
 	// DATA
 	dataPipe, code, msg, err := client.Data()
+	d.remoteSMTPresponseCode = code
 	if err != nil {
 		message := fmt.Sprintf("deliverd-remote %s - %s - DATA command failed - %s - %s", d.id, client.RemoteAddr(), msg, err)
 		Log.Error(message)
@@ -201,6 +210,7 @@ func deliverRemote(d *delivery) {
 
 	dataPipe.WriteCloser.Close()
 	code, msg, err = dataPipe.s.text.ReadResponse(-1)
+	d.remoteSMTPresponseCode = code
 	Log.Info(fmt.Sprintf("deliverd-remote %s - %s - reply to DATA cmd: %d - %s - %v", d.id, client.RemoteAddr(), code, msg, err))
 	if err != nil {
 		message := fmt.Sprintf("deliverd-remote %s - %s - DATA command failed - %s - %s", d.id, client.RemoteAddr(), msg, err)

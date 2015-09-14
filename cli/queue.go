@@ -52,32 +52,9 @@ var Queue = cgCli.Command{
 			Usage:       "count messages in queue",
 			Description: "tmail queue count",
 			Action: func(c *cgCli.Context) {
-				var status string
-				messages, err := api.QueueCount()
+				count, err := api.QueueCount()
 				cliHandleErr(err)
-				if len(messages) == 0 {
-					println("There is no message in queue.")
-				} else {
-					fmt.Printf("%d messages in queue.\r\n", len(messages))
-					for _, m := range messages {
-						switch m.Status {
-						case 0:
-							status = "Delivery in progress"
-						case 1:
-							status = "Will be discarded"
-						case 2:
-							status = "Scheduled"
-						case 3:
-							status = "Will be bounced"
-						}
-
-						msg := fmt.Sprintf("%d - From: %s - To: %s - Status: %s - Added: %v ", m.Id, m.MailFrom, m.RcptTo, status, m.AddedAt)
-						if m.Status != 0 {
-							msg += fmt.Sprintf("- Next delivery process scheduled at: %v", m.NextDeliveryScheduledAt)
-						}
-						println(msg)
-					}
-				}
+				println(count)
 				os.Exit(0)
 			},
 		},

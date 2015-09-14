@@ -88,7 +88,7 @@ func QueueGetMessages() ([]core.QMessage, error) {
 }
 
 // QueueCount returns number of messages in queue
-func QueueCount() (int32, error) {
+func QueueCount() (uint32, error) {
 	return core.QueueCount()
 }
 

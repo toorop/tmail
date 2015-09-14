@@ -65,10 +65,11 @@ type Config struct {
 		RFCHeloMandatory bool `name:"rfc_helo_mandatory" default:"false"`
 
 		// microservices
-		MsUriSmtpdNewClient    string `name:"ms_smtpd_newclient" default:"_"`
-		MsUriSmtpdRcptTo       string `name:"ms_smtpd_rcptto" default:"_"`
-		MsUriSmtpdData         string `name:"ms_smtpd_data" default:"_"`
-		MsUrideliverdGetRoutes string `name:"ms_deliverd_get_routes" default:"_"`
+		MsUriSmtpdNewClient        string `name:"ms_smtpd_newclient" default:"_"`
+		MsUriSmtpdRcptTo           string `name:"ms_smtpd_rcptto" default:"_"`
+		MsUriSmtpdData             string `name:"ms_smtpd_data" default:"_"`
+		MsUriDeliverdGetRoutes     string `name:"ms_deliverd_get_routes" default:"_"`
+		MsUriDeliverdSendTelemetry string `name:"ms_deliverd_send_telemetry" default:"_"`
 
 		// Openstack
 		OpenstackEnable bool `name:"openstack_enable" default:"false"`
@@ -417,8 +418,12 @@ func (c *Config) GetMicroservicesUri(hookId string) []string {
 		}
 
 	case "deliverdgetroutes":
-		if c.cfg.MsUrideliverdGetRoutes != "_" {
-			return strings.Split(c.cfg.MsUrideliverdGetRoutes, ";")
+		if c.cfg.MsUriDeliverdGetRoutes != "_" {
+			return strings.Split(c.cfg.MsUriDeliverdGetRoutes, ";")
+		}
+	case "deliverdsendtelemetry":
+		if c.cfg.MsUriDeliverdSendTelemetry != "_" {
+			return strings.Split(c.cfg.MsUriDeliverdSendTelemetry, ";")
 		}
 	}
 	return []string{}

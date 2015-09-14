@@ -386,13 +386,6 @@ func msGetRoutes(d *delivery) (routes *[]Route, stop bool) {
 	if len(msURI) == 0 {
 		return
 	}
-	// serialize data
-	msg, err := proto.Marshal(&msproto.DeliverdGetRoutesQuery{
-		DeliverdId:       proto.String(d.id),
-		Mailfrom:         proto.String(d.qMsg.MailFrom),
-		Rcptto:           proto.String(d.qMsg.RcptTo),
-		AuthentifiedUser: proto.String(d.qMsg.AuthUser),
-	})
 
 	// There should be only one URI for getroutes
 	// so we take msURI[0]
@@ -402,6 +395,20 @@ func msGetRoutes(d *delivery) (routes *[]Route, stop bool) {
 		Log.Error(fmt.Sprintf("deliverd-remote %s - msGetRoutes - unable to init new ms: %s", d.id, err.Error()))
 		return nil, ms.stopOnError()
 	}
+
+	// serialize data
+	msg, err := proto.Marshal(&msproto.DeliverdGetRoutesQuery{
+		DeliverdId:       proto.String(d.id),
+		Mailfrom:         proto.String(d.qMsg.MailFrom),
+		Rcptto:           proto.String(d.qMsg.RcptTo),
+		AuthentifiedUser: proto.String(d.qMsg.AuthUser),
+	})
+	if err != nil {
+		//Log.Error("deliverd-ms " + d.id + ": unable to parse microservice url " + msURI[0] + " - " + err.Error())
+		Log.Error(fmt.Sprintf("deliverd-remote %s - msGetRoutes - unable to serialize new ms: %s", d.id, err.Error()))
+		return nil, ms.stopOnError()
+	}
+
 	Log.Info(fmt.Sprintf("deliverd-remote %s - msGetRoutes - call ms: %s", d.id, ms.url))
 	response, err := ms.call(&msg)
 	if err != nil {
@@ -435,4 +442,60 @@ func msGetRoutes(d *delivery) (routes *[]Route, stop bool) {
 		*routes = append(*routes, r)
 	}
 	return routes, false
+}
+
+// msDeliverdSendTelemetry send deliverd telemetry
+func msDeliverdSendTelemetry(d *delivery) {
+	msURI := Cfg.GetMicroservicesUri("deliverdsendtelemetry")
+	if len(msURI) == 0 {
+		return
+	}
+
+	telemetry := msproto.DeliverdTelemetry{}
+	telemetry.ServerId = proto.String(Cfg.GetMe())
+	telemetry.DeliverdId = proto.String(d.id)
+	telemetry.Success = proto.Bool(d.success)
+	telemetry.ExecTime = proto.Uint32(uint32(time.Since(d.startAt).Nanoseconds()))
+	t, err := QueueCount()
+	if err != nil {
+		Log.Error(fmt.Sprintf("deliverd-remote %s - msDeliverdSendTelemetry - unable to get QueueCount %s", d.id, err.Error()))
+		return
+	}
+	telemetry.MessagesInQueue = proto.Uint32(t)
+	telemetry.ConcurrencyRemote = proto.Uint32(uint32(DeliverdRemoteCount))
+	telemetry.ConcurrencyLocal = proto.Uint32(uint32(DeliverdLocalCount))
+	telemetry.IsLocal = proto.Bool(d.isLocal)
+	telemetry.From = proto.String(d.qMsg.MailFrom)
+	telemetry.To = proto.String(d.qMsg.RcptTo)
+	if !d.isLocal {
+		telemetry.RemoteAddress = proto.String(d.remoteAddr)
+		telemetry.LocalAddress = proto.String(d.localAddr)
+		telemetry.RemoteSmtpResponseCode = proto.Uint32(uint32(d.remoteSMTPresponseCode))
+	}
+
+	Log.Info(fmt.Sprintf("deliverd-remote %s - msDeliverdSendTelemetry - telemetry %v", d.id, telemetry))
+
+	// do the rest in goroutine
+	go func(deliveryID string) {
+		msg, err := proto.Marshal(&telemetry)
+		if err != nil {
+			Log.Error(fmt.Sprintf("deliverd-remote %s - msDeliverdSendTelemetry - unable to serialize message: %s", deliveryID, err.Error()))
+			return
+		}
+		// There should be only one URI for getroutes
+		// so we take msURI[0]
+		for _, uri := range Cfg.GetMicroservicesUri("deliverdsendtelemetry") {
+			ms, err := newMicroservice(uri)
+			if err != nil {
+				Log.Error(fmt.Sprintf("deliverd-remote %s - msDeliverdSendTelemetry - unable to init new ms: %s", deliveryID, err.Error()))
+				continue
+			}
+			Log.Info(fmt.Sprintf("deliverd-remote %s - msDeliverdSendTelemetry - call ms: %s", deliveryID, ms.url))
+			if _, err = ms.call(&msg); err != nil {
+				Log.Error(fmt.Sprintf("deliverd-remote %s - msDeliverdSendTelemetry - unable to call ms: %s", deliveryID, err.Error()))
+				continue
+			}
+		}
+	}(d.id)
+	return
 }

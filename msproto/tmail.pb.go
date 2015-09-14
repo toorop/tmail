@@ -16,6 +16,7 @@ It has these top-level messages:
 	SmtpdRcptToResponse
 	SmtpdDataQuery
 	SmtpdDataResponse
+	DeliverdTelemetry
 	DeliverdGetRoutesQuery
 	DeliverdGetRoutesResponse
 */
@@ -254,7 +255,119 @@ func (m *SmtpdDataResponse) GetExtraHeaders() []string {
 	return nil
 }
 
-// deliverd
+// telemetry
+type DeliverdTelemetry struct {
+	ServerId               *string `protobuf:"bytes,1,req,name=server_id" json:"server_id,omitempty"`
+	DeliverdId             *string `protobuf:"bytes,2,req,name=deliverd_id" json:"deliverd_id,omitempty"`
+	Success                *bool   `protobuf:"varint,3,req,name=success" json:"success,omitempty"`
+	ExecTime               *uint32 `protobuf:"varint,4,req,name=exec_time" json:"exec_time,omitempty"`
+	MessagesInQueue        *uint32 `protobuf:"varint,5,req,name=messages_in_queue" json:"messages_in_queue,omitempty"`
+	ConcurrencyRemote      *uint32 `protobuf:"varint,6,req,name=concurrency_remote" json:"concurrency_remote,omitempty"`
+	ConcurrencyLocal       *uint32 `protobuf:"varint,7,req,name=concurrency_local" json:"concurrency_local,omitempty"`
+	From                   *string `protobuf:"bytes,8,req,name=from" json:"from,omitempty"`
+	To                     *string `protobuf:"bytes,9,req,name=to" json:"to,omitempty"`
+	IsLocal                *bool   `protobuf:"varint,10,req,name=is_local" json:"is_local,omitempty"`
+	LocalAddress           *string `protobuf:"bytes,11,opt,name=local_address" json:"local_address,omitempty"`
+	RemoteAddress          *string `protobuf:"bytes,12,opt,name=remote_address" json:"remote_address,omitempty"`
+	RemoteSmtpResponseCode *uint32 `protobuf:"varint,13,opt,name=remote_smtp_response_code" json:"remote_smtp_response_code,omitempty"`
+	XXX_unrecognized       []byte  `json:"-"`
+}
+
+func (m *DeliverdTelemetry) Reset()         { *m = DeliverdTelemetry{} }
+func (m *DeliverdTelemetry) String() string { return proto.CompactTextString(m) }
+func (*DeliverdTelemetry) ProtoMessage()    {}
+
+func (m *DeliverdTelemetry) GetServerId() string {
+	if m != nil && m.ServerId != nil {
+		return *m.ServerId
+	}
+	return ""
+}
+
+func (m *DeliverdTelemetry) GetDeliverdId() string {
+	if m != nil && m.DeliverdId != nil {
+		return *m.DeliverdId
+	}
+	return ""
+}
+
+func (m *DeliverdTelemetry) GetSuccess() bool {
+	if m != nil && m.Success != nil {
+		return *m.Success
+	}
+	return false
+}
+
+func (m *DeliverdTelemetry) GetExecTime() uint32 {
+	if m != nil && m.ExecTime != nil {
+		return *m.ExecTime
+	}
+	return 0
+}
+
+func (m *DeliverdTelemetry) GetMessagesInQueue() uint32 {
+	if m != nil && m.MessagesInQueue != nil {
+		return *m.MessagesInQueue
+	}
+	return 0
+}
+
+func (m *DeliverdTelemetry) GetConcurrencyRemote() uint32 {
+	if m != nil && m.ConcurrencyRemote != nil {
+		return *m.ConcurrencyRemote
+	}
+	return 0
+}
+
+func (m *DeliverdTelemetry) GetConcurrencyLocal() uint32 {
+	if m != nil && m.ConcurrencyLocal != nil {
+		return *m.ConcurrencyLocal
+	}
+	return 0
+}
+
+func (m *DeliverdTelemetry) GetFrom() string {
+	if m != nil && m.From != nil {
+		return *m.From
+	}
+	return ""
+}
+
+func (m *DeliverdTelemetry) GetTo() string {
+	if m != nil && m.To != nil {
+		return *m.To
+	}
+	return ""
+}
+
+func (m *DeliverdTelemetry) GetIsLocal() bool {
+	if m != nil && m.IsLocal != nil {
+		return *m.IsLocal
+	}
+	return false
+}
+
+func (m *DeliverdTelemetry) GetLocalAddress() string {
+	if m != nil && m.LocalAddress != nil {
+		return *m.LocalAddress
+	}
+	return ""
+}
+
+func (m *DeliverdTelemetry) GetRemoteAddress() string {
+	if m != nil && m.RemoteAddress != nil {
+		return *m.RemoteAddress
+	}
+	return ""
+}
+
+func (m *DeliverdTelemetry) GetRemoteSmtpResponseCode() uint32 {
+	if m != nil && m.RemoteSmtpResponseCode != nil {
+		return *m.RemoteSmtpResponseCode
+	}
+	return 0
+}
+
 // Get routes query
 type DeliverdGetRoutesQuery struct {
 	DeliverdId       *string `protobuf:"bytes,1,req,name=deliverd_id" json:"deliverd_id,omitempty"`
