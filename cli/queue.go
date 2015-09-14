@@ -2,10 +2,11 @@ package cli
 
 import (
 	"fmt"
-	"github.com/toorop/tmail/api"
-	cgCli "github.com/codegangsta/cli"
 	"os"
 	"strconv"
+
+	cgCli "github.com/codegangsta/cli"
+	"github.com/toorop/tmail/api"
 )
 
 var Queue = cgCli.Command{
@@ -20,6 +21,39 @@ var Queue = cgCli.Command{
 			Action: func(c *cgCli.Context) {
 				var status string
 				messages, err := api.QueueGetMessages()
+				cliHandleErr(err)
+				if len(messages) == 0 {
+					println("There is no message in queue.")
+				} else {
+					fmt.Printf("%d messages in queue.\r\n", len(messages))
+					for _, m := range messages {
+						switch m.Status {
+						case 0:
+							status = "Delivery in progress"
+						case 1:
+							status = "Will be discarded"
+						case 2:
+							status = "Scheduled"
+						case 3:
+							status = "Will be bounced"
+						}
+
+						msg := fmt.Sprintf("%d - From: %s - To: %s - Status: %s - Added: %v ", m.Id, m.MailFrom, m.RcptTo, status, m.AddedAt)
+						if m.Status != 0 {
+							msg += fmt.Sprintf("- Next delivery process scheduled at: %v", m.NextDeliveryScheduledAt)
+						}
+						println(msg)
+					}
+				}
+				os.Exit(0)
+			},
+		}, {
+			Name:        "count",
+			Usage:       "count messages in queue",
+			Description: "tmail queue count",
+			Action: func(c *cgCli.Context) {
+				var status string
+				messages, err := api.QueueCount()
 				cliHandleErr(err)
 				if len(messages) == 0 {
 					println("There is no message in queue.")

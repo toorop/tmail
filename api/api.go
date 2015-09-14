@@ -87,6 +87,11 @@ func QueueGetMessages() ([]core.QMessage, error) {
 	return core.QueueListMessages()
 }
 
+// QueueCount returns number of messages in queue
+func QueueCount() (int32, error) {
+	return core.QueueCount()
+}
+
 // QueueGetMessage return a message by its id
 func QueueGetMessage(id int64) (core.QMessage, error) {
 	return core.QueueGetMessageById(id)
@@ -157,6 +162,7 @@ func DkimDisable(domain string) error {
 	return core.DkimDisable(domain)
 }
 
+// DkimGetConfig return DKIM configuration for domain domain
 func DkimGetConfig(domain string) (dkimConfig *core.DkimConfig, err error) {
 	return core.DkimGetConfig(domain)
 }

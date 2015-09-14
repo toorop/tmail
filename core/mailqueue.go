@@ -176,9 +176,16 @@ func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string
 	return
 }
 
-// QueueListMessages return all message in queue
+// QueueListMessages return all messages in queue
 func QueueListMessages() ([]QMessage, error) {
 	messages := []QMessage{}
 	err := DB.Find(&messages).Error
 	return messages, err
+}
+
+// QueueCount rerurn the number of message in queue
+func QueueCount() (c int32, err error) {
+	c = 0
+	err = DB.Model(QMessage{}).Count(&c).Error
+	return
 }
