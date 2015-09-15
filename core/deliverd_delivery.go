@@ -36,12 +36,15 @@ func (d *delivery) processMsg() {
 	var err error
 	flagBounce := false
 
-	// telemetry & log on panic
+	ChDeliverdConcurrencyCount <- 1
+
+	// defer
 	defer func() {
-		d.sendTelemetry()
+		ChDeliverdConcurrencyCount <- -1
 		if err := recover(); err != nil {
 			Log.Error(fmt.Sprintf("deliverd %s : PANIC \r\n %s \r\n %s", d.id, err, debug.Stack()))
 		}
+		d.sendTelemetry()
 	}()
 
 	// decode message from json

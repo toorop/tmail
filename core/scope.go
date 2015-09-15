@@ -23,17 +23,17 @@ const (
 )
 
 var (
-	Version               string
-	Cfg                   *Config
-	DB                    gorm.DB
-	Log                   *Logger
-	NsqQueueProducer      *nsq.Producer
-	SmtpSessionsCount     int
-	ChSmtpSessionsCount   chan int
-	DeliverdLocalCount    int
-	DeliverdRemoteCount   int
-	ChDeliverdRemoteCount chan int
-	Store                 Storer
+	Version                    string
+	Cfg                        *Config
+	DB                         gorm.DB
+	Log                        *Logger
+	NsqQueueProducer           *nsq.Producer
+	SmtpSessionsCount          int
+	ChSmtpSessionsCount        chan int
+	//DeliverdLocalCount         int
+	DeliverdConcurrencyCount   int
+	ChDeliverdConcurrencyCount chan int
+	Store                      Storer
 )
 
 // Boostrap DB, config,...
@@ -95,11 +95,11 @@ func Bootstrap() (err error) {
 	}()
 
 	// Deliverd remote process
-	DeliverdRemoteCount = 0
-	ChDeliverdRemoteCount = make(chan int)
+	DeliverdConcurrencyCount = 0
+	ChDeliverdConcurrencyCount = make(chan int)
 	go func() {
 		for {
-			DeliverdRemoteCount += <-ChDeliverdRemoteCount
+			DeliverdConcurrencyCount += <-ChDeliverdConcurrencyCount
 		}
 	}()
 

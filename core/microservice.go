@@ -462,8 +462,7 @@ func msDeliverdSendTelemetry(d *delivery) {
 		return
 	}
 	telemetry.MessagesInQueue = proto.Uint32(t)
-	telemetry.ConcurrencyRemote = proto.Uint32(uint32(DeliverdRemoteCount))
-	telemetry.ConcurrencyLocal = proto.Uint32(uint32(DeliverdLocalCount))
+	telemetry.Concurrency = proto.Uint32(uint32(DeliverdConcurrencyCount))
 	telemetry.IsLocal = proto.Bool(d.isLocal)
 	telemetry.From = proto.String(d.qMsg.MailFrom)
 	telemetry.To = proto.String(d.qMsg.RcptTo)
@@ -472,8 +471,6 @@ func msDeliverdSendTelemetry(d *delivery) {
 		telemetry.LocalAddress = proto.String(d.localAddr)
 		telemetry.RemoteSmtpResponseCode = proto.Uint32(uint32(d.remoteSMTPresponseCode))
 	}
-
-	Log.Info(fmt.Sprintf("deliverd-remote %s - msDeliverdSendTelemetry - telemetry %v", d.id, telemetry))
 
 	// do the rest in goroutine
 	go func(deliveryID string) {

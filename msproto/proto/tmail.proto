@@ -66,14 +66,13 @@ message DeliverdTelemetry {
 	required bool success = 3; // status of delivery (success or not)
 	required uint32 exec_time = 4; // in nanosecond
 	required uint32 messages_in_queue = 5;
-	required uint32 concurrency_remote = 6;
-	required uint32 concurrency_local = 7;
-	required string from = 8;
-	required string to = 9;
-	required bool is_local = 10;
-	optional string local_address = 11;
-	optional string remote_address =12;
-	optional uint32 remote_smtp_response_code = 13; // 250, 420, 550,...
+	required uint32 concurrency = 6;
+	required string from = 7;
+	required string to = 8;
+	required bool is_local = 9;
+	optional string local_address = 10;
+	optional string remote_address =11;
+	optional uint32 remote_smtp_response_code = 12; // 250, 420, 550,...
 }
 
 
