@@ -36,8 +36,9 @@ func (d *delivery) processMsg() {
 	var err error
 	flagBounce := false
 
-	// Recover on panic
+	// telemetry & log on panic
 	defer func() {
+		d.sendTelemetry()
 		if err := recover(); err != nil {
 			Log.Error(fmt.Sprintf("deliverd %s : PANIC \r\n %s \r\n %s", d.id, err, debug.Stack()))
 		}
@@ -156,7 +157,6 @@ func (d *delivery) processMsg() {
 
 func (d *delivery) dieOk() {
 	d.success = true
-	d.sendTelemetry()
 	Log.Info("deliverd " + d.id + ": success")
 	if err := d.qMsg.Delete(); err != nil {
 		Log.Error("deliverd " + d.id + ": unable remove queued message " + d.qMsg.Uuid + " from queue." + err.Error())
