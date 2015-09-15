@@ -160,9 +160,11 @@ export TMAIL_SMTPD_SCAN_CLAMAV_DSNS="/var/run/clamav/clamd.ctl"
 # You must define at least one local addresse
 export TMAIL_DELIVERD_LOCAL_IPS="0.0.0.0"
 
+# Local Concurrency
+export TMAIL_DELIVERD_LOCAL_CONCURRENCY=50
 
-# maxInFlight: the number of concurrent deliverd process
-export TMAIL_DELIVERD_MAX_IN_FLIGHT=20
+# Remote Concurrency
+export TMAIL_DELIVERD_REMOTE_CONCURRENCY=50
 
 # Default queue lifetime in minutes
 # After this delay

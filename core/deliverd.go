@@ -1,11 +1,12 @@
 package core
 
 import (
-	"github.com/bitly/go-nsq"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/bitly/go-nsq"
 )
 
 /*type deliverd struct {
@@ -22,7 +23,7 @@ func LaunchDeliverd() {
 	cfg := nsq.NewConfig()
 
 	cfg.UserAgent = "tmail/deliverd"
-	cfg.MaxInFlight = Cfg.GetDeliverdMaxInFlight()
+	cfg.MaxInFlight = ((Cfg.GetDeliverdConcurrencyLocal() + Cfg.GetDeliverdConcurrencyRemote()) * 110) / 100
 	// MaxAttempts: number of attemps for a message before sending a
 	// 1 [queueRemote/deliverd] msg 07814777d6312000 attempted 6 times, giving up
 	cfg.MaxAttempts = 0

@@ -49,7 +49,8 @@ type Config struct {
 
 		LaunchDeliverd               bool   `name:"deliverd_launch" default:"false"`
 		LocalIps                     string `name:"deliverd_local_ips" default:"_"`
-		DeliverdMaxInFlight          int    `name:"deliverd_max_in_flight" default:"5"`
+		DeliverdConcurrencyLocal     int    `name:"deliverd_concurrency_local" default:"50"`
+		DeliverdConcurrencyRemote    int    `name:"deliverd_concurrency_remote" default:"50"`
 		DeliverdQueueLifetime        int    `name:"deliverd_queue_lifetime" default:"10080"`
 		DeliverdQueueBouncesLifetime int    `name:"deliverd_queue_bounces_lifetime" default:"10080"`
 		DeliverdRemoteTimeout        int    `name:"deliverd_remote_timeout" default:"60"`
@@ -491,10 +492,17 @@ func (c *Config) SetRestServerPasswd(passwd string) {
 // deliverd
 
 // GetDeliverdMaxInFlight returns DeliverdMaxInFlight
-func (c *Config) GetDeliverdMaxInFlight() int {
+func (c *Config) GetDeliverdConcurrencyLocal() int {
 	c.Lock()
 	defer c.Unlock()
-	return c.cfg.DeliverdMaxInFlight
+	return c.cfg.DeliverdConcurrencyLocal
+}
+
+// GetDeliverdConcurrencyRemote returns max concurrency for deliverd remote
+func (c *Config) GetDeliverdConcurrencyRemote() int {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.DeliverdConcurrencyRemote
 }
 
 // GetLocalIps returns ordered lits of local IP (net.IP) to use when sending mail

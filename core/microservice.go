@@ -462,7 +462,8 @@ func msDeliverdSendTelemetry(d *delivery) {
 		return
 	}
 	telemetry.MessagesInQueue = proto.Uint32(t)
-	telemetry.Concurrency = proto.Uint32(uint32(DeliverdConcurrencyCount))
+	telemetry.ConcurrencyRemote = proto.Uint32(uint32(DeliverdConcurrencyRemoteCount))
+	telemetry.ConcurrencyLocal = proto.Uint32(uint32(DeliverdConcurrencyLocalCount))
 	telemetry.IsLocal = proto.Bool(d.isLocal)
 	telemetry.From = proto.String(d.qMsg.MailFrom)
 	telemetry.To = proto.String(d.qMsg.RcptTo)

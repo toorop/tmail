@@ -262,13 +262,14 @@ type DeliverdTelemetry struct {
 	Success                *bool   `protobuf:"varint,3,req,name=success" json:"success,omitempty"`
 	ExecTime               *uint32 `protobuf:"varint,4,req,name=exec_time" json:"exec_time,omitempty"`
 	MessagesInQueue        *uint32 `protobuf:"varint,5,req,name=messages_in_queue" json:"messages_in_queue,omitempty"`
-	Concurrency            *uint32 `protobuf:"varint,6,req,name=concurrency" json:"concurrency,omitempty"`
-	From                   *string `protobuf:"bytes,7,req,name=from" json:"from,omitempty"`
-	To                     *string `protobuf:"bytes,8,req,name=to" json:"to,omitempty"`
-	IsLocal                *bool   `protobuf:"varint,9,req,name=is_local" json:"is_local,omitempty"`
-	LocalAddress           *string `protobuf:"bytes,10,opt,name=local_address" json:"local_address,omitempty"`
-	RemoteAddress          *string `protobuf:"bytes,11,opt,name=remote_address" json:"remote_address,omitempty"`
-	RemoteSmtpResponseCode *uint32 `protobuf:"varint,12,opt,name=remote_smtp_response_code" json:"remote_smtp_response_code,omitempty"`
+	ConcurrencyRemote      *uint32 `protobuf:"varint,6,req,name=concurrency_remote" json:"concurrency_remote,omitempty"`
+	ConcurrencyLocal       *uint32 `protobuf:"varint,7,req,name=concurrency_local" json:"concurrency_local,omitempty"`
+	From                   *string `protobuf:"bytes,8,req,name=from" json:"from,omitempty"`
+	To                     *string `protobuf:"bytes,9,req,name=to" json:"to,omitempty"`
+	IsLocal                *bool   `protobuf:"varint,10,req,name=is_local" json:"is_local,omitempty"`
+	LocalAddress           *string `protobuf:"bytes,11,opt,name=local_address" json:"local_address,omitempty"`
+	RemoteAddress          *string `protobuf:"bytes,12,opt,name=remote_address" json:"remote_address,omitempty"`
+	RemoteSmtpResponseCode *uint32 `protobuf:"varint,13,opt,name=remote_smtp_response_code" json:"remote_smtp_response_code,omitempty"`
 	XXX_unrecognized       []byte  `json:"-"`
 }
 
@@ -311,9 +312,16 @@ func (m *DeliverdTelemetry) GetMessagesInQueue() uint32 {
 	return 0
 }
 
-func (m *DeliverdTelemetry) GetConcurrency() uint32 {
-	if m != nil && m.Concurrency != nil {
-		return *m.Concurrency
+func (m *DeliverdTelemetry) GetConcurrencyRemote() uint32 {
+	if m != nil && m.ConcurrencyRemote != nil {
+		return *m.ConcurrencyRemote
+	}
+	return 0
+}
+
+func (m *DeliverdTelemetry) GetConcurrencyLocal() uint32 {
+	if m != nil && m.ConcurrencyLocal != nil {
+		return *m.ConcurrencyLocal
 	}
 	return 0
 }
