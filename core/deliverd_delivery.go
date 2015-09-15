@@ -79,6 +79,7 @@ func (d *delivery) processMsg() {
 			return
 		}
 		Log.Info(fmt.Sprintf("deliverd %s : queued message %s is marked as being in delivery by another process", d.id, d.qMsg.Uuid))
+		d.nsqMsg.RequeueWithoutBackoff(time.Duration(600 * time.Second))
 		return
 	}
 
