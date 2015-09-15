@@ -16,6 +16,12 @@ func deliverRemote(d *delivery) {
 	ChDeliverdConcurrencyRemoteCount <- 1
 	defer func() { ChDeliverdConcurrencyRemoteCount <- -1 }()
 
+	// > concurrency remote ?
+	if DeliverdConcurrencyRemoteCount >= Cfg.GetDeliverdConcurrencyRemote() {
+		d.requeue()
+		return
+	}
+
 	time.Sleep(100 * time.Nanosecond)
 	Log.Info(fmt.Sprintf("delivery-remote %s: starting new remote delivery %d/%d from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, DeliverdConcurrencyRemoteCount, Cfg.GetDeliverdConcurrencyRemote(), d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
 
