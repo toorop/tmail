@@ -171,7 +171,7 @@ func (d *delivery) dieTemp(msg string, logit bool) {
 	}
 
 	// discard bounce
-	if d.qMsg.MailFrom == "" && time.Since(d.qMsg.AddedAt) < time.Duration(Cfg.GetDeliverdQueueBouncesLifetime())*time.Minute {
+	if d.qMsg.MailFrom == "" && time.Since(d.qMsg.AddedAt) > time.Duration(Cfg.GetDeliverdQueueBouncesLifetime())*time.Minute {
 		d.discard()
 		return
 	}
