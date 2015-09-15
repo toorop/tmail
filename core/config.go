@@ -47,14 +47,15 @@ type Config struct {
 		SmtpdClamavDsns          string `name:"smtpd_scan_clamav_dsns" default:""`
 		SmtpdConcurrencyIncoming int    `name:"smtpd_concurrency_incoming" default:"20"`
 
-		LaunchDeliverd              bool   `name:"deliverd_launch" default:"false"`
-		LocalIps                    string `name:"deliverd_local_ips" default:"_"`
-		DeliverdMaxInFlight         int    `name:"deliverd_max_in_flight" default:"5"`
-		DeliverdQueueLifetime       int    `name:"deliverd_queue_lifetime" default:"10080"`
-		DeliverdRemoteTimeout       int    `name:"deliverd_remote_timeout" default:"60"`
-		DeliverdRemoteTLSSkipVerify bool   `name:"deliverd_remote_tls_skipverify" default:"false"`
-		DeliverdRemoteTLSFallback   bool   `name:"deliverd_remote_tls_fallback" default:"false"`
-		DeliverdDkimSign            bool   `name:"deliverd_dkim_sign" default:"false"`
+		LaunchDeliverd               bool   `name:"deliverd_launch" default:"false"`
+		LocalIps                     string `name:"deliverd_local_ips" default:"_"`
+		DeliverdMaxInFlight          int    `name:"deliverd_max_in_flight" default:"5"`
+		DeliverdQueueLifetime        int    `name:"deliverd_queue_lifetime" default:"10080"`
+		DeliverdQueueBouncesLifetime int    `name:"deliverd_queue_bounces_lifetime" default:"10080"`
+		DeliverdRemoteTimeout        int    `name:"deliverd_remote_timeout" default:"60"`
+		DeliverdRemoteTLSSkipVerify  bool   `name:"deliverd_remote_tls_skipverify" default:"false"`
+		DeliverdRemoteTLSFallback    bool   `name:"deliverd_remote_tls_fallback" default:"false"`
+		DeliverdDkimSign             bool   `name:"deliverd_dkim_sign" default:"false"`
 
 		// RFC compliance
 		// RFC 5321 2.3.5: the domain name givent MUST be either a primary hostname
@@ -548,6 +549,13 @@ func (c *Config) GetDeliverdQueueLifetime() int {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.DeliverdQueueLifetime
+}
+
+// GetDeliverdQueueBouncesLifetime return DeliverdQueueBouncesLifetime
+func (c *Config) GetDeliverdQueueBouncesLifetime() int {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.DeliverdQueueBouncesLifetime
 }
 
 // GetDeliverdRemoteTLSFallback return DeliverdRemoteTLSFallback

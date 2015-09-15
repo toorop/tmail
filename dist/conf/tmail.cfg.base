@@ -170,6 +170,9 @@ export TMAIL_DELIVERD_MAX_IN_FLIGHT=20
 # discard if bounce failed
 export TMAIL_DELIVERD_QUEUE_LIFETIME=60400
 
+# Specific queue lidetime for bounces
+export TMAIL_DELIVERD_QUEUE_BOUNCES_LIFETIME=10080
+
 # TMAIL_DELIVERD_REMOTE_TLS_SKIPVERIFY controls whether a client verifies the
 # server's certificate chain and host name.
 # If TMAIL_DELIVERD_REMOTE_TLS_SKIPVERIFY is true, TLS accepts any certificate
@@ -246,6 +249,9 @@ export TMAIL_MS_SMTPD_DATA=""
 
 # Remote routes for deliverd
 export TMAIL_MS_DELIVERD_GET_ROUTES=""
+
+# deliverd telemetry
+export TMAIL_MS_DELIVERD_SEND_TELEMETRY=""
 
 ## Openstack
 ## paste your rcfile here

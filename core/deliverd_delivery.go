@@ -169,6 +169,13 @@ func (d *delivery) dieTemp(msg string, logit bool) {
 	if logit {
 		Log.Info("deliverd " + d.id + ": temp failure - " + msg)
 	}
+
+	// discard bounce
+	if d.qMsg.MailFrom == "" && time.Since(d.qMsg.AddedAt) < time.Duration(Cfg.GetDeliverdQueueBouncesLifetime())*time.Minute {
+		d.discard()
+		return
+	}
+
 	if time.Since(d.qMsg.AddedAt) < time.Duration(Cfg.GetDeliverdQueueLifetime())*time.Minute {
 		d.requeue()
 		return
