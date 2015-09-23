@@ -72,6 +72,7 @@ type Config struct {
 		MsUriSmtpdNewClient        string `name:"ms_smtpd_newclient" default:"_"`
 		MsUriSmtpdRcptTo           string `name:"ms_smtpd_rcptto" default:"_"`
 		MsUriSmtpdData             string `name:"ms_smtpd_data" default:"_"`
+		MsUriSmtpdSendTelemetry    string `name:"ms_smtpd_send_telemetry" default:"_"`
 		MsUriDeliverdGetRoutes     string `name:"ms_deliverd_get_routes" default:"_"`
 		MsUriDeliverdSendTelemetry string `name:"ms_deliverd_send_telemetry" default:"_"`
 
@@ -426,6 +427,10 @@ func (c *Config) GetMicroservicesUri(hookId string) []string {
 	case "smtpddata":
 		if c.cfg.MsUriSmtpdData != "_" {
 			return strings.Split(c.cfg.MsUriSmtpdData, ";")
+		}
+	case "smtpdsendtelemetry":
+		if c.cfg.MsUriSmtpdSendTelemetry != "_" {
+			return strings.Split(c.cfg.MsUriSmtpdSendTelemetry, ";")
 		}
 
 	case "deliverdgetroutes":

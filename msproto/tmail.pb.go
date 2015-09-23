@@ -10,6 +10,7 @@ It is generated from these files:
 
 It has these top-level messages:
 	SmtpResponse
+	SmtpdTelemetry
 	SmtpdNewClientQuery
 	SmtpdNewClientResponse
 	SmtpdRcptToQuery
@@ -52,6 +53,103 @@ func (m *SmtpResponse) GetMsg() string {
 		return *m.Msg
 	}
 	return ""
+}
+
+// smtpd telemetry
+type SmtpdTelemetry struct {
+	ServerId         *string  `protobuf:"bytes,1,req,name=server_id" json:"server_id,omitempty"`
+	SessionId        *string  `protobuf:"bytes,2,req,name=session_id" json:"session_id,omitempty"`
+	RemoteAddress    *string  `protobuf:"bytes,3,req,name=remote_address" json:"remote_address,omitempty"`
+	Success          *bool    `protobuf:"varint,4,req,name=success" json:"success,omitempty"`
+	SmtpResponseCode *uint32  `protobuf:"varint,5,req,name=smtp_response_code" json:"smtp_response_code,omitempty"`
+	EnvMailfrom      *string  `protobuf:"bytes,6,req,name=env_mailfrom" json:"env_mailfrom,omitempty"`
+	EnvRcptto        []string `protobuf:"bytes,7,rep,name=env_rcptto" json:"env_rcptto,omitempty"`
+	MessageSize      *uint32  `protobuf:"varint,8,req,name=message_size" json:"message_size,omitempty"`
+	IsTls            *bool    `protobuf:"varint,9,req,name=is_tls" json:"is_tls,omitempty"`
+	Concurrency      *uint32  `protobuf:"varint,10,req,name=concurrency" json:"concurrency,omitempty"`
+	ExecTime         *uint32  `protobuf:"varint,11,req,name=exec_time" json:"exec_time,omitempty"`
+	XXX_unrecognized []byte   `json:"-"`
+}
+
+func (m *SmtpdTelemetry) Reset()         { *m = SmtpdTelemetry{} }
+func (m *SmtpdTelemetry) String() string { return proto.CompactTextString(m) }
+func (*SmtpdTelemetry) ProtoMessage()    {}
+
+func (m *SmtpdTelemetry) GetServerId() string {
+	if m != nil && m.ServerId != nil {
+		return *m.ServerId
+	}
+	return ""
+}
+
+func (m *SmtpdTelemetry) GetSessionId() string {
+	if m != nil && m.SessionId != nil {
+		return *m.SessionId
+	}
+	return ""
+}
+
+func (m *SmtpdTelemetry) GetRemoteAddress() string {
+	if m != nil && m.RemoteAddress != nil {
+		return *m.RemoteAddress
+	}
+	return ""
+}
+
+func (m *SmtpdTelemetry) GetSuccess() bool {
+	if m != nil && m.Success != nil {
+		return *m.Success
+	}
+	return false
+}
+
+func (m *SmtpdTelemetry) GetSmtpResponseCode() uint32 {
+	if m != nil && m.SmtpResponseCode != nil {
+		return *m.SmtpResponseCode
+	}
+	return 0
+}
+
+func (m *SmtpdTelemetry) GetEnvMailfrom() string {
+	if m != nil && m.EnvMailfrom != nil {
+		return *m.EnvMailfrom
+	}
+	return ""
+}
+
+func (m *SmtpdTelemetry) GetEnvRcptto() []string {
+	if m != nil {
+		return m.EnvRcptto
+	}
+	return nil
+}
+
+func (m *SmtpdTelemetry) GetMessageSize() uint32 {
+	if m != nil && m.MessageSize != nil {
+		return *m.MessageSize
+	}
+	return 0
+}
+
+func (m *SmtpdTelemetry) GetIsTls() bool {
+	if m != nil && m.IsTls != nil {
+		return *m.IsTls
+	}
+	return false
+}
+
+func (m *SmtpdTelemetry) GetConcurrency() uint32 {
+	if m != nil && m.Concurrency != nil {
+		return *m.Concurrency
+	}
+	return 0
+}
+
+func (m *SmtpdTelemetry) GetExecTime() uint32 {
+	if m != nil && m.ExecTime != nil {
+		return *m.ExecTime
+	}
+	return 0
 }
 
 // Hook SMTPd New client

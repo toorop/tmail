@@ -11,6 +11,21 @@ message SmtpResponse {
 }
 
 
+// smtpd telemetry
+message SmtpdTelemetry {
+	required string server_id = 1;
+	required string session_id = 2;
+	required string remote_address = 3;
+	required bool success = 4;
+	required uint32 smtp_response_code = 5;
+	required string env_mailfrom = 6;
+	repeated string env_rcptto = 7;
+	required uint32 message_size = 8;
+	required bool is_tls = 9;
+	required uint32 concurrency = 10;
+	required uint32 exec_time = 11;
+	}
+
 // Hook SMTPd New client
 // SmtpdNewClientQuery
 message SmtpdNewClientQuery {

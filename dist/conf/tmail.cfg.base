@@ -252,6 +252,9 @@ export TMAIL_MS_SMTPD_RCPTTO_ACCESS_IS_GRANTED=""
 # Call after DATA command
 export TMAIL_MS_SMTPD_DATA=""
 
+# smtpd telemetry
+export TMAIL_MS_SMTPD_SEND_TELEMETRY=""
+
 # Remote routes for deliverd
 export TMAIL_MS_DELIVERD_GET_ROUTES=""
 

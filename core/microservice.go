@@ -377,6 +377,49 @@ func smtpdData(s *SMTPServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 	return false, extraHeaders
 }
 
+func msSmtpdSendTelemetry(s *SMTPServerSession) {
+	msURI := Cfg.GetMicroservicesUri("smtpdsendtelemetry")
+	if len(msURI) == 0 {
+		return
+	}
+	telemetry := msproto.SmtpdTelemetry{}
+	telemetry.ServerId = proto.String(Cfg.GetMe())
+	telemetry.SessionId = proto.String(s.uuid)
+	telemetry.RemoteAddress = proto.String(s.remoteAddr)
+	telemetry.EnvMailfrom = proto.String(s.envelope.MailFrom)
+	telemetry.EnvRcptto = s.envelope.RcptTo
+	if s.SMTPResponseCode != 0 && s.SMTPResponseCode < 400 {
+		telemetry.Success = proto.Bool(true)
+	}
+	telemetry.MessageSize = proto.Uint32(s.dataBytes)
+	telemetry.IsTls = proto.Bool(s.tls)
+	telemetry.Concurrency = proto.Uint32(uint32(SmtpSessionsCount))
+	telemetry.SmtpResponseCode = proto.Uint32(s.SMTPResponseCode)
+	telemetry.ExecTime = proto.Uint32(uint32(time.Since(s.startAt).Nanoseconds()))
+
+	// metrics are collected we release s
+	go func(sessionID string) {
+		msg, err := proto.Marshal(&telemetry)
+		if err != nil {
+			Log.Error(fmt.Sprintf("smtpd - %s - msSmtpdSendTelemetry - unable to serialize message: %s", sessionID, err.Error()))
+			return
+		}
+		for _, uri := range Cfg.GetMicroservicesUri("smtpdsendtelemetry") {
+			ms, err := newMicroservice(uri)
+			if err != nil {
+				Log.Error(fmt.Sprintf("smtpd - %s - msSmtpdSendTelemetry - unable to init new ms: %s", sessionID, err.Error()))
+				continue
+			}
+			Log.Info(fmt.Sprintf("smtpd - %s - msSmtpdSendTelemetry - call ms: %s", sessionID, ms.url))
+			if _, err = ms.call(&msg); err != nil {
+				Log.Error(fmt.Sprintf("smtpd - %s - msSmtpdSendTelemetry - unable to call ms: %s", sessionID, err.Error()))
+				continue
+			}
+		}
+	}(s.uuid)
+	return
+}
+
 // msGetRoutesmsGetRoutes returns routes from microservices
 func msGetRoutes(d *delivery) (routes *[]Route, stop bool) {
 	stop = false
@@ -472,16 +515,13 @@ func msDeliverdSendTelemetry(d *delivery) {
 		telemetry.LocalAddress = proto.String(d.localAddr)
 		telemetry.RemoteSmtpResponseCode = proto.Uint32(uint32(d.remoteSMTPresponseCode))
 	}
-
-	// do the rest in goroutine
+	//
 	go func(deliveryID string) {
 		msg, err := proto.Marshal(&telemetry)
 		if err != nil {
 			Log.Error(fmt.Sprintf("deliverd-remote %s - msDeliverdSendTelemetry - unable to serialize message: %s", deliveryID, err.Error()))
 			return
 		}
-		// There should be only one URI for getroutes
-		// so we take msURI[0]
 		for _, uri := range Cfg.GetMicroservicesUri("deliverdsendtelemetry") {
 			ms, err := newMicroservice(uri)
 			if err != nil {

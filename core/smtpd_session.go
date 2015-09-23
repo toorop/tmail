@@ -29,24 +29,29 @@ const (
 
 // SMTPServerSession retpresents a SMTP session (server)
 type SMTPServerSession struct {
-	uuid           string
-	conn           net.Conn
-	connTLS        *tls.Conn
-	logger         *Logger
-	timer          *time.Timer // for timeout
-	timeout        time.Duration
-	tls            bool
-	tlsVersion     string
-	relayGranted   bool
-	user           *User
-	seenHelo       bool
-	seenMail       bool
-	helo           string
-	envelope       message.Envelope
-	exitasap       chan int
-	rcptCount      int
-	badRcptToCount int
-	vrfyCount      int
+	uuid             string
+	conn             net.Conn
+	connTLS          *tls.Conn
+	logger           *Logger
+	timer            *time.Timer // for timeout
+	timeout          time.Duration
+	tls              bool
+	tlsVersion       string
+	relayGranted     bool
+	user             *User
+	seenHelo         bool
+	seenMail         bool
+	helo             string
+	envelope         message.Envelope
+	exitasap         chan int
+	rcptCount        int
+	badRcptToCount   int
+	vrfyCount        int
+	remoteAddr       string
+	SMTPResponseCode uint32
+	dataBytes        uint32
+	startAt          time.Time
+	exiting          bool
 }
 
 // NewSMTPServerSession returns a new SMTP session
@@ -56,6 +61,7 @@ func NewSMTPServerSession(conn net.Conn, isTLS bool) (sss *SMTPServerSession, er
 	if err != nil {
 		return
 	}
+	sss.startAt = time.Now()
 
 	sss.conn = conn
 	if isTLS {
@@ -63,6 +69,7 @@ func NewSMTPServerSession(conn net.Conn, isTLS bool) (sss *SMTPServerSession, er
 		sss.tls = true
 	}
 
+	sss.remoteAddr = conn.RemoteAddr().String()
 	sss.logger = Log
 
 	sss.relayGranted = false
@@ -85,7 +92,8 @@ func NewSMTPServerSession(conn net.Conn, isTLS bool) (sss *SMTPServerSession, er
 // timeout
 func (s *SMTPServerSession) raiseTimeout() {
 	s.log("client timeout")
-	s.out("420 Client timeout.")
+	s.out("420 Client timeout")
+	s.SMTPResponseCode = 420
 	s.exitAsap()
 }
 
@@ -100,7 +108,13 @@ func (s *SMTPServerSession) recoverOnPanic() {
 
 // exit asap
 func (s *SMTPServerSession) exitAsap() {
+	if s.exiting {
+		time.Sleep(time.Duration(1) * time.Millisecond)
+		return
+	}
+	s.exiting = true
 	s.timer.Stop()
+	s.sendTelemetry()
 	s.exitasap <- 1
 }
 
@@ -178,6 +192,7 @@ func (s *SMTPServerSession) smtpGreeting() {
 	if SmtpSessionsCount > Cfg.GetSmtpdConcurrencyIncoming() {
 		s.log(fmt.Sprintf("GREETING - max connections reached %d/%d", SmtpSessionsCount, Cfg.GetSmtpdConcurrencyIncoming()))
 		s.out(fmt.Sprintf("421 sorry, the maximum number of connections has been reached, try again later %s", s.uuid))
+		s.SMTPResponseCode = 421
 		s.exitAsap()
 		return
 	}
@@ -218,11 +233,13 @@ func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
 				if err != nil {
 					s.log("fail to do lookup on helo host. " + err.Error())
 					s.out("404 unable to resolve " + msg[1] + ". Need fqdn or address in helo command")
+					s.SMTPResponseCode = 404
 					return false
 				}
 				if !ok {
 					s.log("helo command rejected, need fully-qualified hostname or address" + msg[1] + " given")
 					s.out("504 helo command rejected, need fully-qualified hostname or address #5.5.2")
+					s.SMTPResponseCode = 504
 					return false
 				}
 			}
@@ -231,6 +248,7 @@ func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
 	} else if Cfg.getRFCHeloNeedsFqnOrAddress() {
 		s.log("helo command rejected, need fully-qualified hostname. None given")
 		s.out("504 helo command rejected, need fully-qualified hostname or address #5.5.2")
+		s.SMTPResponseCode = 504
 		return false
 	}
 	s.seenHelo = true
@@ -275,6 +293,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 	if Cfg.getRFCHeloMandatory() && !s.seenHelo {
 		s.pause(2)
 		s.out("503 5.5.2 Send hello first")
+		s.SMTPResponseCode = 503
 		return
 	}
 	msgLen := len(msg)
@@ -283,6 +302,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		s.log("MAIL - Bad syntax: %s" + strings.Join(msg, " "))
 		s.pause(2)
 		s.out("501 5.5.4 Syntax: MAIL FROM:<address> [SIZE]")
+		s.SMTPResponseCode = 501
 		return
 	}
 	// mail from:<user> EXT || mail from: <user> EXT
@@ -308,6 +328,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 			s.log("MAIL - Bad syntax: " + strings.Join(msg, " "))
 			s.pause(2)
 			s.out("501 5.5.4 Syntax: MAIL FROM:<address> [SIZE]")
+			s.SMTPResponseCode = 501
 			return
 		}
 		// SIZE
@@ -316,12 +337,14 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 			s.log(fmt.Sprintf("MAIL FROM - Bad syntax : %s ", strings.Join(msg, " ")))
 			s.pause(2)
 			s.out("501 5.5.4 Syntax: MAIL FROM:<address> [SIZE]")
+			s.SMTPResponseCode = 501
 			return
 		}
 		if strings.ToLower(extValue[0]) != "size" {
 			s.log(fmt.Sprintf("MAIL FROM - Unsuported extension : %s ", extValue[0]))
 			s.pause(2)
 			s.out("501 5.5.4 Invalid arguments")
+			s.SMTPResponseCode = 501
 			return
 		}
 		if Cfg.GetSmtpdMaxDataBytes() != 0 {
@@ -330,11 +353,13 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 				s.log(fmt.Sprintf("MAIL FROM - bad value for size extension SIZE=%v", extValue[1]))
 				s.pause(2)
 				s.out("501 5.5.4 Invalid arguments")
+				s.SMTPResponseCode = 501
 				return
 			}
 			if int(size) > Cfg.GetSmtpdMaxDataBytes() {
 				s.log(fmt.Sprintf("MAIL FROM - message exceeds fixed maximum message size %d/%d", size, Cfg.GetSmtpdMaxDataBytes()))
 				s.out("552 message exceeds fixed maximum message size")
+				s.SMTPResponseCode = 552
 				s.pause(1)
 				return
 			}
@@ -350,6 +375,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		if reversePathlen > 256 { // RFC 5321 4.3.5.1.3
 			s.log("MAIL - reverse path is too long: " + s.envelope.MailFrom)
 			s.out("550 reverse path must be lower than 255 char (RFC 5321 4.5.1.3.1)")
+			s.SMTPResponseCode = 550
 			s.pause(2)
 			return
 		}
@@ -358,6 +384,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 			s.log("MAIL - invalid addresse " + localDomain[0])
 			s.pause(2)
 			s.out("501 5.1.7 Invalid address")
+			s.SMTPResponseCode = 501
 			return
 			/*
 				localDomain = append(localDomain, Cfg.GetMe())
@@ -367,12 +394,14 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		if len(localDomain[0]) > 64 {
 			s.log("MAIL - local part is too long: " + s.envelope.MailFrom)
 			s.out("550 local part of reverse path MUST be lower than 65 char (RFC 5321 4.5.3.1.1)")
+			s.SMTPResponseCode = 550
 			s.pause(2)
 			return
 		}
 		if len(localDomain[1]) > 255 {
 			s.log("MAIL - domain part is too long: " + s.envelope.MailFrom)
 			s.out("550 domain part of reverse path MUST be lower than 255 char (RFC 5321 4.5.3.1.2)")
+			s.SMTPResponseCode = 550
 			s.pause(2)
 			return
 		}
@@ -381,17 +410,20 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		if err != nil {
 			s.logError("MAIL - fail to do lookup on domain part. " + err.Error())
 			s.out("451 unable to resolve " + localDomain[1] + " due to timeout or srv failure")
+			s.SMTPResponseCode = 451
 			return
 		}
 		if !ok {
 			s.log("MAIL - need fully-qualified hostname. " + localDomain[1] + " given")
 			s.out("550 5.5.2 need fully-qualified hostname for domain part")
+			s.SMTPResponseCode = 550
 			return
 		}
 	}
 	s.seenMail = true
 	s.log("MAIL FROM " + s.envelope.MailFrom)
 	s.out("250 ok")
+	s.SMTPResponseCode = 250
 }
 
 // RCPT TO
@@ -404,6 +436,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	if Cfg.GetSmtpdMaxRcptTo() != 0 && s.rcptCount > Cfg.GetSmtpdMaxRcptTo() {
 		s.log(fmt.Sprintf("max RCPT TO command reached (%d)", Cfg.GetSmtpdMaxRcptTo()))
 		s.out("451 4.5.3 max RCPT To commands reached for this sessions")
+		s.SMTPResponseCode = 451
 		return
 	}
 	// add pause if rcpt to > 10
@@ -414,6 +447,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 		s.log("RCPT before MAIL")
 		s.pause(2)
 		s.out("503 5.5.1 bad sequence")
+		s.SMTPResponseCode = 503
 		return
 	}
 
@@ -421,6 +455,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 		s.log(fmt.Sprintf("RCPT TO - Bad syntax : %s ", strings.Join(msg, " ")))
 		s.pause(2)
 		s.out("501 5.5.4 syntax: RCPT TO:<address>")
+		s.SMTPResponseCode = 501
 		return
 	}
 
@@ -436,6 +471,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 		s.log("RCPT - Bad syntax : %s " + strings.Join(msg, " "))
 		s.pause(2)
 		s.out("501 5.5.4 syntax: RCPT TO:<address>")
+		s.SMTPResponseCode = 501
 		return
 	}
 	rcptto = RemoveBrackets(rcptto)
@@ -455,6 +491,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 		s.log(fmt.Sprintf("RCPT - bad email format : %s - %s ", strings.Join(msg, " "), err))
 		s.pause(2)
 		s.out("501 5.5.4 Bad email format")
+		s.SMTPResponseCode = 501
 		return
 	}
 
@@ -464,6 +501,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 		s.log(fmt.Sprintf("RCPT - Bad email format : %s ", strings.Join(msg, " ")))
 		s.pause(2)
 		s.out("501 5.5.4 Bad email format")
+		s.SMTPResponseCode = 501
 		return
 	}
 
@@ -485,6 +523,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 		if err != nil && err != gorm.RecordNotFound {
 			s.logError("RCPT - relay access failed while queriyng for rcpthost. " + err.Error())
 			s.out("455 4.3.0 oops, problem with relay access")
+			s.SMTPResponseCode = 455
 			return
 		}
 		if err == nil {
@@ -498,11 +537,13 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 				if err != nil {
 					s.logError("RCPT - relay access failed while checking validity of local rpctto. " + err.Error())
 					s.out("455 4.3.0 oops, problem with relay access")
+					s.SMTPResponseCode = 455
 					return
 				}
 				if !exists {
 					s.log("RCPT - no mailbox here by that name: " + rcptto)
 					s.out("550 5.5.1 Sorry, no mailbox here by that name")
+					s.SMTPResponseCode = 550
 					s.badRcptToCount++
 					if Cfg.GetSmtpdMaxBadRcptTo() != 0 && s.badRcptToCount > Cfg.GetSmtpdMaxBadRcptTo() {
 						s.log("RCPT - too many bad rcpt to, connection droped")
@@ -524,6 +565,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 		if err != nil {
 			s.logError("RCPT - relay access failed while checking if IP is allowed to relay. " + err.Error())
 			s.out("455 4.3.0 oops, problem with relay access")
+			s.SMTPResponseCode = 455
 			return
 		}
 	}
@@ -532,6 +574,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	if !s.relayGranted {
 		s.log("Relay access denied - from " + s.envelope.MailFrom + " to " + rcptto)
 		s.out("554 5.7.1 Relay access denied")
+		s.SMTPResponseCode = 554
 		s.pause(2)
 		return
 	}
@@ -542,6 +585,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 		s.log("RCPT - + " + rcptto)
 	}
 	s.out("250 ok")
+	s.SMTPResponseCode = 250
 }
 
 // SMTPVrfy VRFY SMTP command
@@ -553,6 +597,7 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 	if Cfg.GetSmtpdMaxVrfy() != 0 && s.vrfyCount > Cfg.GetSmtpdMaxVrfy() {
 		s.log(fmt.Sprintf(" VRFY - max command reached (%d)", Cfg.GetSmtpdMaxVrfy()))
 		s.out("551 5.5.3 too many VRFY commands for this sessions")
+		s.SMTPResponseCode = 551
 		return
 	}
 	// add pause if rcpt to > 10
@@ -566,6 +611,7 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 		s.log("VRFY - Bad syntax : %s " + strings.Join(msg, " "))
 		s.pause(2)
 		s.out("551 5.5.4 syntax: VRFY <address>")
+		s.SMTPResponseCode = 551
 		return
 	}
 
@@ -575,6 +621,7 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 		s.log("VRFY - Bad syntax : %s " + strings.Join(msg, " "))
 		s.pause(2)
 		s.out("551 5.5.4 syntax: VRFY <address>")
+		s.SMTPResponseCode = 551
 		return
 	}
 
@@ -590,6 +637,7 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 		s.log(fmt.Sprintf("VRFY - bad email format : %s - %s ", strings.Join(msg, " "), err))
 		s.pause(2)
 		s.out("551 5.5.4 Bad email format")
+		s.SMTPResponseCode = 551
 		return
 	}
 
@@ -599,6 +647,7 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 		s.log("VRFY - Bad email format : " + rcptto)
 		s.pause(2)
 		s.out("551 5.5.4 Bad email format")
+		s.SMTPResponseCode = 551
 		return
 	}
 	// make domain part insensitive
@@ -609,6 +658,7 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 	if err != nil && err != gorm.RecordNotFound {
 		s.logError("VRFY - relay access failed while queriyng for rcpthost. " + err.Error())
 		s.out("455 4.3.0 oops, internal failure")
+		s.SMTPResponseCode = 455
 		return
 	}
 	if err == nil {
@@ -620,21 +670,26 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 			if err != nil {
 				s.logError("VRFY - relay access failed while checking validity of local rpctto. " + err.Error())
 				s.out("455 4.3.0 oops, internal failure")
+				s.SMTPResponseCode = 455
 				return
 			}
 			if !exists {
 				s.log("VRFY - no mailbox here by that name: " + rcptto)
 				s.out("551 5.5.1 <" + rcptto + "> no mailbox here by that name")
+				s.SMTPResponseCode = 551
 				return
 			}
 			s.out("250 <" + rcptto + ">")
+			s.SMTPResponseCode = 250
 			// relay
 		} else {
 			s.out("252 <" + rcptto + ">")
+			s.SMTPResponseCode = 252
 		}
 	} else {
 		s.log("VRFY - no mailbox here by that name: " + rcptto)
 		s.out("551 5.5.1 <" + rcptto + "> no mailbox here by that name")
+		s.SMTPResponseCode = 551
 		return
 	}
 }
@@ -642,6 +697,7 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 // SMTPExpn EXPN SMTP command
 func (s *SMTPServerSession) smtpExpn(msg []string) {
 	s.out("252")
+	s.SMTPResponseCode = 252
 	return
 }
 
@@ -656,6 +712,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		s.log("DATA - out of sequence")
 		s.pause(2)
 		s.out("503 5.5.1 command out of sequence")
+		s.SMTPResponseCode = 503
 		return
 	}
 
@@ -663,17 +720,19 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		s.log("DATA - invalid syntax: " + strings.Join(msg, " "))
 		s.pause(2)
 		s.out("501 5.5.4 invalid syntax")
+		s.SMTPResponseCode = 551
 		return
 	}
 	s.out("354 End data with <CR><LF>.<CR><LF>")
+	s.SMTPResponseCode = 354
 
 	// Get RAW mail
 	var rawMessage []byte
 	ch := make([]byte, 1)
 	//state := 0
-	pos := 0       // position in current line
-	hops := 0      // nb of relay
-	dataBytes := 0 // nb of bytes (size of message)
+	pos := 0        // position in current line
+	hops := 0       // nb of relay
+	s.dataBytes = 0 // nb of bytes (size of message)
 	flagInHeader := true
 	flagLineMightMatchReceived := true
 	flagLineMightMatchDelivered := true
@@ -694,6 +753,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			// chance that is gone
 			s.logError("DATA - unable to read byte from conn. " + err.Error())
 			s.out("454 something wrong append will reading data from you")
+			s.SMTPResponseCode = 454
 			s.exitAsap()
 			return
 		}
@@ -742,7 +802,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			if ch[0] == CR {
 				state = 4
 				rawMessage = append(rawMessage, ch[0])
-				dataBytes++
+				s.dataBytes++
 				continue
 			}
 
@@ -761,7 +821,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			if ch[0] == CR {
 				state = 4
 				rawMessage = append(rawMessage, ch[0])
-				dataBytes++
+				s.dataBytes++
 				continue
 			}
 			state = 0
@@ -775,7 +835,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			if ch[0] == CR {
 				state = 3
 				rawMessage = append(rawMessage, ch[0])
-				dataBytes++
+				s.dataBytes++
 				continue
 			}
 			state = 0
@@ -785,14 +845,14 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			if ch[0] == LF {
 				doLoop = false
 				rawMessage = append(rawMessage, ch[0])
-				dataBytes++
+				s.dataBytes++
 				continue
 			}
 
 			if ch[0] == CR {
 				state = 4
 				rawMessage = append(rawMessage, ch[0])
-				dataBytes++
+				s.dataBytes++
 				continue
 			}
 			state = 0
@@ -809,21 +869,23 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			}
 		}
 		rawMessage = append(rawMessage, ch[0])
-		dataBytes++
+		s.dataBytes++
 
 		// Max hops reached ?
 		if hops > Cfg.GetSmtpdMaxHops() {
 			s.log(fmt.Sprintf("MAIL - Message is looping. Hops : %d", hops))
 			s.out("554 5.4.6 too many hops, this message is looping")
+			s.SMTPResponseCode = 554
 			s.purgeConn()
 			s.reset()
 			return
 		}
 
 		// Max databytes reached ?
-		if dataBytes > Cfg.GetSmtpdMaxDataBytes() {
-			s.log(fmt.Sprintf("MAIL - Message size (%d) exceeds maxDataBytes (%d).", dataBytes, Cfg.GetSmtpdMaxDataBytes()))
+		if s.dataBytes > uint32(Cfg.GetSmtpdMaxDataBytes()) {
+			s.log(fmt.Sprintf("MAIL - Message size (%d) exceeds maxDataBytes (%d).", s.dataBytes, Cfg.GetSmtpdMaxDataBytes()))
 			s.out("552 5.3.4 sorry, that message size exceeds my databytes limit")
+			s.SMTPResponseCode = 552
 			s.purgeConn()
 			s.reset()
 			return
@@ -838,12 +900,14 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		if err != nil {
 			s.logError("MAIL - clamav: " + err.Error())
 			s.out("454 4.3.0 scanner failure")
+			s.SMTPResponseCode = 454
 			//s.purgeConn()
 			s.reset()
 			return
 		}
 		if found {
 			s.out("554 5.7.1 message infected by " + virusName)
+			s.SMTPResponseCode = 554
 			s.log("MAIL - infected by " + virusName)
 			//s.purgeConn()
 			s.reset()
@@ -934,11 +998,13 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	if err != nil {
 		s.logError("MAIL - unable to put message in queue -", err.Error())
 		s.out("451 temporary queue error")
+		s.SMTPResponseCode = 451
 		s.reset()
 		return
 	}
 	s.log("message queued as", id)
 	s.out(fmt.Sprintf("250 2.0.0 Ok: queued %s", id))
+	s.SMTPResponseCode = 250
 	s.reset()
 	return
 }
@@ -946,6 +1012,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 // QUIT
 func (s *SMTPServerSession) smtpQuit() {
 	s.out(fmt.Sprintf("221 2.0.0 Bye"))
+	s.SMTPResponseCode = 221
 	s.exitAsap()
 }
 
@@ -953,6 +1020,7 @@ func (s *SMTPServerSession) smtpQuit() {
 func (s *SMTPServerSession) smtpStartTLS() {
 	if s.tls {
 		s.out("454 - transaction is already over SSL/TLS")
+		s.SMTPResponseCode = 454
 		return
 	}
 	//s.out("220 Ready to start TLS")
@@ -961,6 +1029,7 @@ func (s *SMTPServerSession) smtpStartTLS() {
 		msg := "TLS failed unable to load server keys: " + err.Error()
 		s.logError(msg)
 		s.out("454 " + msg)
+		s.SMTPResponseCode = 454
 		return
 	}
 
@@ -971,6 +1040,7 @@ func (s *SMTPServerSession) smtpStartTLS() {
 	tlsConfig.Rand = rand.Reader
 
 	s.out("220 Ready to start TLS nego")
+	s.SMTPResponseCode = 220
 
 	//var tlsConn *tls.Conn
 	//tlsConn = tls.Server(client.socket, TLSconfig)
@@ -980,6 +1050,7 @@ func (s *SMTPServerSession) smtpStartTLS() {
 	err = s.connTLS.Handshake()
 	if err != nil {
 		msg := "454 - TLS handshake failed: " + err.Error()
+		s.SMTPResponseCode = 454
 		if err.Error() == "tls: unsupported SSLv2 handshake received" {
 			s.log(msg)
 		} else {
@@ -1015,6 +1086,7 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 		ch := make([]byte, 1)
 		// return a
 		s.out("334 ")
+		s.SMTPResponseCode = 334
 		// get encoded by reading next line
 		for {
 			s.timer.Reset(time.Duration(Cfg.GetSmtpdServerTimeout()) * time.Second)
@@ -1022,6 +1094,7 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 			s.timer.Stop()
 			if err != nil {
 				s.out("501 malformed auth input (#5.5.4)")
+				s.SMTPResponseCode = 501
 				s.log("error reading auth err:" + err.Error())
 				s.exitAsap()
 				return
@@ -1037,6 +1110,7 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 
 	} else {
 		s.out("501 malformed auth input (#5.5.4)")
+		s.SMTPResponseCode = 501
 		s.log("malformed auth input: " + rawMsg)
 		s.exitAsap()
 		return
@@ -1046,6 +1120,7 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 	authData, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
 		s.out("501 malformed auth input (#5.5.4)")
+		s.SMTPResponseCode = 501
 		s.log("malformed auth input: " + rawMsg + " err:" + err.Error())
 		s.exitAsap()
 		return
@@ -1069,35 +1144,41 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 	if err != nil {
 		if err == gorm.RecordNotFound {
 			s.out("535 authentication failed - No such user (#5.7.1)")
+			s.SMTPResponseCode = 535
 			s.log("auth failed: " + rawMsg + " err:" + err.Error())
 			s.exitAsap()
 			return
 		}
 		if err.Error() == "crypto/bcrypt: hashedPassword is not the hash of the given password" {
 			s.out("535 authentication failed (#5.7.1)")
+			s.SMTPResponseCode = 535
 			s.log("auth failed: " + rawMsg + " err:" + err.Error())
 			s.exitAsap()
 			return
 		}
 		s.out("454 oops, problem with auth (#4.3.0)")
+		s.SMTPResponseCode = 454
 		s.log("ERROR auth " + rawMsg + " err:" + err.Error())
 		s.exitAsap()
 		return
 	}
 	s.log("auth succeed for user " + s.user.Login)
 	s.out("235 ok, go ahead (#2.0.0)")
+	s.SMTPResponseCode = 235
 }
 
 // RSET SMTP ahandler
 func (s *SMTPServerSession) rset() {
 	s.reset()
 	s.out("250 2.0.0 ok")
+	s.SMTPResponseCode = 250
 }
 
 // NOOP SMTP handler
 func (s *SMTPServerSession) noop() {
 	s.resetTimeout()
 	s.out("250 2.0.0 ok")
+	s.SMTPResponseCode = 250
 }
 
 // Handle SMTP session
@@ -1178,6 +1259,7 @@ func (s *SMTPServerSession) handle() {
 						rmsg = "502 5.5.1 unimplemented"
 						s.log("unimplemented command from client:", strMsg)
 						s.out(rmsg)
+						s.SMTPResponseCode = 502
 					}
 				}
 				//s.resetTimeout()
@@ -1191,4 +1273,9 @@ func (s *SMTPServerSession) handle() {
 	s.conn.Close()
 	s.log("EOT")
 	return
+}
+
+// sendTelemetry: send telemetry via microservice
+func (s *SMTPServerSession) sendTelemetry() {
+	msSmtpdSendTelemetry(s)
 }
