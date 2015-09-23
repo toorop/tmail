@@ -9,6 +9,7 @@ import (
 	"path"
 
 	"github.com/bitly/go-nsq"
+	"github.com/boltdb/bolt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
@@ -26,6 +27,7 @@ var (
 	Version                          string
 	Cfg                              *Config
 	DB                               gorm.DB
+	Bolt                             *bolt.DB
 	Log                              *Logger
 	NsqQueueProducer                 *nsq.Producer
 	SmtpSessionsCount                int
@@ -76,6 +78,19 @@ func Bootstrap() (err error) {
 	if DB.DB().Ping() != nil {
 		return errors.New("I could not access to database " + Cfg.GetDbDriver() + " " + Cfg.GetDbSource())
 	}
+
+	// init Bolt DB
+	Bolt, err = bolt.Open(Cfg.GetBoltFile(), 0600, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// create buckets if not exists
+	Bolt.Update(func(tx *bolt.Tx) error {
+		if _, err = tx.CreateBucketIfNotExists([]byte("koip")); err != nil {
+			log.Fatal(err)
+		}
+		return nil
+	})
 
 	// init NSQ MailQueueProducer (Nmqp)
 	if Cfg.GetLaunchSmtpd() {

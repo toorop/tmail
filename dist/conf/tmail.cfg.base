@@ -59,6 +59,9 @@ export TMAIL_NSQ_LOOKUPD_HTTP_ADDRESSES="127.0.0.1:4161"
 export TMAIL_DB_DRIVER="sqlite3"
 export TMAIL_DB_SOURCE="/home/tmail/dist/db/tmail.db?_busy_timeout=60000"
 
+# Bolt DB (wher to store the botl DB file)
+export TMAIL_BOLT_FILE="/home/tmail/dist/db/bolt.db"
+
 
 ##
 # Store

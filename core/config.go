@@ -25,6 +25,8 @@ type Config struct {
 		DebugEnabled        bool   `name:"debug_enabled" default:"false"`
 		HideServerSignature bool   `name:"hide_server_signature" default:"false"`
 
+		BoltFile string `name:"bolt_file"`
+
 		DbDriver string `name:"db_driver"`
 		DbSource string `name:"db_source"`
 
@@ -221,6 +223,13 @@ func (c *Config) GetLogPath() string {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.LogPath
+}
+
+// GetBoltFile return BoltFile
+func (c *Config) GetBoltFile() string {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.BoltFile
 }
 
 // GetDbDriver returns database driver

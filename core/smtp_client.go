@@ -12,8 +12,11 @@ import (
 	"math/rand"
 	"net"
 	"net/textproto"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/boltdb/bolt"
 )
 
 // smtpClient represent an SMTP client
@@ -115,6 +118,13 @@ func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error)
 					continue
 				}
 
+				// TODO check remote IP
+				// If during the last 15 minutes we have fail to connect to this host don't try again
+				if !isRemoteIPOK(remoteAddr.IP.String()) {
+					Log.Info("GETCLIENT " + remoteAddr.IP.String() + " is marked as KO. I'll dot not try to reach it.")
+					continue
+				}
+
 				localAddr, err := net.ResolveTCPAddr("tcp", localIP.String()+":0")
 				if err != nil {
 					return nil, errors.New("bad local IP: " + localIP.String() + ". " + err.Error())
@@ -146,6 +156,9 @@ func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error)
 				case <-connectTimer.C:
 					err = errors.New("timeout")
 					// todo si c'est un timeout pas la peine d'essayer les autres IP locales
+					if errBolt := setIPKO(remoteAddr.IP.String()); errBolt != nil {
+						Log.Error("Bolt - ", errBolt)
+					}
 				}
 				Log.Info(fmt.Sprintf("deliverd-remote %s - unable to get a SMTP client for %s->%s:%d - %s ", d.id, localIP, remoteAddr.IP.String(), remoteAddr.Port, err.Error()))
 			}
@@ -374,4 +387,49 @@ func (s *smtpClient) Quit() (code int, msg string, err error) {
 	code, msg, err = s.cmd(10, 221, "QUIT")
 	s.text.Close()
 	return
+}
+
+// remoteIPOK check if a remote IP is in Bolt bucket ipko for less than 15 minutes
+func isRemoteIPOK(ip string) bool {
+	ok := true
+	removeFlag := false
+	err := Bolt.View(func(tx *bolt.Tx) error {
+		ts := tx.Bucket([]byte("koip")).Get([]byte(ip))
+		// not in db
+		if len(ts) == 0 {
+			return nil
+		}
+		t, err := strconv.ParseInt(string(ts), 10, 64)
+		if err != nil {
+			return err
+		}
+		insertedAt := time.Unix(t, 0)
+		if time.Since(insertedAt).Minutes() > 15 {
+			removeFlag = true
+		} else {
+			ok = false
+		}
+		return nil
+	})
+	if err != nil {
+		Log.Error("Bolt -", err)
+	}
+
+	// remove record
+	if removeFlag {
+		if err := Bolt.Update(func(tx *bolt.Tx) error {
+			return tx.Bucket([]byte("koip")).Delete([]byte(ip))
+		}); err != nil {
+			Log.Error("Bolt -", err)
+		}
+	}
+	fmt.Printf("IPOK ? %v\n", ok)
+	return ok
+}
+
+// Flag IP ip as unjoignable
+func setIPKO(ip string) error {
+	return Bolt.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket([]byte("koip")).Put([]byte(ip), []byte(strconv.FormatInt(time.Now().Unix(), 10)))
+	})
 }

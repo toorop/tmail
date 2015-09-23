@@ -1,4 +1,13 @@
 
+v 0.0.13
+  - deliverd remote: add cache for not responding host
+  - microservices: deliverd telemetry
+  - microservices: smtpd telemetry
+  - deliverd: add specific queue life time for bounces
+  - microservices: get routes via ms
+  - microservices: check smtp relayok
+
+
 v 0.0.12
   - bugfix: limit retry interval to 1 Hour
   - improve recover in smtpd
