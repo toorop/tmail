@@ -165,7 +165,7 @@ func UserGetByLogin(login string) (user *User, err error) {
 // UserGetCatchallForDomain return catchall
 func UserGetCatchallForDomain(domain string) (user *User, err error) {
 	user = &User{}
-	err = DB.Where("login LIKE ? AND is_catchall=?", "%"+strings.ToLower(domain), "true").Find(user).Error
+	err = DB.Where("login LIKE ? AND is_catchall=?", "%"+strings.ToLower(domain), true).Find(user).Error
 	return
 }
 
