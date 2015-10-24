@@ -470,13 +470,21 @@ func msSmtpdBeforeQueuing(s *SMTPServerSession) bool {
 			}
 			continue
 		}
+		// New mail from ?
+		if msResponse.GetMailFrom() != "" {
+			if address, err := mail.ParseAddress(msResponse.GetMailFrom()); err == nil {
+				s.envelope.MailFrom = address.Address
+			}
+		}
+
+		// New rcpt to ?
 		if len(msResponse.GetRcptTo()) != 0 {
 			newRcptTo := []string{}
 			// check validity of email
-			for _, address := range msResponse.GetRcptTo() {
-				_, err := mail.ParseAddress(address)
+			for _, rawAddress := range msResponse.GetRcptTo() {
+				address, err := mail.ParseAddress(rawAddress)
 				if err == nil {
-					newRcptTo = append(newRcptTo, address)
+					newRcptTo = append(newRcptTo, address.Address)
 				}
 
 			}
