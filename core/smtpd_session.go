@@ -994,6 +994,12 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	if s.user != nil {
 		authUser = s.user.Login
 	}
+
+	// microservice SmtpdBeforeQueuing
+	if stop := msSmtpdBeforeQueuing(s); stop {
+		return
+
+	}
 	id, err := QueueAddMessage(&rawMessage, s.envelope, authUser)
 	if err != nil {
 		s.logError("MAIL - unable to put message in queue -", err.Error())

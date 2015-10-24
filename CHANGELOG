@@ -1,6 +1,7 @@
 
 v 0.0.13
   - deliverd remote: add cache for not responding host
+  - microservices: hook before queuing -> allows to change enveloppe
   - microservices: deliverd telemetry
   - microservices: smtpd telemetry
   - deliverd: add specific queue life time for bounces

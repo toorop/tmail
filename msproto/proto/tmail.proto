@@ -71,6 +71,21 @@ message SmtpdDataResponse {
 	repeated string extra_headers = 5;
 }
 
+// SmtpdBeforeQueing Query
+message SmtpdBeforeQueuingQuery {
+	required string session_id = 1;
+	required string mail_from = 2;
+	repeated string rcpt_to = 3;
+}
+
+// SmtpdBefore queuing Response
+message SmtpdBeforeQueuingResponse {
+	required string session_id = 1;
+	optional string mail_from  = 2;
+	repeated string rcpt_to = 3;
+	optional SmtpResponse smtp_response = 4;
+	optional bool drop_connection = 5;
+}
 
 // deliverd
 
@@ -90,9 +105,6 @@ message DeliverdTelemetry {
 	optional string remote_address =12;
 	optional uint32 remote_smtp_response_code = 13; // 250, 420, 550,...
 }
-
-
-
 
 // Get routes query
 message DeliverdGetRoutesQuery {

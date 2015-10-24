@@ -6,15 +6,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"io/ioutil"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/golang/protobuf/proto"
 
 	"github.com/toorop/tmail/msproto"
 )
@@ -418,6 +418,84 @@ func msSmtpdSendTelemetry(s *SMTPServerSession) {
 		}
 	}(s.uuid)
 	return
+}
+
+// msSmtpdBeforeQueuing -> edit enveloppe.
+// return stop
+func msSmtpdBeforeQueuing(s *SMTPServerSession) bool {
+	msURI := Cfg.GetMicroservicesUri("smtpdbeforequeuing")
+	if len(msURI) == 0 {
+		return false
+	}
+
+	for _, uri := range Cfg.GetMicroservicesUri("smtpdbeforequeuing") {
+		// parse uri
+		ms, err := newMicroservice(uri)
+		if err != nil {
+			s.logError("unable to get microservice " + uri)
+			if ms.handleSMTPError(err, s) {
+				return true
+			}
+			continue
+		}
+		// Query -> warning order is important
+		query, err := proto.Marshal(&msproto.SmtpdBeforeQueuingQuery{
+			SessionId: proto.String(s.uuid),
+			MailFrom:  proto.String(s.envelope.MailFrom),
+			RcptTo:    s.envelope.RcptTo,
+		})
+		if err != nil {
+			s.logError("unable to serialize ms message for msSmtpdBeforeQueuing - ", err.Error())
+			if ms.handleSMTPError(err, s) {
+				return true
+			}
+			continue
+		}
+
+		response, err := ms.call(&query)
+		if err != nil {
+			s.logError("msSmtpdBeforeQueuing failed on call " + err.Error())
+			if ms.handleSMTPError(err, s) {
+				return true
+			}
+			continue
+		}
+		// parse response
+		msResponse := &msproto.SmtpdBeforeQueuingResponse{}
+		err = proto.Unmarshal(*response, msResponse)
+		if err != nil {
+			s.logError("unable to unmarshal response from ms SmtpdBeforeQueuingResponse")
+			if ms.handleSMTPError(err, s) {
+				return true
+			}
+			continue
+		}
+		if len(msResponse.GetRcptTo()) != 0 {
+			newRcptTo := []string{}
+			// check validity of email
+			for _, address := range msResponse.GetRcptTo() {
+				_, err := mail.ParseAddress(address)
+				if err == nil {
+					newRcptTo = append(newRcptTo, address)
+				}
+
+			}
+			if len(newRcptTo) != 0 {
+				s.envelope.RcptTo = newRcptTo
+			}
+
+		}
+		stop := handleSMTPResponse(msResponse.GetSmtpResponse(), s)
+		if msResponse.GetDropConnection() {
+			s.exitAsap()
+			stop = true
+		}
+		if stop {
+			return true
+		}
+	}
+	return false
+
 }
 
 // msGetRoutesmsGetRoutes returns routes from microservices

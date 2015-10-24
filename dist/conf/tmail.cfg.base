@@ -252,7 +252,10 @@ export TMAIL_MS_SMTPD_RCPTTO_ACCESS_IS_GRANTED=""
 # Call after DATA command
 export TMAIL_MS_SMTPD_DATA=""
 
-# smtpd telemetry
+# smtpd before queueing: used to change envelope
+export TMAIL_MS_SMTPD_BEFORE_QUEUEING=""
+
+#smtpd telemetry
 export TMAIL_MS_SMTPD_SEND_TELEMETRY=""
 
 # Remote routes for deliverd
