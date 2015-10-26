@@ -102,7 +102,7 @@ message DeliverdTelemetry {
 	required string to = 9;
 	required bool is_local = 10;
 	optional string local_address = 11;
-	optional string remote_address =12;
+	optional string remote_address = 12;
 	optional uint32 remote_smtp_response_code = 13; // 250, 420, 550,...
 }
 
