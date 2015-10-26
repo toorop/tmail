@@ -995,8 +995,8 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		authUser = s.user.Login
 	}
 
-	// microservice SmtpdBeforeQueuing
-	if stop := msSmtpdBeforeQueuing(s); stop {
+	// microservice SmtpdBeforeQueueing
+	if stop := msSmtpdBeforeQueueing(s); stop {
 		return
 
 	}

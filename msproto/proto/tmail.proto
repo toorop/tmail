@@ -72,14 +72,14 @@ message SmtpdDataResponse {
 }
 
 // SmtpdBeforeQueing Query
-message SmtpdBeforeQueuingQuery {
+message SmtpdBeforeQueueingQuery {
 	required string session_id = 1;
 	required string mail_from = 2;
 	repeated string rcpt_to = 3;
 }
 
 // SmtpdBefore queuing Response
-message SmtpdBeforeQueuingResponse {
+message SmtpdBeforeQueueingResponse {
 	required string session_id = 1;
 	optional string mail_from  = 2;
 	repeated string rcpt_to = 3;

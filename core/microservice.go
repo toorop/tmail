@@ -420,15 +420,15 @@ func msSmtpdSendTelemetry(s *SMTPServerSession) {
 	return
 }
 
-// msSmtpdBeforeQueuing -> edit enveloppe.
+// msSmtpdBeforeQueueing -> edit enveloppe.
 // return stop
-func msSmtpdBeforeQueuing(s *SMTPServerSession) bool {
-	msURI := Cfg.GetMicroservicesUri("smtpdbeforequeuing")
+func msSmtpdBeforeQueueing(s *SMTPServerSession) bool {
+	msURI := Cfg.GetMicroservicesUri("smtpdbeforequeueing")
 	if len(msURI) == 0 {
 		return false
 	}
 
-	for _, uri := range Cfg.GetMicroservicesUri("smtpdbeforequeuing") {
+	for _, uri := range Cfg.GetMicroservicesUri("smtpdbeforequeueing") {
 		// parse uri
 		ms, err := newMicroservice(uri)
 		if err != nil {
@@ -439,13 +439,13 @@ func msSmtpdBeforeQueuing(s *SMTPServerSession) bool {
 			continue
 		}
 		// Query -> warning order is important
-		query, err := proto.Marshal(&msproto.SmtpdBeforeQueuingQuery{
+		query, err := proto.Marshal(&msproto.SmtpdBeforeQueueingQuery{
 			SessionId: proto.String(s.uuid),
 			MailFrom:  proto.String(s.envelope.MailFrom),
 			RcptTo:    s.envelope.RcptTo,
 		})
 		if err != nil {
-			s.logError("unable to serialize ms message for msSmtpdBeforeQueuing - ", err.Error())
+			s.logError("unable to serialize ms message for msSmtpdBeforeQueueing - ", err.Error())
 			if ms.handleSMTPError(err, s) {
 				return true
 			}
@@ -454,17 +454,17 @@ func msSmtpdBeforeQueuing(s *SMTPServerSession) bool {
 
 		response, err := ms.call(&query)
 		if err != nil {
-			s.logError("msSmtpdBeforeQueuing failed on call " + err.Error())
+			s.logError("msSmtpdBeforeQueueing failed on call " + err.Error())
 			if ms.handleSMTPError(err, s) {
 				return true
 			}
 			continue
 		}
 		// parse response
-		msResponse := &msproto.SmtpdBeforeQueuingResponse{}
+		msResponse := &msproto.SmtpdBeforeQueueingResponse{}
 		err = proto.Unmarshal(*response, msResponse)
 		if err != nil {
-			s.logError("unable to unmarshal response from ms SmtpdBeforeQueuingResponse")
+			s.logError("unable to unmarshal response from ms SmtpdBeforeQueueingResponse")
 			if ms.handleSMTPError(err, s) {
 				return true
 			}

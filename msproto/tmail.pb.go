@@ -17,8 +17,8 @@ It has these top-level messages:
 	SmtpdRcptToResponse
 	SmtpdDataQuery
 	SmtpdDataResponse
-	SmtpdBeforeQueuingQuery
-	SmtpdBeforeQueuingResponse
+	SmtpdBeforeQueueingQuery
+	SmtpdBeforeQueueingResponse
 	DeliverdTelemetry
 	DeliverdGetRoutesQuery
 	DeliverdGetRoutesResponse
@@ -356,32 +356,32 @@ func (m *SmtpdDataResponse) GetExtraHeaders() []string {
 }
 
 // SmtpdBeforeQueing Query
-type SmtpdBeforeQueuingQuery struct {
+type SmtpdBeforeQueueingQuery struct {
 	SessionId        *string  `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
 	MailFrom         *string  `protobuf:"bytes,2,req,name=mail_from" json:"mail_from,omitempty"`
 	RcptTo           []string `protobuf:"bytes,3,rep,name=rcpt_to" json:"rcpt_to,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
-func (m *SmtpdBeforeQueuingQuery) Reset()         { *m = SmtpdBeforeQueuingQuery{} }
-func (m *SmtpdBeforeQueuingQuery) String() string { return proto.CompactTextString(m) }
-func (*SmtpdBeforeQueuingQuery) ProtoMessage()    {}
+func (m *SmtpdBeforeQueueingQuery) Reset()         { *m = SmtpdBeforeQueueingQuery{} }
+func (m *SmtpdBeforeQueueingQuery) String() string { return proto.CompactTextString(m) }
+func (*SmtpdBeforeQueueingQuery) ProtoMessage()    {}
 
-func (m *SmtpdBeforeQueuingQuery) GetSessionId() string {
+func (m *SmtpdBeforeQueueingQuery) GetSessionId() string {
 	if m != nil && m.SessionId != nil {
 		return *m.SessionId
 	}
 	return ""
 }
 
-func (m *SmtpdBeforeQueuingQuery) GetMailFrom() string {
+func (m *SmtpdBeforeQueueingQuery) GetMailFrom() string {
 	if m != nil && m.MailFrom != nil {
 		return *m.MailFrom
 	}
 	return ""
 }
 
-func (m *SmtpdBeforeQueuingQuery) GetRcptTo() []string {
+func (m *SmtpdBeforeQueueingQuery) GetRcptTo() []string {
 	if m != nil {
 		return m.RcptTo
 	}
@@ -389,7 +389,7 @@ func (m *SmtpdBeforeQueuingQuery) GetRcptTo() []string {
 }
 
 // SmtpdBefore queuing Response
-type SmtpdBeforeQueuingResponse struct {
+type SmtpdBeforeQueueingResponse struct {
 	SessionId        *string       `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
 	MailFrom         *string       `protobuf:"bytes,2,opt,name=mail_from" json:"mail_from,omitempty"`
 	RcptTo           []string      `protobuf:"bytes,3,rep,name=rcpt_to" json:"rcpt_to,omitempty"`
@@ -398,39 +398,39 @@ type SmtpdBeforeQueuingResponse struct {
 	XXX_unrecognized []byte        `json:"-"`
 }
 
-func (m *SmtpdBeforeQueuingResponse) Reset()         { *m = SmtpdBeforeQueuingResponse{} }
-func (m *SmtpdBeforeQueuingResponse) String() string { return proto.CompactTextString(m) }
-func (*SmtpdBeforeQueuingResponse) ProtoMessage()    {}
+func (m *SmtpdBeforeQueueingResponse) Reset()         { *m = SmtpdBeforeQueueingResponse{} }
+func (m *SmtpdBeforeQueueingResponse) String() string { return proto.CompactTextString(m) }
+func (*SmtpdBeforeQueueingResponse) ProtoMessage()    {}
 
-func (m *SmtpdBeforeQueuingResponse) GetSessionId() string {
+func (m *SmtpdBeforeQueueingResponse) GetSessionId() string {
 	if m != nil && m.SessionId != nil {
 		return *m.SessionId
 	}
 	return ""
 }
 
-func (m *SmtpdBeforeQueuingResponse) GetMailFrom() string {
+func (m *SmtpdBeforeQueueingResponse) GetMailFrom() string {
 	if m != nil && m.MailFrom != nil {
 		return *m.MailFrom
 	}
 	return ""
 }
 
-func (m *SmtpdBeforeQueuingResponse) GetRcptTo() []string {
+func (m *SmtpdBeforeQueueingResponse) GetRcptTo() []string {
 	if m != nil {
 		return m.RcptTo
 	}
 	return nil
 }
 
-func (m *SmtpdBeforeQueuingResponse) GetSmtpResponse() *SmtpResponse {
+func (m *SmtpdBeforeQueueingResponse) GetSmtpResponse() *SmtpResponse {
 	if m != nil {
 		return m.SmtpResponse
 	}
 	return nil
 }
 
-func (m *SmtpdBeforeQueuingResponse) GetDropConnection() bool {
+func (m *SmtpdBeforeQueueingResponse) GetDropConnection() bool {
 	if m != nil && m.DropConnection != nil {
 		return *m.DropConnection
 	}

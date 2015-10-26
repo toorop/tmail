@@ -72,7 +72,7 @@ type Config struct {
 		MsUriSmtpdNewClient        string `name:"ms_smtpd_newclient" default:"_"`
 		MsUriSmtpdRcptTo           string `name:"ms_smtpd_rcptto" default:"_"`
 		MsUriSmtpdData             string `name:"ms_smtpd_data" default:"_"`
-		MsUriSmtpdBeforeQueuing    string `name:"ms_smtpd_before_queuing" default:"_"`
+		MsUriSmtpdBeforeQueueing   string `name:"ms_smtpd_before_queueing" default:"_"`
 		MsUriSmtpdSendTelemetry    string `name:"ms_smtpd_send_telemetry" default:"_"`
 		MsUriDeliverdGetRoutes     string `name:"ms_deliverd_get_routes" default:"_"`
 		MsUriDeliverdSendTelemetry string `name:"ms_deliverd_send_telemetry" default:"_"`
@@ -429,9 +429,9 @@ func (c *Config) GetMicroservicesUri(hookId string) []string {
 		if c.cfg.MsUriSmtpdData != "_" {
 			return strings.Split(c.cfg.MsUriSmtpdData, ";")
 		}
-	case "smtpdbeforequeuing":
-		if c.cfg.MsUriSmtpdBeforeQueuing != "_" {
-			return strings.Split(c.cfg.MsUriSmtpdBeforeQueuing, ";")
+	case "smtpdbeforequeueing":
+		if c.cfg.MsUriSmtpdBeforeQueueing != "_" {
+			return strings.Split(c.cfg.MsUriSmtpdBeforeQueueing, ";")
 		}
 	case "smtpdsendtelemetry":
 		if c.cfg.MsUriSmtpdSendTelemetry != "_" {
