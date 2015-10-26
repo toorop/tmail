@@ -241,7 +241,7 @@ export TMAIL_REST_SERVER_PASSWD="passwd"
 
 
 ##
-# Micorservices
+# Microservices
 
 # Call on new SMTP connection from client
 export TMAIL_MS_SMTPD_NEWCLIENT=""
