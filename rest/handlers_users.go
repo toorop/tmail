@@ -101,6 +101,36 @@ func usersGetOne(w http.ResponseWriter, r *http.Request) {
 	httpWriteJson(w, js)
 }
 
+// usersUpdate used to update user proprieties
+// for now tou can only change password
+func usersUpdate(w http.ResponseWriter, r *http.Request) {
+	if !authorized(w, r) {
+		return
+	}
+	p := struct {
+		Passwd string `json:"passwd"`
+	}{}
+
+	// body must not be empty
+	if r.Body == nil {
+		httpWriteErrorJson(w, 422, "empty body", "")
+		return
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+		httpWriteErrorJson(w, 500, "unable to get JSON body", err.Error())
+		return
+	}
+
+	if err := api.UserChangePassword(httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), p.Passwd); err != nil {
+		httpWriteErrorJson(w, 422, "unable to change user password", err.Error())
+		return
+	}
+	logInfo(r, "password changed vfor user "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"))
+	w.WriteHeader(204)
+	return
+}
+
 // addUsersHandlers add Users handler to router
 func addUsersHandlers(router *httprouter.Router) {
 	// add user
@@ -114,4 +144,7 @@ func addUsersHandlers(router *httprouter.Router) {
 
 	// del an user
 	router.DELETE("/users/:user", wrapHandler(usersDel))
+
+	// change user password
+	router.PUT("/user/:user", wrapHandler(usersUpdate))
 }

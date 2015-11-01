@@ -29,6 +29,11 @@ func UserGetAll() (users []core.User, err error) {
 	return core.UserList()
 }
 
+// UserChangePassword is used to change user password
+func UserChangePassword(login, password string) error {
+	return core.UserChangePassword(login, password)
+}
+
 // ALIAS
 
 // AliasAdd add an alias

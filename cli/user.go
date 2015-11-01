@@ -57,6 +57,29 @@ var user = cgCli.Command{
 				cliDieOk()
 			},
 		},
+		// Update to change proprieties of an user
+		// for now only password change is handled
+		{
+			Name:        "update",
+			Usage:       "change proprieties of an user",
+			Description: "tmail user update USER -p NEW_PASSWORD",
+			Flags: []cgCli.Flag{
+				cgCli.StringFlag{
+					Name:  "password, p",
+					Usage: "update user password",
+				},
+			},
+			Action: func(c *cgCli.Context) {
+				if len(c.Args()) != 1 {
+					cliDieBadArgs(c)
+				}
+				if c.String("p") != "" {
+					cliHandleErr(api.UserChangePassword(c.Args()[0], c.String("p")))
+					cliDieOk()
+				}
+				cliDieBadArgs(c)
+			},
+		},
 		{
 			Name:        "list",
 			Usage:       "Return a list of users",

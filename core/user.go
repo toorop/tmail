@@ -200,3 +200,33 @@ func UserExists(login string) (bool, error) {
 	}
 	return false, nil
 }
+
+// UserChangePassword is used to change user password
+func UserChangePassword(login, password string) error {
+	user, err := UserGetByLogin(login)
+	if err != nil {
+		return err
+	}
+	return user.ChangePasswd(password)
+}
+
+// ChangePasswd is used to change user password
+func (u *User) ChangePasswd(password string) error {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	if err != nil {
+		return err
+	}
+	u.Passwd = string(hashed)
+	if u.HaveMailbox {
+		salt, err := NewUUID()
+		if err != nil {
+			return err
+		}
+		salt = "$6$" + salt[:16]
+		c := sha512_crypt.New()
+		if u.DovePasswd, err = c.Generate([]byte(password), []byte(salt)); err != nil {
+			return err
+		}
+	}
+	return DB.Save(u).Error
+}

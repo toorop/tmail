@@ -167,6 +167,7 @@ func main() {
 				}
 				for _, dsn := range smtpdDsns {
 					go core.NewSmtpd(dsn).ListenAndServe()
+					// TODO at this point we don't know if serveur is launched
 					core.Log.Info("smtpd " + dsn.String() + " launched.")
 				}
 			}
