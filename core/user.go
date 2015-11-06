@@ -2,12 +2,12 @@ package core
 
 import (
 	"errors"
-	"net/mail"
-	"strings"
-
 	"github.com/jinzhu/gorm"
 	"github.com/kless/osutil/user/crypt/sha512_crypt"
 	"golang.org/x/crypto/bcrypt"
+	"log"
+	"net/mail"
+	"strings"
 )
 
 // User represents a tmail user.
@@ -38,7 +38,7 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay, isCatchall b
 
 	// passwd > 6 char
 	if len(passwd) < 6 {
-		return errors.New("password must be at least 6 chars lenght")
+		return errors.New("password must be at least 6 chars length")
 	}
 
 	// no catchall without mailbox
@@ -211,8 +211,11 @@ func UserChangePassword(login, password string) error {
 }
 
 // ChangePasswd is used to change user password
-func (u *User) ChangePasswd(password string) error {
-	hashed, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+func (u *User) ChangePasswd(passwd string) error {
+	if len(passwd) < 6 {
+		return errors.New("password must be at least 6 chars length")
+	}
+	hashed, err := bcrypt.GenerateFromPassword([]byte(passwd), 10)
 	if err != nil {
 		return err
 	}
@@ -224,7 +227,7 @@ func (u *User) ChangePasswd(password string) error {
 		}
 		salt = "$6$" + salt[:16]
 		c := sha512_crypt.New()
-		if u.DovePasswd, err = c.Generate([]byte(password), []byte(salt)); err != nil {
+		if u.DovePasswd, err = c.Generate([]byte(passwd), []byte(salt)); err != nil {
 			return err
 		}
 	}
