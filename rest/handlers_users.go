@@ -126,7 +126,7 @@ func usersUpdate(w http.ResponseWriter, r *http.Request) {
 		httpWriteErrorJson(w, 422, "unable to change user password", err.Error())
 		return
 	}
-	logInfo(r, "password changed vfor user "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"))
+	logInfo(r, "password changed for user "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"))
 	w.WriteHeader(204)
 	return
 }
@@ -146,5 +146,5 @@ func addUsersHandlers(router *httprouter.Router) {
 	router.DELETE("/users/:user", wrapHandler(usersDel))
 
 	// change user password
-	router.PUT("/user/:user", wrapHandler(usersUpdate))
+	router.PUT("/users/:user", wrapHandler(usersUpdate))
 }
