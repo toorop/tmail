@@ -5,7 +5,6 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/kless/osutil/user/crypt/sha512_crypt"
 	"golang.org/x/crypto/bcrypt"
-	"log"
 	"net/mail"
 	"strings"
 )
