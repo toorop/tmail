@@ -975,12 +975,12 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		recieved += " whith SMTP; "
 	}
 
-	// timestamp
-	recieved += time.Now().Format(Time822)
-
 	// tmail
 	recieved += "; tmail " + Version
 	recieved += "; " + s.uuid
+	
+	// timestamp
+	recieved += "; " + time.Now().Format(Time822)
 	h := []byte(recieved)
 	message.FoldHeader(&h)
 	h = append(h, []byte{13, 10}...)
