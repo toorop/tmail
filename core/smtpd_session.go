@@ -976,7 +976,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	}
 
 	// tmail
-	recieved += "; tmail " + Version
+	recieved += "tmail " + Version
 	recieved += "; " + s.uuid
 	
 	// timestamp
