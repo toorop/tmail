@@ -146,10 +146,12 @@ func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error)
 						client := &smtpClient{
 							conn: conn,
 						}
-						client.text = textproto.NewConn(conn)
+						//client.text = textproto.NewConn(conn)
 						// timeout on response
 						connectTimer.Reset(time.Duration(30) * time.Second)
 						go func() {
+
+							client.text = textproto.NewConn(conn)
 							_, _, err = client.text.ReadResponse(220)
 							done <- err
 						}()
