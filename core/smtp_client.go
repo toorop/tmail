@@ -121,7 +121,7 @@ func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error)
 				// TODO check remote IP
 				// If during the last 15 minutes we have fail to connect to this host don't try again
 				if !isRemoteIPOK(remoteAddr.IP.String()) {
-					Log.Info("GETCLIENT " + remoteAddr.IP.String() + " is marked as KO. I'll dot not try to reach it.")
+					Log.Info("smtp getclient " + remoteAddr.IP.String() + " is marked as KO. I'll dot not try to reach it.")
 					continue
 				}
 
@@ -136,6 +136,7 @@ func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error)
 				var conn net.Conn
 				go func() {
 					conn, err = net.DialTCP("tcp", localAddr, &remoteAddr)
+					connectTimer.Stop()
 					done <- err
 				}()
 
@@ -146,12 +147,30 @@ func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error)
 							conn: conn,
 						}
 						client.text = textproto.NewConn(conn)
-						_, _, err = client.text.ReadResponse(220)
-						if err == nil {
-							client.route = &route
-							return client, nil
+						// timeout on response
+						connectTimer.Reset(time.Duration(30) * time.Second)
+						go func() {
+							_, _, err = client.text.ReadResponse(220)
+							done <- err
+						}()
+						select {
+						case err = <-done:
+							connectTimer.Stop()
+							if err == nil {
+								client.route = &route
+								return client, nil
+							}
+						// Timeout
+						case <-connectTimer.C:
+							conn.Close()
+							err = errors.New("timeout")
+							// todo si c'est un timeout pas la peine d'essayer les autres IP locales
+							if errBolt := setIPKO(remoteAddr.IP.String()); errBolt != nil {
+								Log.Error("Bolt - ", errBolt)
+							}
 						}
 					}
+
 				// Timeout
 				case <-connectTimer.C:
 					err = errors.New("timeout")
