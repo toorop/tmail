@@ -970,7 +970,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 
 	// Proto
 	if s.tls {
-		recieved += " with ESMTPS " + tlsGetVersion(s.connTLS.ConnectionState().Version) + " " + tlsGetCipherSuite(s.connTLS.ConnectionState().CipherSuite) + ";"
+		recieved += " with ESMTPS " + tlsGetVersion(s.connTLS.ConnectionState().Version) + " " + tlsGetCipherSuite(s.connTLS.ConnectionState().CipherSuite) + "; "
 	} else {
 		recieved += " whith SMTP; "
 	}
