@@ -1,5 +1,7 @@
 
-v 0.0.13
+v 0.13
+  - disable bolt init in CLI mode
+  - deliverd: configurable timeout on deliverd-remote
   - deliverd remote: add cache for not responding host
   - microservices: hook before queuing -> allows to change enveloppe
   - microservices: deliverd telemetry
@@ -9,21 +11,21 @@ v 0.0.13
   - microservices: check smtp relayok
 
 
-v 0.0.12
+v 0.12
   - bugfix: limit retry interval to 1 Hour
   - improve recover in smtpd
 
-V 0.0.11
+V 0.11
   - bugfix: "key" for queued message
 
-V 0.0.10
+V 0.10
   - full RFC 5321 compliance
 	- new SMTP client for remote deliveries
 	- new store backend: openstack open storage
 	- alias
 	-
 
-V 0.0.9
+V 0.9
 	- Better handling of smtpd TLS error
 	- bugfix: on RSET
 	- bugfix: second STARTTLS response (see RFC 3207 4.2)
@@ -32,32 +34,32 @@ V 0.0.9
 	- DKIM: cli tool
 	- Webservices: poc
 
-V 0.0.8
+V 0.8
 	- DKIM: sign outgoing message (test)
 
-V 0.0.7
+V 0.7
 	- BugFix message-id
 	- REST /queue
 	- Bugfix: race condition on deliverd
 	- Add concurrency limits on smtpd
 
-V 0.0.6
+V 0.6
 	- REST API base
 	- REST API /users
 
-V 0.0.5
+V 0.5
 	- Log to file
 	- Improve log
 	- Case sensitivity on local part
 	- add RSET and NOOP SMTP verbs
 
-v 0.0.4
+V 0.4
 	- Local deliveries
 	- Dovecot support
 
-v 0.0.3
+v 0.3
 	- Bugfix: MySQL Datetime to Golang time.Time
 	- BugFix: Optimise/fix queries for Mysql
 
-v 0.0.2
+v 0.2
 	- add Clamav support: http://tmail.io/doc/filtrage-smtp-antivirus-clamav/
