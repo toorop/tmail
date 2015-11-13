@@ -79,19 +79,22 @@ func Bootstrap() (err error) {
 		return errors.New("I could not access to database " + Cfg.GetDbDriver() + " " + Cfg.GetDbSource())
 	}
 
-	// init Bolt DB
-	Bolt, err = bolt.Open(Cfg.GetBoltFile(), 0600, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	// create buckets if not exists
-	Bolt.Update(func(tx *bolt.Tx) error {
-		if _, err = tx.CreateBucketIfNotExists([]byte("koip")); err != nil {
+	/*
+		// init Bolt DB
+		Bolt, err = bolt.Open(Cfg.GetBoltFile(), 0600, nil)
+		if err != nil {
 			log.Fatal(err)
 		}
-		return nil
-	})
+		// create buckets if not exists
+		Bolt.Update(func(tx *bolt.Tx) error {
+			if _, err = tx.CreateBucketIfNotExists([]byte("koip")); err != nil {
+				log.Fatal(err)
+			}
+			return nil
+		})
+	*/
 
+	// TODO remove from bootstrap
 	// init NSQ MailQueueProducer (Nmqp)
 	if Cfg.GetLaunchSmtpd() {
 		err = initMailQueueProducer()
@@ -139,6 +142,23 @@ func Bootstrap() (err error) {
 	}
 
 	return
+}
+
+// initBolt init bolt
+func InitBolt() error {
+	var err error
+	// init Bolt DB
+	Bolt, err = bolt.Open(Cfg.GetBoltFile(), 0600, nil)
+	if err != nil {
+		return err
+	}
+	// create buckets if not exists
+	return Bolt.Update(func(tx *bolt.Tx) error {
+		if _, err = tx.CreateBucketIfNotExists([]byte("koip")); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 // initMailQueueProducer init producer for queue

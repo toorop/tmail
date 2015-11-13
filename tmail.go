@@ -84,6 +84,7 @@ func init() {
 
 // MAIN
 func main() {
+	var err error
 	app := cli.NewApp()
 	app.Name = "tmail"
 	app.Usage = "SMTP server"
@@ -99,6 +100,11 @@ func main() {
 			// if there is nothing to do then... do nothing
 			if !core.Cfg.GetLaunchDeliverd() && !core.Cfg.GetLaunchSmtpd() {
 				log.Fatalln("I have nothing to do, so i do nothing. Bye.")
+			}
+
+			// Init Bolt (used as cache)
+			if err = core.InitBolt(); err != nil {
+				log.Fatalln("Init bolt failed", err)
 			}
 
 			// Loop
@@ -147,8 +153,7 @@ func main() {
 
 			nsqd := nsqd.New(opts)
 			nsqd.LoadMetadata()
-			err := nsqd.PersistMetadata()
-			if err != nil {
+			if err = nsqd.PersistMetadata(); err != nil {
 				log.Fatalf("ERROR: failed to persist metadata - %s", err.Error())
 			}
 			nsqd.Main()
