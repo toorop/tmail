@@ -135,23 +135,26 @@ func newSMTPClient(d *delivery, routes *[]Route, timeoutBasePerCmd int) (client 
 				connectTimer := time.NewTimer(time.Duration(timeoutBasePerCmd) * time.Second)
 				done := make(chan error, 1)
 				var conn net.Conn
+				var client *smtpClient
 				go func() {
 					conn, err = net.DialTCP("tcp", localAddr, &remoteAddr)
+					if err != nil {
+						done <- err
+						return
+					}
+					client = &smtpClient{
+						conn:              conn,
+						timeoutBasePerCmd: timeoutBasePerCmd,
+					}
+					client.route = &route
 					client.text = textproto.NewConn(conn)
 					_, _, err = client.text.ReadResponse(220)
-					connectTimer.Stop()
 					done <- err
 				}()
 
 				select {
 				case err = <-done:
 					if err == nil {
-						connectTimer.Stop()
-						client := &smtpClient{
-							conn:              conn,
-							timeoutBasePerCmd: timeoutBasePerCmd,
-						}
-						client.route = &route
 						return client, nil
 					}
 
