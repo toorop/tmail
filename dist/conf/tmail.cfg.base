@@ -169,6 +169,9 @@ export TMAIL_DELIVERD_LOCAL_CONCURRENCY=50
 # Remote Concurrency
 export TMAIL_DELIVERD_REMOTE_CONCURRENCY=50
 
+# SMTP client timeout per command
+export TMAIL_DELIVERD_REMOTE_TIMEOUT=300
+
 # Default queue lifetime in minutes
 # After this delay
 # Bounce on temp failure

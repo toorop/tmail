@@ -55,7 +55,7 @@ type Config struct {
 		DeliverdConcurrencyRemote    int    `name:"deliverd_concurrency_remote" default:"50"`
 		DeliverdQueueLifetime        int    `name:"deliverd_queue_lifetime" default:"10080"`
 		DeliverdQueueBouncesLifetime int    `name:"deliverd_queue_bounces_lifetime" default:"10080"`
-		DeliverdRemoteTimeout        int    `name:"deliverd_remote_timeout" default:"60"`
+		DeliverdRemoteTimeout        int    `name:"deliverd_remote_timeout" default:"300"`
 		DeliverdRemoteTLSSkipVerify  bool   `name:"deliverd_remote_tls_skipverify" default:"false"`
 		DeliverdRemoteTLSFallback    bool   `name:"deliverd_remote_tls_fallback" default:"false"`
 		DeliverdDkimSign             bool   `name:"deliverd_dkim_sign" default:"false"`

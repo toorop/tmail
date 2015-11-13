@@ -57,7 +57,7 @@ func deliverRemote(d *delivery) {
 	}
 
 	// Get client
-	client, err := newSMTPClient(d, routes)
+	client, err := newSMTPClient(d, routes, Cfg.GetDeliverdRemoteTimeout())
 	if err != nil {
 		Log.Error(fmt.Sprintf("deliverd-remote %s - %s", d.id, err.Error()))
 		d.dieTemp("unable to get client", false)
@@ -99,7 +99,7 @@ func deliverRemote(d *delivery) {
 			if Cfg.GetDeliverdRemoteTLSFallback() {
 				// fall back to noTLS
 				client.close()
-				client, err = newSMTPClient(d, routes)
+				client, err = newSMTPClient(d, routes, Cfg.GetDeliverdRemoteTimeout())
 				if err != nil {
 					Log.Error(fmt.Sprintf("deliverd-remote %s - %s", d.id, err.Error()))
 					d.dieTemp("unable to get client", false)

@@ -31,11 +31,13 @@ type smtpClient struct {
 	tls bool
 	// supported auth mechanisms
 	auth []string
+	// timeout per command
+	timeoutBasePerCmd int
 }
 
 // newSMTPClient return a connected SMTP client
 // TODO cache for IPKO
-func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error) {
+func newSMTPClient(d *delivery, routes *[]Route, timeoutBasePerCmd int) (client *smtpClient, err error) {
 	for _, route := range *routes {
 		localIPs := []net.IP{}
 		remoteAddresses := []net.TCPAddr{}
@@ -118,7 +120,6 @@ func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error)
 					continue
 				}
 
-				// TODO check remote IP
 				// If during the last 15 minutes we have fail to connect to this host don't try again
 				if !isRemoteIPOK(remoteAddr.IP.String()) {
 					Log.Info("smtp getclient " + remoteAddr.IP.String() + " is marked as KO. I'll dot not try to reach it.")
@@ -131,11 +132,13 @@ func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error)
 				}
 
 				// Dial timeout
-				connectTimer := time.NewTimer(time.Duration(30) * time.Second)
+				connectTimer := time.NewTimer(time.Duration(timeoutBasePerCmd) * time.Second)
 				done := make(chan error, 1)
 				var conn net.Conn
 				go func() {
 					conn, err = net.DialTCP("tcp", localAddr, &remoteAddr)
+					client.text = textproto.NewConn(conn)
+					_, _, err = client.text.ReadResponse(220)
 					connectTimer.Stop()
 					done <- err
 				}()
@@ -143,35 +146,35 @@ func newSMTPClient(d *delivery, routes *[]Route) (client *smtpClient, err error)
 				select {
 				case err = <-done:
 					if err == nil {
+						connectTimer.Stop()
 						client := &smtpClient{
-							conn: conn,
+							conn:              conn,
+							timeoutBasePerCmd: timeoutBasePerCmd,
 						}
-						//client.text = textproto.NewConn(conn)
-						// timeout on response
-						connectTimer.Reset(time.Duration(30) * time.Second)
-						go func() {
-
-							client.text = textproto.NewConn(conn)
-							_, _, err = client.text.ReadResponse(220)
-							done <- err
-						}()
-						select {
-						case err = <-done:
-							connectTimer.Stop()
-							if err == nil {
-								client.route = &route
-								return client, nil
-							}
-						// Timeout
-						case <-connectTimer.C:
-							conn.Close()
-							err = errors.New("timeout")
-							// todo si c'est un timeout pas la peine d'essayer les autres IP locales
-							if errBolt := setIPKO(remoteAddr.IP.String()); errBolt != nil {
-								Log.Error("Bolt - ", errBolt)
-							}
-						}
+						client.route = &route
+						return client, nil
 					}
+
+					//client.text = textproto.NewConn(conn)
+					// timeout on response
+					/*connectTimer.Reset(time.Duration(30) * time.Second)
+					go func() {
+
+						client.text = textproto.NewConn(conn)
+						_, _, err = client.text.ReadResponse(220)
+						done <- err
+					}()
+					select {
+					case err = <-done:*/
+
+					// Timeout
+					/*case <-connectTimer.C:
+					conn.Close()
+					err = errors.New("timeout")
+					// todo si c'est un timeout pas la peine d'essayer les autres IP locales
+					if errBolt := setIPKO(remoteAddr.IP.String()); errBolt != nil {
+						Log.Error("Bolt - ", errBolt)
+					}*/
 
 				// Timeout
 				case <-connectTimer.C:
@@ -269,7 +272,7 @@ func (s *smtpClient) LocalAddr() string {
 
 // SMTP NOOP
 func (s *smtpClient) Noop() (code int, msg string, err error) {
-	return s.cmd(30, 200, "NOOP")
+	return s.cmd(s.timeoutBasePerCmd, 200, "NOOP")
 }
 
 // Hello: try EHLO, if failed HELO
@@ -283,7 +286,7 @@ func (s *smtpClient) Hello() (code int, msg string, err error) {
 
 // SMTP HELO
 func (s *smtpClient) Ehlo() (code int, msg string, err error) {
-	code, msg, err = s.cmd(10, 250, "EHLO %s", Cfg.GetMe())
+	code, msg, err = s.cmd(s.timeoutBasePerCmd, 250, "EHLO %s", Cfg.GetMe())
 	if err != nil {
 		return code, msg, err
 	}
@@ -310,14 +313,14 @@ func (s *smtpClient) Ehlo() (code int, msg string, err error) {
 // SMTP HELO
 func (s *smtpClient) Helo() (code int, msg string, err error) {
 	s.ext = nil
-	code, msg, err = s.cmd(30, 250, "HELO %s", Cfg.GetMe())
+	code, msg, err = s.cmd(s.timeoutBasePerCmd, 250, "HELO %s", Cfg.GetMe())
 	return
 }
 
 // StartTLS sends the STARTTLS command and encrypts all further communication.
 func (s *smtpClient) StartTLS(config *tls.Config) (code int, msg string, err error) {
 	s.tls = false
-	code, msg, err = s.cmd(30, 220, "STARTTLS")
+	code, msg, err = s.cmd(2*s.timeoutBasePerCmd, 220, "STARTTLS")
 	if err != nil {
 		return
 	}
@@ -341,7 +344,7 @@ func (s *smtpClient) Auth(a DeliverdAuth) (code int, msg string, err error) {
 	}
 	resp64 := make([]byte, encoding.EncodedLen(len(resp)))
 	encoding.Encode(resp64, resp)
-	code, msg64, err := s.cmd(30, 0, "AUTH %s %s", mech, resp64)
+	code, msg64, err := s.cmd(s.timeoutBasePerCmd, 0, "AUTH %s %s", mech, resp64)
 	for err == nil {
 		var msg []byte
 		switch code {
@@ -367,19 +370,19 @@ func (s *smtpClient) Auth(a DeliverdAuth) (code int, msg string, err error) {
 		}
 		resp64 = make([]byte, encoding.EncodedLen(len(resp)))
 		encoding.Encode(resp64, resp)
-		code, msg64, err = s.cmd(30, 0, string(resp64))
+		code, msg64, err = s.cmd(s.timeoutBasePerCmd, 0, string(resp64))
 	}
 	return
 }
 
 // MAIL
 func (s *smtpClient) Mail(from string) (code int, msg string, err error) {
-	return s.cmd(30, 250, "MAIL FROM:<%s>", from)
+	return s.cmd(s.timeoutBasePerCmd, 250, "MAIL FROM:<%s>", from)
 }
 
 // RCPT
 func (s *smtpClient) Rcpt(to string) (code int, msg string, err error) {
-	code, msg, err = s.cmd(30, -1, "RCPT TO:<%s>", to)
+	code, msg, err = s.cmd(s.timeoutBasePerCmd, -1, "RCPT TO:<%s>", to)
 	if code != 250 && code != 251 {
 		err = errors.New(msg)
 	}
@@ -396,7 +399,7 @@ type dataCloser struct {
 // can be used to write the data. The caller should close the writer
 // before calling any more methods on c.
 func (s *smtpClient) Data() (*dataCloser, int, string, error) {
-	code, msg, err := s.cmd(30, 354, "DATA")
+	code, msg, err := s.cmd(3*s.timeoutBasePerCmd, 354, "DATA")
 	if err != nil {
 		return nil, code, msg, err
 	}
@@ -405,7 +408,7 @@ func (s *smtpClient) Data() (*dataCloser, int, string, error) {
 
 // QUIT
 func (s *smtpClient) Quit() (code int, msg string, err error) {
-	code, msg, err = s.cmd(10, 221, "QUIT")
+	code, msg, err = s.cmd(s.timeoutBasePerCmd, 221, "QUIT")
 	s.text.Close()
 	return
 }
