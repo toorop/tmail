@@ -68,6 +68,8 @@ type Config struct {
 		// command
 		RFCHeloMandatory bool `name:"rfc_helo_mandatory" default:"false"`
 
+		RFCMailFromLocalpartSize bool `name:"rfc_mailfrom_localpart_size" default:"true"`
+
 		// microservices
 		MsUriSmtpdNewClient        string `name:"ms_smtpd_newclient" default:"_"`
 		MsUriSmtpdRcptTo           string `name:"ms_smtpd_rcptto" default:"_"`
@@ -363,6 +365,13 @@ func (c *Config) getRFCHeloMandatory() bool {
 	c.Lock()
 	defer c.Unlock()
 	return c.cfg.RFCHeloMandatory
+}
+
+// return getRFCMailFromLocalpartSize
+func (c *Config) getRFCMailFromLocalpartSize() bool {
+	c.Lock()
+	defer c.Unlock()
+	return c.cfg.RFCMailFromLocalpartSize
 }
 
 // nsqd

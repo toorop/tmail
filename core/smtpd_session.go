@@ -381,7 +381,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		}
 		localDomain := strings.Split(s.envelope.MailFrom, "@")
 		if len(localDomain) == 1 {
-			s.log("MAIL - invalid addresse " + localDomain[0])
+			s.log("MAIL - invalid address " + localDomain[0])
 			s.pause(2)
 			s.out("501 5.1.7 Invalid address")
 			s.SMTPResponseCode = 501
@@ -391,7 +391,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 				s.envelope.MailFrom = localDomain[0] + "@" + localDomain[1]
 			*/
 		}
-		if len(localDomain[0]) > 64 {
+		if Cfg.getRFCMailFromLocalpartSize() && len(localDomain[0]) > 64 {
 			s.log("MAIL - local part is too long: " + s.envelope.MailFrom)
 			s.out("550 local part of reverse path MUST be lower than 65 char (RFC 5321 4.5.3.1.1)")
 			s.SMTPResponseCode = 550
@@ -978,7 +978,6 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	// tmail
 	recieved += "tmail " + Version
 	recieved += "; " + s.uuid
-	
 	// timestamp
 	recieved += "; " + time.Now().Format(Time822)
 	h := []byte(recieved)

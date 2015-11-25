@@ -211,6 +211,12 @@ export TMAIL_RFC_HELO_MANDATORY=false
 # default: true (warning a lot of SMTP clients do not send a fqn|address )
 export TMAIL_RFC_HELO_NEED_FQN=false
 
+
+# RFC 5321 4.5.3.1.1: The maximum total length of a user name or
+# other local-part is 64  octets.
+export TMAIL_RFC_MAILFROM_LOCALPART_SIZE=true
+
+
 ##
 # users
 
