@@ -36,7 +36,6 @@ type smtpClient struct {
 }
 
 // newSMTPClient return a connected SMTP client
-// TODO cache for IPKO
 func newSMTPClient(d *delivery, routes *[]Route, timeoutBasePerCmd int) (client *smtpClient, err error) {
 	for _, route := range *routes {
 		localIPs := []net.IP{}
@@ -450,7 +449,6 @@ func isRemoteIPOK(ip string) bool {
 			Log.Error("Bolt -", err)
 		}
 	}
-	fmt.Printf("IPOK ? %v\n", ok)
 	return ok
 }
 
