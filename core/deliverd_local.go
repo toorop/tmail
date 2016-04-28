@@ -119,7 +119,7 @@ func deliverLocal(d *delivery) {
 					RcptTo:   localRcpt,
 				}
 				// rem: no minilist for domainAlias
-				if alias.IsMiniList && !alias.IsDomAlias {
+				if enveloppe.MailFrom != "" && alias.IsMiniList && !alias.IsDomAlias {
 					enveloppe.MailFrom = alias.Alias
 				}
 				uuid, err := QueueAddMessage(d.rawData, enveloppe, "")
