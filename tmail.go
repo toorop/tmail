@@ -24,7 +24,7 @@ import (
 
 const (
 	// TmailVersion version of tmail
-	TmailVersion = "0.13"
+	TmailVersion = "0.14"
 )
 
 func init() {
