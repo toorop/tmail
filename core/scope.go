@@ -8,11 +8,11 @@ import (
 	"os"
 	"path"
 
-	"github.com/bitly/go-nsq"
 	"github.com/boltdb/bolt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
+	"github.com/nsqio/go-nsq"
 
 	_ "github.com/toorop/go-sqlite3"
 	"github.com/toorop/gopenstack/context"

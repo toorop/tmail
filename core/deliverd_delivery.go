@@ -11,8 +11,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/bitly/go-nsq"
 	"github.com/jinzhu/gorm"
+	"github.com/nsqio/go-nsq"
 	"github.com/toorop/tmail/message"
 )
 
