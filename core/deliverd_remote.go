@@ -94,14 +94,17 @@ func deliverRemote(d *delivery) {
 		//config.ServerName = Cfg.GetMe()
 		code, msg, err = client.StartTLS(&config)
 		d.remoteSMTPresponseCode = code
+		// Warning debug
+		//err := fmt.Errorf("fake tls error")
 		if err != nil {
 			Log.Info(fmt.Sprintf("deliverd-remote %s - %s - TLS negociation failed %d - %s - %v .", d.id, client.conn.RemoteAddr().String(), code, msg, err))
 			if Cfg.GetDeliverdRemoteTLSFallback() {
 				// fall back to noTLS
+				Log.Info(fmt.Sprintf("deliverd-remote %s - %s - fallback to no TLS.", d.id, client.conn.RemoteAddr().String()))
 				client.close()
 				client, err = newSMTPClient(d, routes, Cfg.GetDeliverdRemoteTimeout())
 				if err != nil {
-					Log.Error(fmt.Sprintf("deliverd-remote %s - %s", d.id, err.Error()))
+					Log.Error(fmt.Sprintf("deliverd-remote %s - fallback to no TLS failed - %s", d.id, err.Error()))
 					d.dieTemp("unable to get client", false)
 					return
 				}
@@ -116,11 +119,13 @@ func deliverRemote(d *delivery) {
 						d.diePerm(fmt.Sprintf("deliverd-remote %s - %s - HELO failed %v - remote server reply %d %s ", d.id, client.RemoteAddr(), err.Error(), code, msg), true)
 						return
 					default:
-						Log.Info(fmt.Sprintf("deliverd-remote %s - %s - HELO unexpected code, remote server reply %d %s ", d.id, client.RemoteAddr(), code, msg))
+						d.dieTemp(fmt.Sprintf("deliverd-remote %s - %s - HELO unexpected code, remote server reply %d %s ", d.id, client.RemoteAddr(), code, msg), true)
+						return
+						//Log.Info(fmt.Sprintf("deliverd-remote %s - %s - HELO unexpected code, remote server reply %d %s ", d.id, client.RemoteAddr(), code, msg))
 					}
 				}
 			} else {
-				d.diePerm(fmt.Sprintf("deliverd-remote %s - %s - TLS negociation failed %d - %s - %v .", d.id, client.conn.RemoteAddr().String(), code, msg, err), true)
+				d.dieTemp(fmt.Sprintf("deliverd-remote %s - %s - TLS negociation failed %d - %s - %v .", d.id, client.conn.RemoteAddr().String(), code, msg, err), true)
 				return
 			}
 		} else {
