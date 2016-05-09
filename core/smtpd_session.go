@@ -520,7 +520,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	// check DB for rcpthost
 	if !s.relayGranted {
 		rcpthost, err := RcpthostGet(localDom[1])
-		if err != nil && err != gorm.RecordNotFound {
+		if err != nil && err != gorm.ErrRecordNotFound {
 			s.logError("RCPT - relay access failed while queriyng for rcpthost. " + err.Error())
 			s.out("455 4.3.0 oops, problem with relay access")
 			s.SMTPResponseCode = 455
@@ -655,7 +655,7 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 	// check rcpthost
 
 	rcpthost, err := RcpthostGet(localDom[1])
-	if err != nil && err != gorm.RecordNotFound {
+	if err != nil && err != gorm.ErrRecordNotFound {
 		s.logError("VRFY - relay access failed while queriyng for rcpthost. " + err.Error())
 		s.out("455 4.3.0 oops, internal failure")
 		s.SMTPResponseCode = 455
@@ -1147,7 +1147,7 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 
 	s.user, err = UserGet(authLogin, authPasswd)
 	if err != nil {
-		if err == gorm.RecordNotFound {
+		if err == gorm.ErrRecordNotFound {
 			s.out("535 authentication failed - No such user (#5.7.1)")
 			s.SMTPResponseCode = 535
 			s.log("auth failed: " + rawMsg + " err:" + err.Error())

@@ -16,7 +16,7 @@ func isLocalDelivery(rcpt string) (bool, error) {
 
 	// check rcpthost
 	rcpthost, err := RcpthostGet(t[1])
-	if err == gorm.RecordNotFound {
+	if err == gorm.ErrRecordNotFound {
 		return false, nil
 	} else if err != nil {
 		return false, err
@@ -31,7 +31,7 @@ func isLocalDelivery(rcpt string) (bool, error) {
 func IsValidLocalRcpt(rcpt string) (bool, error) {
 	// mailbox
 	u, err := UserGetByLogin(rcpt)
-	if err != nil && err != gorm.RecordNotFound {
+	if err != nil && err != gorm.ErrRecordNotFound {
 		return false, err
 	}
 	if err == nil && u.HaveMailbox {
@@ -63,7 +63,7 @@ func IsValidLocalRcpt(rcpt string) (bool, error) {
 	}
 	// Catchall
 	u, err = UserGetCatchallForDomain(localDom[1])
-	if err != nil && err != gorm.RecordNotFound {
+	if err != nil && err != gorm.ErrRecordNotFound {
 		return false, err
 	}
 	if err == nil {

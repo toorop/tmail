@@ -7,7 +7,7 @@ import (
 )
 
 // IsOkDB checks if database is ok
-func IsOkDB(DB gorm.DB) bool {
+func IsOkDB(DB *gorm.DB) bool {
 	// Check if all tables exists
 	// user
 	if !DB.HasTable(&User{}) {
@@ -40,7 +40,7 @@ func IsOkDB(DB gorm.DB) bool {
 // InitDB create tables if needed and initialize them
 // TODO: SKIP in CLI
 // TODO:  check regularly structure & indexes
-func InitDB(DB gorm.DB) error {
+func InitDB(DB *gorm.DB) error {
 	var err error
 	//users table
 	if !DB.HasTable(&User{}) {
@@ -117,7 +117,7 @@ func InitDB(DB gorm.DB) error {
 }
 
 // AutoMigrateDB will keep tables reflecting structs
-func AutoMigrateDB(DB gorm.DB) error {
+func AutoMigrateDB(DB *gorm.DB) error {
 	// if tables exists check if they reflects struts
 	if err := DB.AutoMigrate(&User{}, &Alias{}, &RcptHost{}, &RelayIpOk{}, &QMessage{}, &Route{}, &DkimConfig{}).Error; err != nil {
 		return errors.New("Unable autoMigrateDB - " + err.Error())

@@ -2,9 +2,10 @@ package core
 
 import (
 	"errors"
-	"github.com/jinzhu/gorm"
 	"net"
 	"strings"
+
+	"github.com/jinzhu/gorm"
 )
 
 // relayOkIp represents an IP that can use SMTP for relaying
@@ -19,7 +20,7 @@ func IpCanRelay(ip net.Addr) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if err != gorm.RecordNotFound {
+	if err != gorm.ErrRecordNotFound {
 		return false, err
 	}
 	return false, nil

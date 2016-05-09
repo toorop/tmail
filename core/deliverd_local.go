@@ -26,7 +26,7 @@ func deliverLocal(d *delivery) {
 
 	// if it's not a local user checks for alias
 	user, err := UserGetByLogin(d.qMsg.RcptTo)
-	if err != nil && err != gorm.RecordNotFound {
+	if err != nil && err != gorm.ErrRecordNotFound {
 		d.dieTemp(fmt.Sprintf("delivery-local %s: unable to check if %s is a real user. %s", d.id, d.qMsg.RcptTo, err), true)
 		return
 	}
@@ -40,23 +40,23 @@ func deliverLocal(d *delivery) {
 		localDom := strings.Split(d.qMsg.RcptTo, "@")
 		// first checks if it's an email alias ?
 		alias, err := AliasGet(d.qMsg.RcptTo)
-		if err != nil && err != gorm.RecordNotFound {
+		if err != nil && err != gorm.ErrRecordNotFound {
 			d.dieTemp(fmt.Sprintf("delivery-local %s: unable to check if %s is an alias. %s", d.id, d.qMsg.RcptTo, err), true)
 			return
 		}
 
 		// domain alias ?
-		if err != nil && err == gorm.RecordNotFound {
+		if err != nil && err == gorm.ErrRecordNotFound {
 			if len(localDom) == 2 {
 				alias, err = AliasGet(localDom[1])
-				if err != nil && err != gorm.RecordNotFound {
+				if err != nil && err != gorm.ErrRecordNotFound {
 					d.dieTemp(fmt.Sprintf("delivery-local %s: unable to check if %s is an alias. %s", d.id, localDom[1], err), true)
 					return
 				}
 			}
 		}
 
-		// err == nil -> err != gorm.RecordNotFound -> alias exists (email or domain)
+		// err == nil -> err != gorm.ErrRecordNotFound -> alias exists (email or domain)
 		if err == nil {
 			// Pipe
 			if alias.Pipe != "" {

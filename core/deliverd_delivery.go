@@ -60,7 +60,7 @@ func (d *delivery) processMsg() {
 	if err = d.qMsg.UpdateFromDb(); err != nil {
 		// si on ne le trouve pas en DB il y a de forte chance pour que le message ait déja
 		// été traité
-		if err == gorm.RecordNotFound {
+		if err == gorm.ErrRecordNotFound {
 			Log.Info(fmt.Sprintf("deliverd %s : queued message %s not in Db, already delivered, discarding", d.id, d.qMsg.Uuid))
 			d.discard()
 		} else {

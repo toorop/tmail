@@ -2,9 +2,10 @@ package core
 
 import (
 	"errors"
-	"github.com/jinzhu/gorm"
 	"net/mail"
 	"strings"
+
+	"github.com/jinzhu/gorm"
 )
 
 type Mailbox struct {
@@ -70,7 +71,7 @@ func MailboxExists(mailbox string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if err != gorm.RecordNotFound {
+	if err != gorm.ErrRecordNotFound {
 		return false, err
 	}
 	return false, nil

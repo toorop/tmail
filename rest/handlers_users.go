@@ -50,7 +50,7 @@ func usersDel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err := api.UserDel(httpcontext.Get(r, "params").(httprouter.Params).ByName("user"))
-	if err == gorm.RecordNotFound {
+	if err == gorm.ErrRecordNotFound {
 		httpWriteErrorJson(w, 404, "no such user "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), err.Error())
 		return
 	}
@@ -85,7 +85,7 @@ func usersGetOne(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user, err := api.UserGetByLogin(httpcontext.Get(r, "params").(httprouter.Params).ByName("user"))
-	if err == gorm.RecordNotFound {
+	if err == gorm.ErrRecordNotFound {
 		httpWriteErrorJson(w, 404, "no such user "+httpcontext.Get(r, "params").(httprouter.Params).ByName("user"), "")
 		return
 	}

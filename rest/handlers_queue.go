@@ -2,12 +2,13 @@ package rest
 
 import (
 	"encoding/json"
+	"net/http"
+	"strconv"
+
 	"github.com/jinzhu/gorm"
 	"github.com/julienschmidt/httprouter"
 	"github.com/nbio/httpcontext"
 	"github.com/toorop/tmail/api"
-	"net/http"
-	"strconv"
 )
 
 // usersGetAll return all users
@@ -41,7 +42,7 @@ func queueGetMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m, err := api.QueueGetMessage(msgIdInt)
-	if err == gorm.RecordNotFound {
+	if err == gorm.ErrRecordNotFound {
 		httpWriteErrorJson(w, 404, "no such message "+msgIdStr, "")
 		return
 	}
@@ -69,7 +70,7 @@ func queueDiscardMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = api.QueueDiscardMsg(msgIdInt)
-	if err == gorm.RecordNotFound {
+	if err == gorm.ErrRecordNotFound {
 		httpWriteErrorJson(w, 404, "no such message "+msgIdStr, "")
 		return
 	}
@@ -91,7 +92,7 @@ func queueBounceMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = api.QueueBounceMsg(msgIdInt)
-	if err == gorm.RecordNotFound {
+	if err == gorm.ErrRecordNotFound {
 		httpWriteErrorJson(w, 404, "no such message "+msgIdStr, "")
 		return
 	}

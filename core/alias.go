@@ -72,7 +72,7 @@ func AliasAdd(alias, deliverTo, pipe string, isMiniList bool) error {
 		// domain part must be a local domain
 		rcpthost, err := RcpthostGet(localDom[1])
 		if err != nil {
-			if err == gorm.RecordNotFound {
+			if err == gorm.ErrRecordNotFound {
 				return errors.New("domain " + localDom[1] + " is not handled by tmail")
 			}
 			return err
@@ -84,7 +84,7 @@ func AliasAdd(alias, deliverTo, pipe string, isMiniList bool) error {
 		// alias is a domain and must be in rcpthost
 		rcptpHost, err := RcpthostGet(alias)
 		if err != nil {
-			if err == gorm.RecordNotFound {
+			if err == gorm.ErrRecordNotFound {
 				if err = RcpthostAdd(alias, true, true); err != nil {
 					return errors.New("unable to add " + alias + " as rcpthost")
 				}
@@ -136,7 +136,7 @@ func AliasAdd(alias, deliverTo, pipe string, isMiniList bool) error {
 
 				user, err := UserGetByLogin(rcpt)
 				if err != nil {
-					if err == gorm.RecordNotFound {
+					if err == gorm.ErrRecordNotFound {
 						return errors.New("user " + rcpt + " doesn't exists")
 					}
 					return err
@@ -156,7 +156,7 @@ func AliasAdd(alias, deliverTo, pipe string, isMiniList bool) error {
 				// domain should be a local domain
 				domain, err := RcpthostGet(rcpt)
 				if err != nil {
-					if err == gorm.RecordNotFound {
+					if err == gorm.ErrRecordNotFound {
 						return errors.New("domain " + rcpt + " is not a local domain")
 					}
 					return err
@@ -184,7 +184,7 @@ func AliasAdd(alias, deliverTo, pipe string, isMiniList bool) error {
 func AliasDel(alias string) error {
 	a, err := AliasGet(alias)
 	if err != nil {
-		if err == gorm.RecordNotFound {
+		if err == gorm.ErrRecordNotFound {
 			return errors.New("Alias " + alias + " doesn't exists")
 		}
 		return errors.New("unable to get alias " + alias + ". " + err.Error())
@@ -216,7 +216,7 @@ func AliasExists(alias string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if err != gorm.RecordNotFound {
+	if err != gorm.ErrRecordNotFound {
 		return false, err
 	}
 	return false, nil

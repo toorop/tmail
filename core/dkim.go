@@ -31,7 +31,7 @@ func DkimEnable(domain string) (dkc *DkimConfig, err error) {
 	// Check if DKIM is alreadu enabled
 	dkc = &DkimConfig{}
 	err = DB.Where("domain = ?", domain).Find(dkc).Error
-	if err != nil && err != gorm.RecordNotFound {
+	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
 	} else if err == nil {
 		return nil, errors.New("DKIM is already enabled on " + domain)
@@ -83,7 +83,7 @@ func DkimDisable(domain string) error {
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	// Check if DKIM is alreadu enabled
 	err := DB.Where("domain = ?", domain).Delete(&DkimConfig{}).Error
-	if err != nil && err == gorm.RecordNotFound {
+	if err != nil && err == gorm.ErrRecordNotFound {
 		return nil
 	}
 	return err
@@ -95,7 +95,7 @@ func DkimGetConfig(domain string) (dkc *DkimConfig, err error) {
 	domain = strings.ToLower(domain)
 	err = DB.Where("domain = ?", domain).First(dkc).Error
 	if err != nil {
-		if err == gorm.RecordNotFound {
+		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		} else {
 			return nil, err

@@ -2,11 +2,12 @@ package core
 
 import (
 	"errors"
+	"net/mail"
+	"strings"
+
 	"github.com/jinzhu/gorm"
 	"github.com/kless/osutil/user/crypt/sha512_crypt"
 	"golang.org/x/crypto/bcrypt"
-	"net/mail"
-	"strings"
 )
 
 // User represents a tmail user.
@@ -77,7 +78,7 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay, isCatchall b
 
 		// rcpthost must be in rcpthost && must be local && not an alias
 		rcpthost, err := RcpthostGet(t[1])
-		if err != nil && err != gorm.RecordNotFound {
+		if err != nil && err != gorm.ErrRecordNotFound {
 			return err
 		}
 		exists := err == nil
@@ -194,7 +195,7 @@ func UserExists(login string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if err != gorm.RecordNotFound {
+	if err != gorm.ErrRecordNotFound {
 		return false, err
 	}
 	return false, nil

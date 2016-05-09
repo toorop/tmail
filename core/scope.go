@@ -26,7 +26,7 @@ const (
 var (
 	Version                          string
 	Cfg                              *Config
-	DB                               gorm.DB
+	DB                               *gorm.DB
 	Bolt                             *bolt.DB
 	Log                              *Logger
 	NsqQueueProducer                 *nsq.Producer

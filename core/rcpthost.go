@@ -21,7 +21,7 @@ func IsInRcptHost(hostname string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if err != gorm.RecordNotFound {
+	if err != gorm.ErrRecordNotFound {
 		return false, err
 	}
 	return false, nil
