@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"io/ioutil"
 	"net/http"
 	"net/mail"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/golang/protobuf/proto"
 
 	"github.com/toorop/tmail/msproto"
 )
@@ -390,6 +391,8 @@ func msSmtpdSendTelemetry(s *SMTPServerSession) {
 	telemetry.EnvRcptto = s.envelope.RcptTo
 	if s.SMTPResponseCode != 0 && s.SMTPResponseCode < 400 {
 		telemetry.Success = proto.Bool(true)
+	} else {
+		telemetry.Success = proto.Bool(false)
 	}
 	telemetry.MessageSize = proto.Uint32(s.dataBytes)
 	telemetry.IsTls = proto.Bool(s.tls)
