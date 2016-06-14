@@ -224,6 +224,11 @@ func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
 		s.out("503 bad sequence, ehlo already recieved")
 		return false
 	}
+	// call microservice msSmtpdHelo
+	if msSmtpdHelo(s, msg) {
+		return
+	}
+
 	s.helo = ""
 	if len(msg) > 1 {
 		if Cfg.getRFCHeloNeedsFqnOrAddress() {

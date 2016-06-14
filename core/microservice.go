@@ -106,6 +106,21 @@ func (ms *microservice) call(data *[]byte) (*[]byte, error) {
 	return &rawBody, nil
 }
 
+// exec a microservice
+func (ms *microservice) exec(s *SMTPServerSession, queryMsg *[]byte) (response *[]byte, err error) {
+	if s.user != nil && ms.skipAuthentifiedUser {
+		return
+	}
+	// call ms
+	s.log("calling " + ms.url)
+	if ms.fireAndForget {
+		go ms.call(queryMsg)
+		return
+	}
+	response, err = ms.call(queryMsg)
+	return
+}
+
 // shouldWeStopOnError return if process wich call microserviuce should stop on error
 func (ms *microservice) stopOnError() (stop bool) {
 	switch ms.onFailure {
@@ -178,30 +193,17 @@ func msSmtpdNewClient(s *SMTPServerSession) (stop bool) {
 			continue
 		}
 
-		if s.user != nil && ms.skipAuthentifiedUser {
-			continue
-		}
-
-		// call ms
-		s.log("calling " + ms.url)
-		if ms.fireAndForget {
-			go ms.call(&msg)
-			continue
-		}
-
-		response, err := ms.call(&msg)
+		response, err := ms.exec(s, &msg)
 		if err != nil {
 			s.logError("microservice " + ms.url + " failed. " + err.Error())
 			if ms.stopOnError() {
 				return
 			}
-			continue
 		}
 
 		// parse resp
 		msResponse := &msproto.SmtpdNewClientResponse{}
-		err = proto.Unmarshal(*response, msResponse)
-		if err != nil {
+		if err = proto.Unmarshal(*response, msResponse); err != nil {
 			s.logError("microservice " + ms.url + " failed. " + err.Error())
 			if ms.stopOnError() {
 				return
@@ -223,7 +225,63 @@ func msSmtpdNewClient(s *SMTPServerSession) (stop bool) {
 	return
 }
 
-// msSmtpdRcptToRelayIsGranted check if relay is granted by using rcpt to
+// msSmtpdHelo microservice called after HELO/EHLO cmd recieved
+func msSmtpdHelo(s *SMTPServerSession, helo []string) (stop bool) {
+	var response *[]byte
+	var msResponse *msproto.SmtpdHeloResponse
+	var ms *microservice
+	var err error
+
+	// get URIs
+	uris := Cfg.GetMicroservicesUri("smtpdhelo")
+	if len(uris) == 0 {
+		return
+	}
+	// Query
+	msg, err := proto.Marshal(&msproto.SmtpdHeloQuery{
+		SessionId: proto.String(s.uuid),
+		Helo:      proto.String(strings.Join(helo, " ")),
+	})
+	if err != nil {
+		s.logError("ms - unable marshall SmtpdHeloQuery " + err.Error())
+		return
+	}
+
+	for _, uri := range uris {
+		ms, err = newMicroservice(uri)
+		if err != nil {
+			s.logError("ms - unable to init microservice msSmtpdHelo -" + err.Error())
+			continue
+		}
+		if response, err = ms.exec(s, &msg); err != nil {
+			s.logError("ms - unable to call microservice msSmtpdHelo -" + err.Error())
+			continue
+		}
+		// unmarshal response
+		msResponse = &msproto.SmtpdHeloResponse{}
+		if err = proto.Unmarshal(*response, msResponse); err != nil {
+			s.logError("microservice " + ms.url + " failed. " + err.Error())
+			if ms.stopOnError() {
+				return
+			}
+			continue
+		}
+
+		// send reply (or not)
+		stop = handleSMTPResponse(msResponse.GetSmtpResponse(), s)
+		// drop ?
+		if msResponse.GetDropConnection() {
+			s.exitAsap()
+			stop = true
+		}
+		if stop {
+			return true
+		}
+	}
+	return
+}
+
+// msSmtpdRcptTo check if relay is granted by using rcpt to
 func msSmtpdRcptTo(s *SMTPServerSession, rcptTo string) (stop bool) {
 	if len(Cfg.GetMicroservicesUri("smtpdrcptto")) == 0 {
 		return false

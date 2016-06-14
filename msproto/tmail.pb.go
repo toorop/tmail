@@ -13,6 +13,8 @@ It has these top-level messages:
 	SmtpdTelemetry
 	SmtpdNewClientQuery
 	SmtpdNewClientResponse
+	SmtpdHeloQuery
+	SmtpdHeloResponse
 	SmtpdRcptToQuery
 	SmtpdRcptToResponse
 	SmtpdDataQuery
@@ -207,6 +209,65 @@ func (m *SmtpdNewClientResponse) GetSmtpResponse() *SmtpResponse {
 }
 
 func (m *SmtpdNewClientResponse) GetDropConnection() bool {
+	if m != nil && m.DropConnection != nil {
+		return *m.DropConnection
+	}
+	return false
+}
+
+// hook SMTPd HELO/EHLO
+// smtpdHeloQuery
+type SmtpdHeloQuery struct {
+	SessionId        *string `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
+	Helo             *string `protobuf:"bytes,2,req,name=helo" json:"helo,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *SmtpdHeloQuery) Reset()         { *m = SmtpdHeloQuery{} }
+func (m *SmtpdHeloQuery) String() string { return proto.CompactTextString(m) }
+func (*SmtpdHeloQuery) ProtoMessage()    {}
+
+func (m *SmtpdHeloQuery) GetSessionId() string {
+	if m != nil && m.SessionId != nil {
+		return *m.SessionId
+	}
+	return ""
+}
+
+func (m *SmtpdHeloQuery) GetHelo() string {
+	if m != nil && m.Helo != nil {
+		return *m.Helo
+	}
+	return ""
+}
+
+// SmtpdHeloResponse
+type SmtpdHeloResponse struct {
+	SessionId        *string       `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
+	SmtpResponse     *SmtpResponse `protobuf:"bytes,2,opt,name=smtp_response" json:"smtp_response,omitempty"`
+	DropConnection   *bool         `protobuf:"varint,3,opt,name=drop_connection" json:"drop_connection,omitempty"`
+	XXX_unrecognized []byte        `json:"-"`
+}
+
+func (m *SmtpdHeloResponse) Reset()         { *m = SmtpdHeloResponse{} }
+func (m *SmtpdHeloResponse) String() string { return proto.CompactTextString(m) }
+func (*SmtpdHeloResponse) ProtoMessage()    {}
+
+func (m *SmtpdHeloResponse) GetSessionId() string {
+	if m != nil && m.SessionId != nil {
+		return *m.SessionId
+	}
+	return ""
+}
+
+func (m *SmtpdHeloResponse) GetSmtpResponse() *SmtpResponse {
+	if m != nil {
+		return m.SmtpResponse
+	}
+	return nil
+}
+
+func (m *SmtpdHeloResponse) GetDropConnection() bool {
 	if m != nil && m.DropConnection != nil {
 		return *m.DropConnection
 	}

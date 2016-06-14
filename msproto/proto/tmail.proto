@@ -40,6 +40,21 @@ message SmtpdNewClientResponse {
 	optional bool drop_connection = 3;
 }
 
+
+// hook SMTPd HELO/EHLO
+// smtpdHeloQuery
+message SmtpdHeloQuery {
+	required string session_id = 1; // smtpd session ID
+	required string helo = 2; 	// full HELO/EHLO command
+}
+
+// SmtpdHeloResponse
+message SmtpdHeloResponse {
+	required string session_id = 1;
+	optional SmtpResponse smtp_response = 2;
+	optional bool drop_connection = 3;
+}
+
 // Hook smtpd RCPT TO command
 // smtpdRcptToQuery
 message SmtpdRcptToQuery {
