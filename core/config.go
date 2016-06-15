@@ -73,6 +73,7 @@ type Config struct {
 		// microservices
 		MsUriSmtpdNewClient        string `name:"ms_smtpd_newclient" default:"_"`
 		MSUriSmtpdHelo             string `name:"ms_smtpd_helo" default:"_"`
+		MSUriSmtpdMailFrom         string `name:"ms_smtpd_mail_from" default:"_"`
 		MsUriSmtpdRcptTo           string `name:"ms_smtpd_rcptto" default:"_"`
 		MsUriSmtpdData             string `name:"ms_smtpd_data" default:"_"`
 		MsUriSmtpdBeforeQueueing   string `name:"ms_smtpd_before_queueing" default:"_"`
@@ -434,6 +435,10 @@ func (c *Config) GetMicroservicesUri(hookId string) []string {
 	case "smtpdhelo":
 		if c.cfg.MSUriSmtpdHelo != "_" {
 			return strings.Split(c.cfg.MSUriSmtpdHelo, ";")
+		}
+	case "smtpdmailfrom":
+		if c.cfg.MSUriSmtpdMailFrom != "_" {
+			return strings.Split(c.cfg.MSUriSmtpdMailFrom, ";")
 		}
 	case "smtpdrcptto":
 		if c.cfg.MsUriSmtpdRcptTo != "_" {

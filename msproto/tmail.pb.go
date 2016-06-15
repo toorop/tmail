@@ -15,6 +15,8 @@ It has these top-level messages:
 	SmtpdNewClientResponse
 	SmtpdHeloQuery
 	SmtpdHeloResponse
+	SmtpdMailFromQuery
+	SmtpdMailFromResponse
 	SmtpdRcptToQuery
 	SmtpdRcptToResponse
 	SmtpdDataQuery
@@ -268,6 +270,64 @@ func (m *SmtpdHeloResponse) GetSmtpResponse() *SmtpResponse {
 }
 
 func (m *SmtpdHeloResponse) GetDropConnection() bool {
+	if m != nil && m.DropConnection != nil {
+		return *m.DropConnection
+	}
+	return false
+}
+
+// Hook smpd MAIL FROM
+type SmtpdMailFromQuery struct {
+	SessionId        *string `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
+	From             *string `protobuf:"bytes,2,req,name=from" json:"from,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *SmtpdMailFromQuery) Reset()         { *m = SmtpdMailFromQuery{} }
+func (m *SmtpdMailFromQuery) String() string { return proto.CompactTextString(m) }
+func (*SmtpdMailFromQuery) ProtoMessage()    {}
+
+func (m *SmtpdMailFromQuery) GetSessionId() string {
+	if m != nil && m.SessionId != nil {
+		return *m.SessionId
+	}
+	return ""
+}
+
+func (m *SmtpdMailFromQuery) GetFrom() string {
+	if m != nil && m.From != nil {
+		return *m.From
+	}
+	return ""
+}
+
+// SmtpdMailFromResponse
+type SmtpdMailFromResponse struct {
+	SessionId        *string       `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
+	SmtpResponse     *SmtpResponse `protobuf:"bytes,2,opt,name=smtp_response" json:"smtp_response,omitempty"`
+	DropConnection   *bool         `protobuf:"varint,3,opt,name=drop_connection" json:"drop_connection,omitempty"`
+	XXX_unrecognized []byte        `json:"-"`
+}
+
+func (m *SmtpdMailFromResponse) Reset()         { *m = SmtpdMailFromResponse{} }
+func (m *SmtpdMailFromResponse) String() string { return proto.CompactTextString(m) }
+func (*SmtpdMailFromResponse) ProtoMessage()    {}
+
+func (m *SmtpdMailFromResponse) GetSessionId() string {
+	if m != nil && m.SessionId != nil {
+		return *m.SessionId
+	}
+	return ""
+}
+
+func (m *SmtpdMailFromResponse) GetSmtpResponse() *SmtpResponse {
+	if m != nil {
+		return m.SmtpResponse
+	}
+	return nil
+}
+
+func (m *SmtpdMailFromResponse) GetDropConnection() bool {
 	if m != nil && m.DropConnection != nil {
 		return *m.DropConnection
 	}

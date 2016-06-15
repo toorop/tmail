@@ -281,6 +281,62 @@ func msSmtpdHelo(s *SMTPServerSession, helo []string) (stop bool) {
 	return
 }
 
+// msSmtpdMailFrom microservice called after MAIL FROM SMTP command
+func msSmtpdMailFrom(s *SMTPServerSession, mailFrom []string) (stop bool) {
+	var response *[]byte
+	var msResponse *msproto.SmtpdMailFromResponse
+	var ms *microservice
+	var err error
+
+	// get URIs
+	uris := Cfg.GetMicroservicesUri("smtpdmailfrom")
+	if len(uris) == 0 {
+		return
+	}
+	// Query
+	msg, err := proto.Marshal(&msproto.SmtpdMailFromQuery{
+		SessionId: proto.String(s.uuid),
+		From:      proto.String(strings.Join(mailFrom, " ")),
+	})
+	if err != nil {
+		s.logError("ms - unable marshall SmtpdMailFromQuery " + err.Error())
+		return
+	}
+
+	for _, uri := range uris {
+		ms, err = newMicroservice(uri)
+		if err != nil {
+			s.logError("ms - unable to init microservice SmtpdMailFromQuery -" + err.Error())
+			continue
+		}
+		if response, err = ms.exec(s, &msg); err != nil {
+			s.logError("ms - unable to call microservice SmtpdMailFromQuery -" + err.Error())
+			continue
+		}
+		// unmarshal response
+		msResponse = &msproto.SmtpdMailFromResponse{}
+		if err = proto.Unmarshal(*response, msResponse); err != nil {
+			s.logError("microservice " + ms.url + " failed. " + err.Error())
+			if ms.stopOnError() {
+				return
+			}
+			continue
+		}
+
+		// send reply (or not)
+		stop = handleSMTPResponse(msResponse.GetSmtpResponse(), s)
+		// drop ?
+		if msResponse.GetDropConnection() {
+			s.exitAsap()
+			stop = true
+		}
+		if stop {
+			return true
+		}
+	}
+	return
+}
+
 // msSmtpdRcptTo check if relay is granted by using rcpt to
 func msSmtpdRcptTo(s *SMTPServerSession, rcptTo string) (stop bool) {
 	if len(Cfg.GetMicroservicesUri("smtpdrcptto")) == 0 {

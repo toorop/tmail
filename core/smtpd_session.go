@@ -310,6 +310,12 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		s.SMTPResponseCode = 501
 		return
 	}
+
+	// Microservices
+	if msSmtpdMailFrom(s, msg) {
+		return
+	}
+
 	// mail from:<user> EXT || mail from: <user> EXT
 	if len(msg[1]) > 5 { // mail from:<user> EXT
 		t := strings.Split(msg[1], ":")

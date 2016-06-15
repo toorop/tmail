@@ -255,11 +255,14 @@ export TMAIL_REST_SERVER_PASSWD="passwd"
 # Called on new SMTP connection from client
 export TMAIL_MS_SMTPD_NEWCLIENT=""
 
-# Called after HEL/EHLO command
+# Called after HELO/EHLO command
 export TMAIL_MS_SMTPD_HELO=""
 
+# Called after MAIL FROM command
+export TMAIL_MS_SMTPD_MAIL_FROM=""
+
 # Called after RCPT TO to check if relay is granted for this RCPT TO
-export TMAIL_MS_SMTPD_RCPTTO_ACCESS_IS_GRANTED=""
+export TMAIL_MS_SMTPD_RCPTTO=""
 
 # Call after DATA command
 export TMAIL_MS_SMTPD_DATA=""

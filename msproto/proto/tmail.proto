@@ -55,6 +55,20 @@ message SmtpdHeloResponse {
 	optional bool drop_connection = 3;
 }
 
+// Hook smpd MAIL FROM
+message SmtpdMailFromQuery {
+	required string session_id = 1; // smtpd session ID
+	required string from = 2; 	// full MAIL FROM command
+}
+
+// SmtpdMailFromResponse
+message SmtpdMailFromResponse {
+	required string session_id = 1;
+	optional SmtpResponse smtp_response = 2;
+	optional bool drop_connection = 3;
+}
+
+
 // Hook smtpd RCPT TO command
 // smtpdRcptToQuery
 message SmtpdRcptToQuery {
