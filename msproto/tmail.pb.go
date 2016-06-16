@@ -338,7 +338,8 @@ func (m *SmtpdMailFromResponse) GetDropConnection() bool {
 // smtpdRcptToQuery
 type SmtpdRcptToQuery struct {
 	SessionId        *string `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
-	Rcptto           *string `protobuf:"bytes,2,req,name=rcptto" json:"rcptto,omitempty"`
+	RcptTo           *string `protobuf:"bytes,2,req,name=rcpt_to" json:"rcpt_to,omitempty"`
+	MailFrom         *string `protobuf:"bytes,3,req,name=mail_from" json:"mail_from,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -353,9 +354,16 @@ func (m *SmtpdRcptToQuery) GetSessionId() string {
 	return ""
 }
 
-func (m *SmtpdRcptToQuery) GetRcptto() string {
-	if m != nil && m.Rcptto != nil {
-		return *m.Rcptto
+func (m *SmtpdRcptToQuery) GetRcptTo() string {
+	if m != nil && m.RcptTo != nil {
+		return *m.RcptTo
+	}
+	return ""
+}
+
+func (m *SmtpdRcptToQuery) GetMailFrom() string {
+	if m != nil && m.MailFrom != nil {
+		return *m.MailFrom
 	}
 	return ""
 }

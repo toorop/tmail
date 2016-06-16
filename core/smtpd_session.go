@@ -523,8 +523,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	s.relayGranted = false
 
 	// Microservice: msSmtpdRcpTo
-	stopHere := msSmtpdRcptTo(s, rcptto)
-	if stopHere {
+	if msSmtpdRcptTo(s, rcptto) {
 		return
 	}
 

@@ -73,7 +73,8 @@ message SmtpdMailFromResponse {
 // smtpdRcptToQuery
 message SmtpdRcptToQuery {
 	required string session_id = 1;
-	required string rcptto = 2;
+	required string rcpt_to = 2;
+	required string mail_from = 3;
 }
 
 // SmtpdRcpttoAccessIsGrantedResponse

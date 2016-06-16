@@ -344,7 +344,8 @@ func msSmtpdRcptTo(s *SMTPServerSession, rcptTo string) (stop bool) {
 	}
 	msg, err := proto.Marshal(&msproto.SmtpdRcptToQuery{
 		SessionId: proto.String(s.uuid),
-		Rcptto:    proto.String(rcptTo),
+		MailFrom:  proto.String(s.envelope.MailFrom),
+		RcptTo:    proto.String(rcptTo),
 	})
 	if err != nil {
 		s.logError("unable to serialize data as SmtpdRcptToQuery. " + err.Error())
