@@ -414,6 +414,7 @@ func (m *SmtpdRcptToResponse) GetRelayGranted() bool {
 type SmtpdDataQuery struct {
 	SessionId        *string `protobuf:"bytes,1,req,name=session_id" json:"session_id,omitempty"`
 	DataLink         *string `protobuf:"bytes,2,req,name=data_link" json:"data_link,omitempty"`
+	Enveloppe        *string `protobuf:"bytes,3,req,name=enveloppe" json:"enveloppe,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -431,6 +432,13 @@ func (m *SmtpdDataQuery) GetSessionId() string {
 func (m *SmtpdDataQuery) GetDataLink() string {
 	if m != nil && m.DataLink != nil {
 		return *m.DataLink
+	}
+	return ""
+}
+
+func (m *SmtpdDataQuery) GetEnveloppe() string {
+	if m != nil && m.Enveloppe != nil {
+		return *m.Enveloppe
 	}
 	return ""
 }

@@ -90,6 +90,7 @@ message SmtpdRcptToResponse {
 message SmtpdDataQuery {
 	required string session_id = 1;
 	required string data_link = 2;
+	required string enveloppe = 3;
 }
 
 // smtpdDataMsg

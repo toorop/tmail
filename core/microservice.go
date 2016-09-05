@@ -441,6 +441,7 @@ func smtpdData(s *SMTPServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 	msg, err := proto.Marshal(&msproto.SmtpdDataQuery{
 		SessionId: proto.String(s.uuid),
 		DataLink:  proto.String(link),
+		Enveloppe: proto.String(s.envelope.String()),
 	})
 	if err != nil {
 		s.logError("unable to serialize data as SmtpdDataQuery. " + err.Error())
