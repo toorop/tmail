@@ -135,7 +135,7 @@ func (s *SMTPServerSession) reset() {
 // Out : to client
 func (s *SMTPServerSession) out(msg string) {
 	s.conn.Write([]byte(msg + "\r\n"))
-	s.logDebug(">", msg)
+	s.LogDebug(">", msg)
 	s.resetTimeout()
 }
 
@@ -150,7 +150,7 @@ func (s *SMTPServerSession) logError(msg ...string) {
 }
 
 // logError is a log helper for error logs
-func (s *SMTPServerSession) logDebug(msg ...string) {
+func (s *SMTPServerSession) LogDebug(msg ...string) {
 	if !Cfg.GetDebugEnabled() {
 		return
 	}
@@ -198,9 +198,9 @@ func (s *SMTPServerSession) smtpGreeting() {
 	}
 	s.log(fmt.Sprintf("starting new transaction %d/%d", SmtpSessionsCount, Cfg.GetSmtpdConcurrencyIncoming()))
 
-	// Microservices
-	if msSmtpdNewClient(s) {
-		return
+	// Plugin
+	if newClientPlugin != nil {
+		newClientPlugin(s)
 	}
 
 	o := "220 " + Cfg.GetMe() + " ESMTP"
@@ -443,7 +443,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	var err error
 	rcptto := ""
 	s.rcptCount++
-	s.logDebug(fmt.Sprintf("RCPT TO %d/%d", s.rcptCount, Cfg.GetSmtpdMaxRcptTo()))
+	s.LogDebug(fmt.Sprintf("RCPT TO %d/%d", s.rcptCount, Cfg.GetSmtpdMaxRcptTo()))
 	if Cfg.GetSmtpdMaxRcptTo() != 0 && s.rcptCount > Cfg.GetSmtpdMaxRcptTo() {
 		s.log(fmt.Sprintf("max RCPT TO command reached (%d)", Cfg.GetSmtpdMaxRcptTo()))
 		s.out("451 4.5.3 max RCPT To commands reached for this sessions")
@@ -541,7 +541,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 			s.relayGranted = true
 			// if local check "mailbox" (destination)
 			if rcpthost.IsLocal {
-				s.logDebug(rcpthost.Hostname + " is local")
+				s.LogDebug(rcpthost.Hostname + " is local")
 				// check destination
 				exists, err := IsValidLocalRcpt(strings.ToLower(rcptto))
 				if err != nil {
@@ -603,7 +603,7 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 	defer s.recoverOnPanic()
 	rcptto := ""
 	s.vrfyCount++
-	s.logDebug(fmt.Sprintf("VRFY -  %d/%d", s.vrfyCount, Cfg.GetSmtpdMaxVrfy()))
+	s.LogDebug(fmt.Sprintf("VRFY -  %d/%d", s.vrfyCount, Cfg.GetSmtpdMaxVrfy()))
 	if Cfg.GetSmtpdMaxVrfy() != 0 && s.vrfyCount > Cfg.GetSmtpdMaxVrfy() {
 		s.log(fmt.Sprintf(" VRFY - max command reached (%d)", Cfg.GetSmtpdMaxVrfy()))
 		s.out("551 5.5.3 too many VRFY commands for this sessions")
@@ -674,7 +674,7 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 	if err == nil {
 		// if local check "mailbox" (destination)
 		if rcpthost.IsLocal {
-			s.logDebug("VRFY - " + rcpthost.Hostname + " is local")
+			s.LogDebug("VRFY - " + rcpthost.Hostname + " is local")
 			// check destination
 			exists, err := IsValidLocalRcpt(strings.ToLower(rcptto))
 			if err != nil {
@@ -1117,7 +1117,7 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 			if ch[0] == 10 {
 				s.timer.Stop()
 				encoded = string(line)
-				s.logDebug("< " + encoded)
+				s.LogDebug("< " + encoded)
 				break
 			}
 			line = append(line, ch[0])
@@ -1214,7 +1214,7 @@ func (s *SMTPServerSession) handle() {
 			_, err := s.conn.Read(buffer)
 			if err != nil {
 				if err.Error() == "EOF" {
-					s.logDebug(s.conn.RemoteAddr().String(), "- Client send EOF")
+					s.LogDebug(s.conn.RemoteAddr().String(), "- Client send EOF")
 				} else if strings.Contains(err.Error(), "connection reset by peer") {
 					s.log(err.Error())
 				} else if !strings.Contains(err.Error(), "use of closed network connection") {
@@ -1232,7 +1232,7 @@ func (s *SMTPServerSession) handle() {
 				s.timer.Stop()
 				var rmsg string
 				strMsg := strings.TrimSpace(string(msg))
-				s.logDebug("<", strMsg)
+				s.LogDebug("<", strMsg)
 				//splittedMsg := strings.Split(strMsg, " ")
 				splittedMsg := []string{}
 				for _, m := range strings.Split(strMsg, " ") {
