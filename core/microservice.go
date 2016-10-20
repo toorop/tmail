@@ -112,7 +112,7 @@ func (ms *microservice) exec(s *SMTPServerSession, queryMsg *[]byte) (response *
 		return
 	}
 	// call ms
-	s.log("calling " + ms.url)
+	s.Log("calling " + ms.url)
 	if ms.fireAndForget {
 		go ms.call(queryMsg)
 		return
@@ -143,10 +143,10 @@ func (ms *microservice) handleSMTPError(err error, s *SMTPServerSession) (stop b
 	s.logError("microservice " + ms.url + " failed. " + err.Error())
 	switch ms.onFailure {
 	case PERMFAIL:
-		s.out("550 sorry something wrong happened")
+		s.Out("550 sorry something wrong happened")
 		return true
 	case TEMPFAIL:
-		s.out("450 sorry something wrong happened")
+		s.Out("450 sorry something wrong happened")
 		return true
 	default:
 		return false
@@ -160,8 +160,8 @@ func handleSMTPResponse(smtpResponse *msproto.SmtpResponse, s *SMTPServerSession
 	}
 	if smtpResponse.GetCode() != 0 && smtpResponse.GetMsg() != "" {
 		reply := fmt.Sprintf("%d %s", smtpResponse.GetCode(), smtpResponse.GetMsg())
-		s.out(reply)
-		s.log("smtp response from microservice sent to client: " + reply)
+		s.Out(reply)
+		s.Log("smtp response from microservice sent to client: " + reply)
 		// if reply is sent we do not continue processing this command
 		stop = true
 	}
@@ -178,7 +178,7 @@ func msSmtpdNewClient(s *SMTPServerSession) (stop bool) {
 	// serialize message to send
 	msg, err := proto.Marshal(&msproto.SmtpdNewClientQuery{
 		SessionId: proto.String(s.uuid),
-		RemoteIp:  proto.String(s.conn.RemoteAddr().String()),
+		RemoteIp:  proto.String(s.Conn.RemoteAddr().String()),
 	})
 	if err != nil {
 		s.logError("unable to serialize data as SmtpdNewClientMsg. " + err.Error())
@@ -215,7 +215,7 @@ func msSmtpdNewClient(s *SMTPServerSession) (stop bool) {
 		stop = handleSMTPResponse(msResponse.GetSmtpResponse(), s)
 		// drop ?
 		if msResponse.GetDropConnection() {
-			s.exitAsap()
+			s.ExitAsap()
 			stop = true
 		}
 		if stop {
@@ -271,7 +271,7 @@ func msSmtpdHelo(s *SMTPServerSession, helo []string) (stop bool) {
 		stop = handleSMTPResponse(msResponse.GetSmtpResponse(), s)
 		// drop ?
 		if msResponse.GetDropConnection() {
-			s.exitAsap()
+			s.ExitAsap()
 			stop = true
 		}
 		if stop {
@@ -327,7 +327,7 @@ func msSmtpdMailFrom(s *SMTPServerSession, mailFrom []string) (stop bool) {
 		stop = handleSMTPResponse(msResponse.GetSmtpResponse(), s)
 		// drop ?
 		if msResponse.GetDropConnection() {
-			s.exitAsap()
+			s.ExitAsap()
 			stop = true
 		}
 		if stop {
@@ -365,7 +365,7 @@ func msSmtpdRcptTo(s *SMTPServerSession, rcptTo string) (stop bool) {
 		}
 
 		// call ms
-		s.log("calling " + ms.url)
+		s.Log("calling " + ms.url)
 		if ms.fireAndForget {
 			go ms.call(&msg)
 			continue
@@ -396,7 +396,7 @@ func msSmtpdRcptTo(s *SMTPServerSession, rcptTo string) (stop bool) {
 		stop = handleSMTPResponse(msResponse.GetSmtpResponse(), s)
 		// drop ?
 		if msResponse.GetDropConnection() {
-			s.exitAsap()
+			s.ExitAsap()
 			stop = true
 		}
 		if stop {
@@ -459,7 +459,7 @@ func smtpdData(s *SMTPServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 			continue
 		}
 
-		s.log("calling " + ms.url)
+		s.Log("calling " + ms.url)
 		response, err := ms.call(&msg)
 		if err != nil {
 			if stop := ms.handleSMTPError(err, s); stop {
@@ -484,7 +484,7 @@ func smtpdData(s *SMTPServerSession, rawMail *[]byte) (stop bool, extraHeaders *
 		stop = handleSMTPResponse(msResponse.GetSmtpResponse(), s)
 		// drop ?
 		if msResponse.GetDropConnection() {
-			s.exitAsap()
+			s.ExitAsap()
 			stop = true
 		}
 		if stop {
@@ -614,7 +614,7 @@ func msSmtpdBeforeQueueing(s *SMTPServerSession) bool {
 		}
 		stop := handleSMTPResponse(msResponse.GetSmtpResponse(), s)
 		if msResponse.GetDropConnection() {
-			s.exitAsap()
+			s.ExitAsap()
 			stop = true
 		}
 		if stop {

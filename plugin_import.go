@@ -1,3 +1,3 @@
 package main
 
-import _ "github.com/toorop/protecmail/tmailplugins/newclient"
+import _ "github.com/toorop/protecmail/tmailplugins/connect"

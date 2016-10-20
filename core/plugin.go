@@ -1,15 +1,17 @@
 package core
 
 // SMTPdPlugin is the type for SMTPd plugins
-type SMTPdPlugin func(s *SMTPServerSession)
+type SMTPdPlugin func(s *SMTPServerSession) bool
 
-var newClientPlugin SMTPdPlugin
+// SMTPdPlugins is a map of SMTPd plugins
+var SMTPdPlugins map[string]SMTPdPlugin
 
 func init() {
-	newClientPlugin = nil
+	SMTPdPlugins = make(map[string]SMTPdPlugin)
 }
 
 // RegisterSMTPdPlugin registers a new plugin
-func RegisterSMTPdPlugin(plugin SMTPdPlugin) {
-	newClientPlugin = plugin
+// TODO check hook
+func RegisterSMTPdPlugin(hook string, plugin SMTPdPlugin) {
+	SMTPdPlugins[hook] = plugin
 }

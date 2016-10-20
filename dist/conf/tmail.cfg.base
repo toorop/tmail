@@ -248,7 +248,6 @@ export TMAIL_REST_SERVER_LOGIN="login"
 # Passwd for HTTP auth
 export TMAIL_REST_SERVER_PASSWD="passwd"
 
-
 ##
 # Microservices
 
@@ -279,8 +278,9 @@ export TMAIL_MS_DELIVERD_GET_ROUTES=""
 # deliverd telemetry
 export TMAIL_MS_DELIVERD_SEND_TELEMETRY=""
 
-## Openstack
-## paste your rcfile here
+##
+# Openstack
+# paste your rcfile here
 export TMAIL_OPENSTACK_ENABLE=false
 
 # Auth url
@@ -313,3 +313,8 @@ export TMAIL_DOVECOT_SUPPORT_ENABLED=false
 
 # Dovecot LDA path
 export TMAIL_DOVECOT_LDA="/usr/lib/dovecot/dovecot-lda"
+
+##
+# plugin
+# Export here env var need for your plugins
+
