@@ -41,6 +41,7 @@ type SMTPServerSession struct {
 	user             *User
 	seenHelo         bool
 	seenMail         bool
+	lastClientCmd    []byte
 	helo             string
 	envelope         message.Envelope
 	exitasap         chan int
@@ -78,6 +79,8 @@ func NewSMTPServerSession(conn net.Conn, isTLS bool) (sss *SMTPServerSession, er
 	sss.badRcptToCount = 0
 	sss.vrfyCount = 0
 
+	sss.lastClientCmd = []byte{}
+
 	sss.seenHelo = false
 	sss.seenMail = false
 
@@ -87,6 +90,11 @@ func NewSMTPServerSession(conn net.Conn, isTLS bool) (sss *SMTPServerSession, er
 	sss.timer = time.AfterFunc(sss.timeout, sss.raiseTimeout)
 
 	return
+}
+
+// GetLastClientCmd returns lastClientCmd (splited)
+func (s *SMTPServerSession) GetLastClientCmd() []byte {
+	return s.lastClientCmd
 }
 
 // timeout
@@ -1206,7 +1214,7 @@ func (s *SMTPServerSession) handle() {
 	defer s.recoverOnPanic()
 
 	// Init some var
-	var msg []byte
+	//var msg []byte
 
 	buffer := make([]byte, 1)
 
@@ -1236,9 +1244,8 @@ func (s *SMTPServerSession) handle() {
 			if buffer[0] == 10 {
 				s.timer.Stop()
 				var rmsg string
-				strMsg := strings.TrimSpace(string(msg))
+				strMsg := strings.TrimSpace(string(s.lastClientCmd))
 				s.LogDebug("<", strMsg)
-				//splittedMsg := strings.Split(strMsg, " ")
 				splittedMsg := []string{}
 				for _, m := range strings.Split(strMsg, " ") {
 					m = strings.TrimSpace(m)
@@ -1246,7 +1253,9 @@ func (s *SMTPServerSession) handle() {
 						splittedMsg = append(splittedMsg, m)
 					}
 				}
+
 				// get command, first word
+				// TODO Use textproto / scanner
 				if len(splittedMsg) != 0 {
 					verb := strings.ToLower(splittedMsg[0])
 					switch verb {
@@ -1283,9 +1292,9 @@ func (s *SMTPServerSession) handle() {
 					}
 				}
 				//s.resetTimeout()
-				msg = []byte{}
+				s.lastClientCmd = []byte{}
 			} else {
-				msg = append(msg, buffer[0])
+				s.lastClientCmd = append(s.lastClientCmd, buffer[0])
 			}
 		}
 	}()
