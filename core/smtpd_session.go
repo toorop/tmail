@@ -190,6 +190,19 @@ func (s *SMTPServerSession) pause(seconds int) {
 	time.Sleep(time.Duration(seconds) * time.Second)
 }
 
+// execSMTPdPlugins exec SMTP plugin for hook hook
+func (s *SMTPServerSession) execSMTPdPlugins(hook string) (stop bool) {
+	if plugins, found := SMTPdPlugins[hook]; found {
+		for _, plugin := range plugins {
+			stop = plugin(s)
+			if stop {
+				return
+			}
+		}
+	}
+	return
+}
+
 // smtpGreeting Greeting
 func (s *SMTPServerSession) smtpGreeting() {
 	defer s.recoverOnPanic()
@@ -207,13 +220,8 @@ func (s *SMTPServerSession) smtpGreeting() {
 	s.Log(fmt.Sprintf("starting new transaction %d/%d", SmtpSessionsCount, Cfg.GetSmtpdConcurrencyIncoming()))
 
 	// Plugins
-	if plugins, found := SMTPdPlugins["connect"]; found {
-		for _, plugin := range plugins {
-			stop := plugin(s)
-			if stop {
-				return
-			}
-		}
+	if stop := s.execSMTPdPlugins("connect"); stop {
+		return
 	}
 
 	o := "220 " + Cfg.GetMe() + " ESMTP"
@@ -237,8 +245,9 @@ func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
 		s.Out("503 bad sequence, ehlo already recieved")
 		return false
 	}
-	// call microservice msSmtpdHelo
-	if msSmtpdHelo(s, msg) {
+
+	// Plugins
+	if stop := s.execSMTPdPlugins("helo"); stop {
 		return
 	}
 
