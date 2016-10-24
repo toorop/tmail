@@ -198,12 +198,13 @@ func (s *SMTPServerSession) smtpGreeting() {
 	}
 	s.Log(fmt.Sprintf("starting new transaction %d/%d", SmtpSessionsCount, Cfg.GetSmtpdConcurrencyIncoming()))
 
-	// Plugin
-	if plugin, found := SMTPdPlugins["connect"]; found {
-		// TODO online
-		stop := plugin(s)
-		if stop {
-			return
+	// Plugins
+	if plugins, found := SMTPdPlugins["connect"]; found {
+		for _, plugin := range plugins {
+			stop := plugin(s)
+			if stop {
+				return
+			}
 		}
 	}
 
