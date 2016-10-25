@@ -104,6 +104,14 @@ func QueueGetMessageById(id int64) (msg QMessage, err error) {
 	return
 }
 
+// QueueGetExpiredMessages return expired messages from DB
+func QueueGetExpiredMessages() (messages []QMessage, err error) {
+	messages = []QMessage{}
+	from := time.Now().Add(-24 * time.Hour)
+	err = DB.Where("next_delivery_scheduled_at < ?", from).Find(&messages).Error
+	return
+}
+
 // QueueAddMessage add a new mail in queue
 func QueueAddMessage(rawMess *[]byte, envelope message.Envelope, authUser string) (uuid string, err error) {
 	qStore, err := NewStore(Cfg.GetStoreDriver(), Cfg.GetStoreSource())

@@ -86,5 +86,14 @@ var Queue = cgCli.Command{
 				cliDieOk()
 			},
 		},
+		{
+			Name:        "purge",
+			Usage:       "Purge expired message from queue",
+			Description: "tmail queue purge",
+			Action: func(c *cgCli.Context) {
+				cliHandleErr(api.QueuePurge())
+				cliDieOk()
+			},
+		},
 	},
 }

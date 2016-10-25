@@ -4,6 +4,9 @@ package api
 // WARNING 2: useless to be removed
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/toorop/tmail/core"
 )
 
@@ -118,6 +121,23 @@ func QueueBounceMsg(id int64) error {
 		return err
 	}
 	return m.Bounce()
+}
+
+// QueuePurge delete expired message
+// WARNING use at your own risks...
+func QueuePurge() error {
+	// get expired message
+	messages, err := core.QueueGetExpiredMessages()
+	if err != nil {
+		return err
+	}
+	for _, m := range messages {
+		log.Println(fmt.Sprintf("Deleting %s", m.Uuid))
+		if err = m.Delete(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ROUTES
