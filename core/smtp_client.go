@@ -231,6 +231,7 @@ func (s *smtpClient) cmd(timeoutSeconds, expectedCode int, format string, args .
 	}
 }
 
+// logDebug is a log helper for DEBUG log
 func (s *smtpClient) logDebug(sens string, format string, args ...interface{}) {
 	if !Cfg.GetDebugEnabled() {
 		return
