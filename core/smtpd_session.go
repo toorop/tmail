@@ -963,12 +963,14 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	if err == nil {
 		localHost = localHosts[0]
 	}
-	recieved := fmt.Sprintf("Received: from %s (%s)", remoteIP, remoteHost)
+	recieved := "Received: from "
 
 	// helo
 	if len(s.helo) != 0 {
-		recieved += fmt.Sprintf(" (%s)", s.helo)
+		recieved += fmt.Sprintf("%s ", s.helo)
 	}
+
+	recieved += fmt.Sprintf("(%s [%s])", remoteHost, remoteIP)
 
 	// Authentified
 	if s.user != nil {
