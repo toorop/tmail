@@ -226,7 +226,7 @@ func (s *smtpClient) cmd(timeoutSeconds, expectedCode int, format string, args .
 		s.text.StartResponse(id)
 		defer s.text.EndResponse(id)
 		code, msg, err := s.text.ReadResponse(expectedCode)
-		s.logDebug("<", msg)
+		s.logDebug("<", "%d-%s", code, strings.Replace(msg,"\n"," ",-1))
 		return code, msg, err
 	}
 }
@@ -236,7 +236,7 @@ func (s *smtpClient) logDebug(sens string, format string, args ...interface{}) {
 	if !Cfg.GetDebugEnabled() {
 		return
 	}
-	Log.Debug("smtp_client - ", s.conn.RemoteAddr().String(), " - ", sens, " ", fmt.Sprintf(format, args...))
+	Log.Debug("smtp_client -", s.conn.RemoteAddr().String(), "-", sens, fmt.Sprintf(format, args...))
 }
 
 // Extension reports whether an extension is support by the server.
