@@ -149,7 +149,7 @@ func (s *SMTPServerSession) logError(msg ...string) {
 	s.logger.Error("smtpd ", s.uuid, "-", s.conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
 
-// logError is a log helper for error logs
+// logDebug is a log helper for DEBUG logs
 func (s *SMTPServerSession) logDebug(msg ...string) {
 	if !Cfg.GetDebugEnabled() {
 		return
