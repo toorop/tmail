@@ -191,6 +191,27 @@ If you want to delete user toorop@tmail.io :
 	tmail user del toorop@tmail.io
 
 
+### Let's Encrypt (TLS/SSL)
+
+If you want to activate TLS/SSL connexions with a valid certificate (not an auto-signed one as it's by default) between mail clients and your tmail server you can get a let's Encrypt certificate, you have first to install let's Encrypt :
+
+	cd ~
+	git clone https://github.com/letsencrypt/letsencrypt
+	cd letsencrypt
+
+Then you can request a certificate
+
+	./letsencrypt-auto certonly --standalone -d your.hostname
+
+You'll have to provide a valid mail address and agree to the Let's Encrypt Term of Service. When certificate is issued you have to copy some files to the ssl/ directory
+
+	cd /home/tmail/dist/ssl
+	cp /etc/letsencrypt/live/your.hostname/fullchain.pem server.crt
+	cp /etc/letsencrypt/live/your.hostname/privkey.pem server.key
+	chown tmail.tmail server.*
+
+And it's done !
+
 
 ## Contribute
 
