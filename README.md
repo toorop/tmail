@@ -193,8 +193,9 @@ If you want to delete user toorop@tmail.io :
 
 ### Let's Encrypt (TLS/SSL)
 
-If you want to be able to receive TLS/SSL connexions from mail clients you can get a let's Encrypt certificate, you have first to install let's Encrypt :
+If you want to activate TLS/SSL connexions with a valid certificate (not an auto-signed one as it's by default) between mail clients and your tmail server you can get a let's Encrypt certificate, you have first to install let's Encrypt :
 
+	cd ~
 	git clone https://github.com/letsencrypt/letsencrypt
 	cd letsencrypt
 
