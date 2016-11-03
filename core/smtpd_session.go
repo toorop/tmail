@@ -333,8 +333,8 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		return
 	}
 
-	// Microservices
-	if msSmtpdMailFrom(s, msg) {
+	// Plugin - hook "mail"
+	if stop := s.execSMTPdPlugins("mail"); stop {
 		return
 	}
 
