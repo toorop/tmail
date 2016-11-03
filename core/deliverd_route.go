@@ -280,7 +280,7 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 			routes = append(routes, byPriority[int64(priorities[k])][0])
 		}
 	}
-	Log.Debug(routes)
+	Logger.Debug(routes)
 	r = &routes
 	return
 }

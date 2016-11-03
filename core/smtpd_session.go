@@ -29,10 +29,10 @@ const (
 
 // SMTPServerSession retpresents a SMTP session (server)
 type SMTPServerSession struct {
-	uuid             string
-	Conn             net.Conn
-	connTLS          *tls.Conn
-	logger           *Logger
+	uuid    string
+	Conn    net.Conn
+	connTLS *tls.Conn
+	//logger           *logrus.Logger
 	timer            *time.Timer // for timeout
 	timeout          time.Duration
 	tls              bool
@@ -71,7 +71,7 @@ func NewSMTPServerSession(conn net.Conn, isTLS bool) (sss *SMTPServerSession, er
 	}
 
 	sss.remoteAddr = conn.RemoteAddr().String()
-	sss.logger = Log
+	//sss.logger = Log
 
 	sss.relayGranted = false
 
@@ -147,22 +147,22 @@ func (s *SMTPServerSession) Out(msg string) {
 	s.resetTimeout()
 }
 
-// log helper for INFO log
+// Log helper for INFO log
 func (s *SMTPServerSession) Log(msg ...string) {
-	s.logger.Info("smtpd ", s.uuid, "-", s.Conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
+	Logger.Info("smtpd ", s.uuid, "-", s.Conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
 
 // logError is a log helper for ERROR logs
 func (s *SMTPServerSession) logError(msg ...string) {
-	s.logger.Error("smtpd ", s.uuid, "-", s.Conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
+	Logger.Error("smtpd ", s.uuid, "-", s.Conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
 
-// logError is a log helper for error logs
+// LogDebug is a log helper for error logs
 func (s *SMTPServerSession) LogDebug(msg ...string) {
 	if !Cfg.GetDebugEnabled() {
 		return
 	}
-	s.logger.Debug("smtpd -", s.uuid, "-", s.Conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
+	Logger.Debug("smtpd -", s.uuid, "-", s.Conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
 
 // LF withour CR
@@ -928,7 +928,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	// clamav
 	if Cfg.GetSmtpdClamavEnabled() {
 		found, virusName, err := NewClamav().ScanStream(bytes.NewReader(rawMessage))
-		Log.Debug("clamav scan result", found, virusName, err)
+		Logger.Debug("clamav scan result", found, virusName, err)
 		if err != nil {
 			s.logError("MAIL - clamav: " + err.Error())
 			s.Out("454 4.3.0 scanner failure")

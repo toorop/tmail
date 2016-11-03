@@ -121,7 +121,7 @@ func newSMTPClient(d *delivery, routes *[]Route, timeoutBasePerCmd int) (client 
 
 				// If during the last 15 minutes we have fail to connect to this host don't try again
 				if !isRemoteIPOK(remoteAddr.IP.String()) {
-					Log.Info("smtp getclient " + remoteAddr.IP.String() + " is marked as KO. I'll dot not try to reach it.")
+					Logger.Info("smtp getclient " + remoteAddr.IP.String() + " is marked as KO. I'll dot not try to reach it.")
 					continue
 				}
 
@@ -175,7 +175,7 @@ func newSMTPClient(d *delivery, routes *[]Route, timeoutBasePerCmd int) (client 
 					err = errors.New("timeout")
 					// todo si c'est un timeout pas la peine d'essayer les autres IP locales
 					if errBolt := setIPKO(remoteAddr.IP.String()); errBolt != nil {
-						Log.Error("Bolt - ", errBolt)
+						Logger.Error("Bolt - ", errBolt)
 					}*/
 
 				// Timeout
@@ -183,10 +183,10 @@ func newSMTPClient(d *delivery, routes *[]Route, timeoutBasePerCmd int) (client 
 					err = errors.New("timeout")
 					// todo si c'est un timeout pas la peine d'essayer les autres IP locales
 					if errBolt := setIPKO(remoteAddr.IP.String()); errBolt != nil {
-						Log.Error("Bolt - ", errBolt)
+						Logger.Error("Bolt - ", errBolt)
 					}
 				}
-				Log.Info(fmt.Sprintf("deliverd-remote %s - unable to get a SMTP client for %s->%s:%d - %s ", d.id, localIP, remoteAddr.IP.String(), remoteAddr.Port, err.Error()))
+				Logger.Info(fmt.Sprintf("deliverd-remote %s - unable to get a SMTP client for %s->%s:%d - %s ", d.id, localIP, remoteAddr.IP.String(), remoteAddr.Port, err.Error()))
 			}
 		}
 	}
@@ -438,7 +438,7 @@ func isRemoteIPOK(ip string) bool {
 		return nil
 	})
 	if err != nil {
-		Log.Error("Bolt -", err)
+		Logger.Error("Bolt -", err)
 	}
 
 	// remove record
@@ -446,7 +446,7 @@ func isRemoteIPOK(ip string) bool {
 		if err := Bolt.Update(func(tx *bolt.Tx) error {
 			return tx.Bucket([]byte("koip")).Delete([]byte(ip))
 		}); err != nil {
-			Log.Error("Bolt -", err)
+			Logger.Error("Bolt -", err)
 		}
 	}
 	return ok

@@ -1,5 +1,7 @@
 package core
 
+// TODO consumer.SetLogger
+
 import (
 	"log"
 	"os"
@@ -16,7 +18,7 @@ func New() *deliverd {
 	return &deliverd{}
 }*/
 
-// Run
+// LaunchDeliverd
 func LaunchDeliverd() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -35,11 +37,10 @@ func LaunchDeliverd() {
 		log.Fatalln(err)
 	}
 	if Cfg.GetDebugEnabled() {
-		consumer.SetLogger(Log, 0)
+		consumer.SetLogger(NewNSQLogger(), nsq.LogLevelDebug)
 	} else {
-		consumer.SetLogger(Log, 4)
+		consumer.SetLogger(NewNSQLogger(), nsq.LogLevelError)
 	}
-
 	// Bind handler
 	consumer.AddHandler(&deliveryHandler{})
 
@@ -53,7 +54,7 @@ func LaunchDeliverd() {
 		log.Fatalln(err)
 	}
 
-	Log.Info("deliverd launched")
+	Logger.Info("deliverd launched")
 
 	for {
 		select {

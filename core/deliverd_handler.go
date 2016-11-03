@@ -16,7 +16,7 @@ func (h *deliveryHandler) HandleMessage(m *nsq.Message) error {
 	d.id, err = NewUUID()
 	if err != nil {
 		// TODO gerer mieux cette erreur
-		Log.Error("deliverd: unable to create uuid for new delivery")
+		Logger.Error("deliverd: unable to create uuid for new delivery")
 		m.RequeueWithoutBackoff(10 * time.Minute)
 		return err
 	}

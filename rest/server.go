@@ -42,10 +42,10 @@ func LaunchServer() {
 
 	// TLS
 	if core.Cfg.GetRestServerIsTls() {
-		core.Log.Info("httpd " + addr + " TLS launched")
+		core.Logger.Info("httpd " + addr + " TLS launched")
 		log.Fatalln(http.ListenAndServeTLS(addr, path.Join(getBasePath(), "ssl/web_server.crt"), path.Join(getBasePath(), "ssl/web_server.key"), n))
 	} else {
-		core.Log.Info("httpd " + addr + " launched")
+		core.Logger.Info("httpd " + addr + " launched")
 		log.Fatalln(http.ListenAndServe(addr, n))
 	}
 }

@@ -1,5 +1,7 @@
 package core
 
+// TODO: nsq logger
+
 import (
 	"errors"
 	"io"
@@ -7,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"time"
 
 	"github.com/boltdb/bolt"
 	_ "github.com/go-sql-driver/mysql"
@@ -14,21 +17,25 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/nsqio/go-nsq"
 
+	"github.com/Sirupsen/logrus"
 	_ "github.com/toorop/go-sqlite3"
 	"github.com/toorop/gopenstack/context"
 	"github.com/toorop/gopenstack/identity"
 )
 
 const (
+	// Time822 formt time for RFC 822
 	Time822 = "02 Jan 2006 15:04:05 -0700" // "02 Jan 06 15:04 -0700"
 )
 
 var (
-	Version                          string
-	Cfg                              *Config
-	DB                               *gorm.DB
-	Bolt                             *bolt.DB
-	Log                              *Logger
+	// Version is tamil version
+	Version string
+	Cfg     *Config
+	DB      *gorm.DB
+	Bolt    *bolt.DB
+	//Log                              *Logger
+	Logger                           *logrus.Logger
 	NsqQueueProducer                 *nsq.Producer
 	SmtpSessionsCount                int
 	ChSmtpSessionsCount              chan int
@@ -38,7 +45,7 @@ var (
 	Store                            Storer
 )
 
-// Boostrap DB, config,...
+// Bootstrap DB, config,...
 // TODO check validity of each element
 func Bootstrap() (err error) {
 	// Load config
@@ -47,7 +54,7 @@ func Bootstrap() (err error) {
 		return
 	}
 
-	// logger
+	// linit logger
 	var out io.Writer
 	logPath := Cfg.GetLogPath()
 	if logPath == "stdout" {
@@ -61,38 +68,34 @@ func Bootstrap() (err error) {
 			return
 		}
 	}
-	Log, err = NewLogger(out, Cfg.GetDebugEnabled())
-	if err != nil {
-		return
+	logrus.SetOutput(out)
+
+	customFormatter := new(logrus.TextFormatter)
+	customFormatter.TimestampFormat = time.RFC3339Nano
+	customFormatter.FullTimestamp = true
+
+	Logger = logrus.New()
+	Logger.Formatter = customFormatter
+	if Cfg.GetDebugEnabled() {
+		Logger.Level = logrus.DebugLevel
+	} else {
+		Logger.Level = logrus.InfoLevel
 	}
+
+	Logger.Debug("Logger initialized")
 
 	// Init DB
 	DB, err = gorm.Open(Cfg.GetDbDriver(), Cfg.GetDbSource())
 	if err != nil {
 		return
 	}
-	DB.SetLogger(Log)
+	DB.SetLogger(Logger)
 	DB.LogMode(Cfg.GetDebugEnabled())
 
 	// ping DB
 	if DB.DB().Ping() != nil {
 		return errors.New("I could not access to database " + Cfg.GetDbDriver() + " " + Cfg.GetDbSource())
 	}
-
-	/*
-		// init Bolt DB
-		Bolt, err = bolt.Open(Cfg.GetBoltFile(), 0600, nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-		// create buckets if not exists
-		Bolt.Update(func(tx *bolt.Tx) error {
-			if _, err = tx.CreateBucketIfNotExists([]byte("koip")); err != nil {
-				log.Fatal(err)
-			}
-			return nil
-		})
-	*/
 
 	// TODO remove from bootstrap
 	// init NSQ MailQueueProducer (Nmqp)
@@ -124,7 +127,7 @@ func Bootstrap() (err error) {
 	// openstack
 	if Cfg.GetOpenstackEnable() {
 		if !context.Keyring.IsPopulate() {
-			log.Fatalln("No credentials found from ENV. See http://docs.openstack.org/cli-reference/content/cli_openrc.html")
+			return errors.New("No credentials found from ENV. See http://docs.openstack.org/cli-reference/content/cli_openrc.html")
 		}
 		// Do auth
 		err = identity.DoAuth()
@@ -132,7 +135,7 @@ func Bootstrap() (err error) {
 			return err
 		}
 		// auto update Token
-		identity.AutoUpdate(30, Log.InfoLogger)
+		identity.AutoUpdate(30, new(log.Logger))
 	}
 
 	// init store
@@ -141,10 +144,14 @@ func Bootstrap() (err error) {
 		return err
 	}
 
+	Logger.Info("on lance le plugin")
+
+	execTmailPlugins("postinit")
+
 	return
 }
 
-// initBolt init bolt
+// InitBolt init bolt
 func InitBolt() error {
 	var err error
 	// init Bolt DB
@@ -167,9 +174,9 @@ func initMailQueueProducer() (err error) {
 	nsqCfg.UserAgent = "tmail.queue"
 	NsqQueueProducer, err = nsq.NewProducer("127.0.0.1:4150", nsqCfg)
 	if Cfg.GetDebugEnabled() {
-		NsqQueueProducer.SetLogger(Log, 0)
+		NsqQueueProducer.SetLogger(NewNSQLogger(), nsq.LogLevelDebug)
 	} else {
-		NsqQueueProducer.SetLogger(Log, 4)
+		NsqQueueProducer.SetLogger(NewNSQLogger(), nsq.LogLevelError)
 	}
 	return err
 }

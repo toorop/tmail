@@ -21,7 +21,7 @@ func deliverLocal(d *delivery) {
 	mailboxAvailable := false
 	localRcpt := []string{}
 
-	Log.Info(fmt.Sprintf("delivery-local %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
+	Logger.Info(fmt.Sprintf("delivery-local %s: starting new delivery from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
 	deliverTo := d.qMsg.RcptTo
 
 	// if it's not a local user checks for alias
@@ -105,7 +105,7 @@ func deliverLocal(d *delivery) {
 						return
 					}
 				}
-				Log.Info(fmt.Sprintf("delivery-local %s: cmd %s succeeded", d.id, alias.Pipe))
+				Logger.Info(fmt.Sprintf("delivery-local %s: cmd %s succeeded", d.id, alias.Pipe))
 			}
 
 			// deliverTo
@@ -127,7 +127,7 @@ func deliverLocal(d *delivery) {
 					d.dieTemp(fmt.Sprintf("delivery-local %s: unable to requeue aliased msg: %s", d.id, err), true)
 					return
 				}
-				Log.Info(fmt.Sprintf("delivery-local %s: rcpt is an alias, mail is requeue with ID %s for final rcpt: %s", d.id, uuid, strings.Join(localRcpt, " ")))
+				Logger.Info(fmt.Sprintf("delivery-local %s: rcpt is an alias, mail is requeue with ID %s for final rcpt: %s", d.id, uuid, strings.Join(localRcpt, " ")))
 			}
 			d.dieOk()
 			return
@@ -201,7 +201,7 @@ func deliverLocal(d *delivery) {
 		}
 		return
 	}
-	Log.Info(fmt.Sprintf("delivery-local %s: delivered to %s", d.id, deliverTo))
+	Logger.Info(fmt.Sprintf("delivery-local %s: delivered to %s", d.id, deliverTo))
 
 	d.dieOk()
 }
