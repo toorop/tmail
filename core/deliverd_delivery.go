@@ -25,6 +25,7 @@ type delivery struct {
 	startAt                time.Time
 	isLocal                bool
 	localAddr              string
+	RemoteRoutes           []Route
 	remoteAddr             string
 	remoteSMTPresponseCode int
 
@@ -41,7 +42,10 @@ func (d *delivery) processMsg() {
 		if err := recover(); err != nil {
 			Logger.Error(fmt.Sprintf("deliverd %s : PANIC \r\n %s \r\n %s", d.id, err, debug.Stack()))
 		}
-		d.sendTelemetry()
+		execDeliverdPlugins("exit", d)
+
+		//d.sendTelemetry()
+
 	}()
 
 	// decode message from json
@@ -340,9 +344,4 @@ func (d *delivery) handleSMTPError(code int, message string) {
 		return
 	}
 	d.dieTemp(message, false)
-}
-
-// sendTelemetry: send log data via microservice
-func (d *delivery) sendTelemetry() {
-	msDeliverdSendTelemetry(d)
 }

@@ -53,6 +53,7 @@ type SMTPServerSession struct {
 	dataBytes        uint32
 	startAt          time.Time
 	exiting          bool
+	CurrentRawMail   []byte
 }
 
 // NewSMTPServerSession returns a new SMTP session
@@ -122,7 +123,8 @@ func (s *SMTPServerSession) ExitAsap() {
 	}
 	s.exiting = true
 	s.timer.Stop()
-	s.sendTelemetry()
+	// Plugins
+	execSMTPdPlugins("exitasap", s)
 	s.exitasap <- 1
 }
 
@@ -157,7 +159,7 @@ func (s *SMTPServerSession) logError(msg ...string) {
 	Logger.Error("smtpd ", s.uuid, "-", s.Conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
 
-// LogDebug is a log helper for error logs
+// LogDebug is a log helper for DEBUG logs
 func (s *SMTPServerSession) LogDebug(msg ...string) {
 	if !Cfg.GetDebugEnabled() {
 		return
@@ -190,19 +192,6 @@ func (s *SMTPServerSession) pause(seconds int) {
 	time.Sleep(time.Duration(seconds) * time.Second)
 }
 
-// execSMTPdPlugins exec SMTP plugin for hook hook
-func (s *SMTPServerSession) execSMTPdPlugins(hook string) (stop bool) {
-	if plugins, found := SMTPdPlugins[hook]; found {
-		for _, plugin := range plugins {
-			stop = plugin(s)
-			if stop {
-				return
-			}
-		}
-	}
-	return
-}
-
 // smtpGreeting Greeting
 func (s *SMTPServerSession) smtpGreeting() {
 	defer s.recoverOnPanic()
@@ -220,9 +209,7 @@ func (s *SMTPServerSession) smtpGreeting() {
 	s.Log(fmt.Sprintf("starting new transaction %d/%d", SmtpSessionsCount, Cfg.GetSmtpdConcurrencyIncoming()))
 
 	// Plugins
-	if stop := s.execSMTPdPlugins("connect"); stop {
-		return
-	}
+	execSMTPdPlugins("connect", s)
 
 	o := "220 " + Cfg.GetMe() + " ESMTP"
 	if !Cfg.GetHideServerSignature() {
@@ -247,9 +234,7 @@ func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
 	}
 
 	// Plugins
-	if stop := s.execSMTPdPlugins("helo"); stop {
-		return
-	}
+	execSMTPdPlugins("helo", s)
 
 	s.helo = ""
 	if len(msg) > 1 {
@@ -334,9 +319,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 	}
 
 	// Plugin - hook "mail"
-	if stop := s.execSMTPdPlugins("mail"); stop {
-		return
-	}
+	execSMTPdPlugins("mail", s)
 
 	// mail from:<user> EXT || mail from: <user> EXT
 	if len(msg[1]) > 5 { // mail from:<user> EXT
@@ -544,10 +527,8 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	// Relay granted for this recipient ?
 	s.relayGranted = false
 
-	// Microservice: msSmtpdRcpTo
-	if msSmtpdRcptTo(s, rcptto) {
-		return
-	}
+	// Plugins
+	execSMTPdPlugins("rrcptto", s)
 
 	// check DB for rcpthost
 	if !s.relayGranted {
@@ -759,7 +740,8 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	s.SMTPResponseCode = 354
 
 	// Get RAW mail
-	var rawMessage []byte
+	//var s.CurrentRawMail []byte
+	s.CurrentRawMail = []byte{}
 	ch := make([]byte, 1)
 	//state := 0
 	pos := 0        // position in current line
@@ -833,11 +815,10 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			}
 			if ch[0] == CR {
 				state = 4
-				rawMessage = append(rawMessage, ch[0])
+				s.CurrentRawMail = append(s.CurrentRawMail, ch[0])
 				s.dataBytes++
 				continue
 			}
-
 		// \r\n
 		case 1:
 			if ch[0] == LF {
@@ -852,7 +833,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			// "\r"
 			if ch[0] == CR {
 				state = 4
-				rawMessage = append(rawMessage, ch[0])
+				s.CurrentRawMail = append(s.CurrentRawMail, ch[0])
 				s.dataBytes++
 				continue
 			}
@@ -866,7 +847,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			}
 			if ch[0] == CR {
 				state = 3
-				rawMessage = append(rawMessage, ch[0])
+				s.CurrentRawMail = append(s.CurrentRawMail, ch[0])
 				s.dataBytes++
 				continue
 			}
@@ -876,14 +857,14 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		case 3:
 			if ch[0] == LF {
 				doLoop = false
-				rawMessage = append(rawMessage, ch[0])
+				s.CurrentRawMail = append(s.CurrentRawMail, ch[0])
 				s.dataBytes++
 				continue
 			}
 
 			if ch[0] == CR {
 				state = 4
-				rawMessage = append(rawMessage, ch[0])
+				s.CurrentRawMail = append(s.CurrentRawMail, ch[0])
 				s.dataBytes++
 				continue
 			}
@@ -896,11 +877,11 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 				break
 			}
 			if ch[0] != CR {
-				rawMessage = append(rawMessage, 10)
+				s.CurrentRawMail = append(s.CurrentRawMail, 10)
 				state = 0
 			}
 		}
-		rawMessage = append(rawMessage, ch[0])
+		s.CurrentRawMail = append(s.CurrentRawMail, ch[0])
 		s.dataBytes++
 
 		// Max hops reached ?
@@ -927,7 +908,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	// scan
 	// clamav
 	if Cfg.GetSmtpdClamavEnabled() {
-		found, virusName, err := NewClamav().ScanStream(bytes.NewReader(rawMessage))
+		found, virusName, err := NewClamav().ScanStream(bytes.NewReader(s.CurrentRawMail))
 		Logger.Debug("clamav scan result", found, virusName, err)
 		if err != nil {
 			s.logError("MAIL - clamav: " + err.Error())
@@ -948,29 +929,20 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	}
 
 	// Message-ID
-	HeaderMessageID := message.RawGetMessageId(&rawMessage)
+	HeaderMessageID := message.RawGetMessageId(&s.CurrentRawMail)
 	if len(HeaderMessageID) == 0 {
 		atDomain := Cfg.GetMe()
 		if strings.Count(s.envelope.MailFrom, "@") != 0 {
 			atDomain = strings.ToLower(strings.Split(s.envelope.MailFrom, "@")[1])
 		}
 		HeaderMessageID = []byte(fmt.Sprintf("%d.%s@%s", time.Now().Unix(), s.uuid, atDomain))
-		rawMessage = append([]byte(fmt.Sprintf("Message-ID: <%s>\r\n", HeaderMessageID)), rawMessage...)
+		s.CurrentRawMail = append([]byte(fmt.Sprintf("Message-ID: <%s>\r\n", HeaderMessageID)), s.CurrentRawMail...)
 
 	}
 	s.Log("message-id:", string(HeaderMessageID))
 
-	// Microservice
-
-	stop, extraHeader := smtpdData(s, &rawMessage)
-	if stop {
-		return
-	}
-	for _, header2add := range *extraHeader {
-		h := []byte(header2add)
-		message.FoldHeader(&h)
-		rawMessage = append([]byte(fmt.Sprintf("%s\r\n", h)), rawMessage...)
-	}
+	// Plugins
+	execSMTPdPlugins("data", s)
 
 	// Add recieved header
 	remoteIP := strings.Split(s.Conn.RemoteAddr().String(), ":")[0]
@@ -1015,10 +987,10 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	h := []byte(recieved)
 	message.FoldHeader(&h)
 	h = append(h, []byte{13, 10}...)
-	rawMessage = append(h, rawMessage...)
+	s.CurrentRawMail = append(h, s.CurrentRawMail...)
 	recieved = ""
 
-	rawMessage = append([]byte("X-Env-From: "+s.envelope.MailFrom+"\r\n"), rawMessage...)
+	s.CurrentRawMail = append([]byte("X-Env-From: "+s.envelope.MailFrom+"\r\n"), s.CurrentRawMail...)
 
 	// put message in queue
 	authUser := ""
@@ -1026,12 +998,10 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		authUser = s.user.Login
 	}
 
-	// microservice SmtpdBeforeQueueing
-	if stop := msSmtpdBeforeQueueing(s); stop {
-		return
+	// Plugins
+	execSMTPdPlugins("beforequeue", s)
 
-	}
-	id, err := QueueAddMessage(&rawMessage, s.envelope, authUser)
+	id, err := QueueAddMessage(&s.CurrentRawMail, s.envelope, authUser)
 	if err != nil {
 		s.logError("MAIL - unable to put message in queue -", err.Error())
 		s.Out("451 temporary queue error")
@@ -1048,6 +1018,9 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 
 // QUIT
 func (s *SMTPServerSession) smtpQuit() {
+	// Plugins
+	execSMTPdPlugins("quit", s)
+
 	s.Out(fmt.Sprintf("221 2.0.0 Bye"))
 	s.SMTPResponseCode = 221
 	s.ExitAsap()
@@ -1060,7 +1033,6 @@ func (s *SMTPServerSession) smtpStartTLS() {
 		s.SMTPResponseCode = 454
 		return
 	}
-	//s.Out("220 Ready to start TLS")
 	cert, err := tls.LoadX509KeyPair(path.Join(GetBasePath(), "ssl/server.crt"), path.Join(GetBasePath(), "ssl/server.key"))
 	if err != nil {
 		msg := "TLS failed unable to load server keys: " + err.Error()
@@ -1311,9 +1283,4 @@ func (s *SMTPServerSession) handle() {
 	s.Conn.Close()
 	s.Log("EOT")
 	return
-}
-
-// sendTelemetry: send telemetry via microservice
-func (s *SMTPServerSession) sendTelemetry() {
-	msSmtpdSendTelemetry(s)
 }

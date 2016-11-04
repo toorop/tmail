@@ -124,8 +124,7 @@ func DelRoute(id int64) error {
 }
 
 // getRoutes returns matchingRoutes for the specified destination host
-func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
-	routes := []Route{}
+func getRoutes(mailFrom, host, authUser string) (routes []Route, err error) {
 	// Get mail from domain
 	mailFromHost := ""
 	p := strings.IndexRune(mailFrom, 64)
@@ -218,7 +217,7 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 	if len(routes) == 0 {
 		mxs, err := net.LookupMX(host)
 		if err != nil {
-			return r, err
+			return routes, err
 		}
 		for _, mx := range mxs {
 			routes = append(routes, Route{
@@ -281,6 +280,5 @@ func getRoutes(mailFrom, host, authUser string) (r *[]Route, err error) {
 		}
 	}
 	Logger.Debug(routes)
-	r = &routes
 	return
 }

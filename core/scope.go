@@ -81,7 +81,6 @@ func Bootstrap() (err error) {
 	} else {
 		Logger.Level = logrus.InfoLevel
 	}
-
 	Logger.Debug("Logger initialized")
 
 	// Init DB
@@ -143,9 +142,7 @@ func Bootstrap() (err error) {
 	if err != nil {
 		return err
 	}
-
-	Logger.Info("on lance le plugin")
-
+	// TODO gestion erreur
 	execTmailPlugins("postinit")
 
 	return

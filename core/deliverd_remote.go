@@ -31,19 +31,14 @@ func deliverRemote(d *delivery) {
 	//return
 
 	// Get routes
-	var routes *[]Route
-	var stop bool
+	d.RemoteRoutes = []Route{}
 
-	// get from microservices
-	routes, stop = msGetRoutes(d)
-	if stop {
-		d.dieTemp("unable to get routes from mss", true)
-		return
-	}
+	// plugins
+	execDeliverdPlugins("remoteinit", d)
 
 	// Default routes
-	if routes == nil || len(*routes) == 0 {
-		routes, err = getRoutes(d.qMsg.MailFrom, d.qMsg.Host, d.qMsg.AuthUser)
+	if len(d.RemoteRoutes) == 0 {
+		d.RemoteRoutes, err = getRoutes(d.qMsg.MailFrom, d.qMsg.Host, d.qMsg.AuthUser)
 		if err != nil {
 			d.dieTemp("unable to get route to host "+d.qMsg.Host+". "+err.Error(), true)
 			return
@@ -51,13 +46,13 @@ func deliverRemote(d *delivery) {
 	}
 
 	// No routes ?? WTF !
-	if len(*routes) == 0 {
+	if len(d.RemoteRoutes) == 0 {
 		d.dieTemp("no route to host "+d.qMsg.Host, true)
 		return
 	}
 
 	// Get client
-	client, err := newSMTPClient(d, routes, Cfg.GetDeliverdRemoteTimeout())
+	client, err := newSMTPClient(d, d.RemoteRoutes, Cfg.GetDeliverdRemoteTimeout())
 	if err != nil {
 		Logger.Error(fmt.Sprintf("deliverd-remote %s - %s", d.id, err.Error()))
 		d.dieTemp("unable to get client", false)
@@ -102,7 +97,7 @@ func deliverRemote(d *delivery) {
 				// fall back to noTLS
 				Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - fallback to no TLS.", d.id, client.conn.RemoteAddr().String()))
 				client.close()
-				client, err = newSMTPClient(d, routes, Cfg.GetDeliverdRemoteTimeout())
+				client, err = newSMTPClient(d, d.RemoteRoutes, Cfg.GetDeliverdRemoteTimeout())
 				if err != nil {
 					Logger.Error(fmt.Sprintf("deliverd-remote %s - fallback to no TLS failed - %s", d.id, err.Error()))
 					d.dieTemp("unable to get client", false)

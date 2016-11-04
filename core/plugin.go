@@ -1,32 +1,25 @@
 package core
 
+func init() {
+	TmailPlugins = make(map[string][]TmailPlugin)
+	SMTPdPlugins = make(map[string][]SMTPdPlugin)
+	DeliverdPlugins = make(map[string][]DeliverdPlugin)
+}
+
+//
+
+// Tmail core plugin
+
 // TmailPlugin base plugin for hooks:
 // - postinit
-type TmailPlugin func() error
+type TmailPlugin func()
 
 // TmailPlugins is a map of plugin
 var TmailPlugins map[string][]TmailPlugin
 
-// SMTPdPlugin is the type for SMTPd plugins
-type SMTPdPlugin func(s *SMTPServerSession) bool
-
-// SMTPdPlugins is a map of SMTPd plugins
-var SMTPdPlugins map[string][]SMTPdPlugin
-
-func init() {
-	TmailPlugins = make(map[string][]TmailPlugin)
-	SMTPdPlugins = make(map[string][]SMTPdPlugin)
-}
-
 // RegisterPlugin registers a new plugin
 func RegisterPlugin(hook string, plugin TmailPlugin) {
 	TmailPlugins[hook] = append(TmailPlugins[hook], plugin)
-}
-
-// RegisterSMTPdPlugin registers a new smtpd plugin
-// TODO check hook
-func RegisterSMTPdPlugin(hook string, plugin SMTPdPlugin) {
-	SMTPdPlugins[hook] = append(SMTPdPlugins[hook], plugin)
 }
 
 func execTmailPlugins(hook string) {
@@ -36,4 +29,47 @@ func execTmailPlugins(hook string) {
 		}
 	}
 	return
+}
+
+// Smtpd plugins
+
+// SMTPdPlugin is the type for SMTPd plugins
+type SMTPdPlugin func(s *SMTPServerSession)
+
+// SMTPdPlugins is a map of SMTPd plugins
+var SMTPdPlugins map[string][]SMTPdPlugin
+
+// RegisterSMTPdPlugin registers a new smtpd plugin
+func RegisterSMTPdPlugin(hook string, plugin SMTPdPlugin) {
+	SMTPdPlugins[hook] = append(SMTPdPlugins[hook], plugin)
+}
+
+func execSMTPdPlugins(hook string, s *SMTPServerSession) {
+	if plugins, found := SMTPdPlugins[hook]; found {
+		for _, plugin := range plugins {
+			plugin(s)
+		}
+	}
+	return
+}
+
+// Deliverd plugins
+
+// DeliverdPlugin type for deliverd plugin
+type DeliverdPlugin func(d *delivery)
+
+// DeliverdPlugins map of deliverd plugins
+var DeliverdPlugins map[string][]DeliverdPlugin
+
+// RegisterDeliverdPlugin registers plugin for deliverd hooks
+func RegisterDeliverdPlugin(hook string, plugin DeliverdPlugin) {
+	DeliverdPlugins[hook] = append(DeliverdPlugins[hook], plugin)
+}
+
+func execDeliverdPlugins(hook string, d *delivery) {
+	if plugins, found := DeliverdPlugins[hook]; found {
+		for _, plugin := range plugins {
+			plugin(d)
+		}
+	}
 }
