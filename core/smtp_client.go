@@ -36,8 +36,8 @@ type smtpClient struct {
 }
 
 // newSMTPClient return a connected SMTP client
-func newSMTPClient(d *delivery, routes *[]Route, timeoutBasePerCmd int) (client *smtpClient, err error) {
-	for _, route := range *routes {
+func newSMTPClient(d *delivery, routes []Route, timeoutBasePerCmd int) (client *smtpClient, err error) {
+	for _, route := range routes {
 		localIPs := []net.IP{}
 		remoteAddresses := []net.TCPAddr{}
 
@@ -121,7 +121,7 @@ func newSMTPClient(d *delivery, routes *[]Route, timeoutBasePerCmd int) (client 
 
 				// If during the last 15 minutes we have fail to connect to this host don't try again
 				if !isRemoteIPOK(remoteAddr.IP.String()) {
-					Log.Info("smtp getclient " + remoteAddr.IP.String() + " is marked as KO. I'll dot not try to reach it.")
+					Logger.Info("smtp getclient " + remoteAddr.IP.String() + " is marked as KO. I'll dot not try to reach it.")
 					continue
 				}
 
@@ -175,7 +175,7 @@ func newSMTPClient(d *delivery, routes *[]Route, timeoutBasePerCmd int) (client 
 					err = errors.New("timeout")
 					// todo si c'est un timeout pas la peine d'essayer les autres IP locales
 					if errBolt := setIPKO(remoteAddr.IP.String()); errBolt != nil {
-						Log.Error("Bolt - ", errBolt)
+						Logger.Error("Bolt - ", errBolt)
 					}*/
 
 				// Timeout
@@ -183,10 +183,10 @@ func newSMTPClient(d *delivery, routes *[]Route, timeoutBasePerCmd int) (client 
 					err = errors.New("timeout")
 					// todo si c'est un timeout pas la peine d'essayer les autres IP locales
 					if errBolt := setIPKO(remoteAddr.IP.String()); errBolt != nil {
-						Log.Error("Bolt - ", errBolt)
+						Logger.Error("Bolt - ", errBolt)
 					}
 				}
-				Log.Info(fmt.Sprintf("deliverd-remote %s - unable to get a SMTP client for %s->%s:%d - %s ", d.id, localIP, remoteAddr.IP.String(), remoteAddr.Port, err.Error()))
+				Logger.Info(fmt.Sprintf("deliverd-remote %s - unable to get a SMTP client for %s->%s:%d - %s ", d.id, localIP, remoteAddr.IP.String(), remoteAddr.Port, err.Error()))
 			}
 		}
 	}
@@ -211,7 +211,7 @@ func (s *smtpClient) cmd(timeoutSeconds, expectedCode int, format string, args .
 	defer timer.Stop()
 	go func() {
 		s.logDebug(">", format, args...)
-		
+
 		id, err = s.text.Cmd(format, args...)
 		done <- true
 	}()
@@ -226,7 +226,7 @@ func (s *smtpClient) cmd(timeoutSeconds, expectedCode int, format string, args .
 		s.text.StartResponse(id)
 		defer s.text.EndResponse(id)
 		code, msg, err := s.text.ReadResponse(expectedCode)
-		s.logDebug("<", "%d-%s", code, strings.Replace(msg,"\n"," ",-1))
+		s.logDebug("<", "%d-%s", code, strings.Replace(msg, "\n", " ", -1))
 		return code, msg, err
 	}
 }
@@ -236,7 +236,7 @@ func (s *smtpClient) logDebug(sens string, format string, args ...interface{}) {
 	if !Cfg.GetDebugEnabled() {
 		return
 	}
-	Log.Debug("smtp_client -", s.conn.RemoteAddr().String(), "-", sens, fmt.Sprintf(format, args...))
+	Logger.Debug("smtp_client -", s.conn.RemoteAddr().String(), "-", sens, fmt.Sprintf(format, args...))
 }
 
 // Extension reports whether an extension is support by the server.
@@ -449,7 +449,7 @@ func isRemoteIPOK(ip string) bool {
 		return nil
 	})
 	if err != nil {
-		Log.Error("Bolt -", err)
+		Logger.Error("Bolt -", err)
 	}
 
 	// remove record
@@ -457,7 +457,7 @@ func isRemoteIPOK(ip string) bool {
 		if err := Bolt.Update(func(tx *bolt.Tx) error {
 			return tx.Bucket([]byte("koip")).Delete([]byte(ip))
 		}); err != nil {
-			Log.Error("Bolt -", err)
+			Logger.Error("Bolt -", err)
 		}
 	}
 	return ok

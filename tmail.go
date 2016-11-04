@@ -15,6 +15,7 @@ import (
 	"time"
 
 	//"github.com/bitly/nsq/nsqd"
+
 	"github.com/codegangsta/cli"
 	"github.com/nsqio/nsq/nsqd"
 
@@ -119,9 +120,7 @@ func main() {
 			// init and launch nsqd
 			opts := nsqd.NewOptions()
 			opts.Logger = log.New(ioutil.Discard, "", 0)
-			if core.Cfg.GetDebugEnabled() {
-				opts.Logger = core.Log
-			}
+			opts.Logger = core.NewNSQLogger()
 			opts.Verbose = core.Cfg.GetDebugEnabled()
 			opts.DataPath = core.GetBasePath() + "/nsq"
 			// if cluster get lookupd addresses
@@ -174,7 +173,7 @@ func main() {
 				for _, dsn := range smtpdDsns {
 					go core.NewSmtpd(dsn).ListenAndServe()
 					// TODO at this point we don't know if serveur is launched
-					core.Log.Info("smtpd " + dsn.String() + " launched.")
+					core.Logger.Info("smtpd " + dsn.String() + " launched.")
 				}
 			}
 
@@ -187,7 +186,7 @@ func main() {
 			}
 
 			<-sigChan
-			core.Log.Info("Exiting...")
+			core.Logger.Info("Exiting...")
 
 			// close NsqQueueProducer if exists
 			core.NsqQueueProducer.Stop()
