@@ -14,7 +14,7 @@ tmail is a SMTP server
  * DKIM support for signing outgoing mails.
  * Builtin support of clamav (open-source antivirus scanner).
  * Builtin Dovecot (imap server) support.
- * Fully extendable using micro-services
+ * Fully extendable via plugins
  * Easy to deploy
  * No dependencies: -> you do not have to install nor maintain libs
  * Clusterisable (todo)
