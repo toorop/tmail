@@ -18,7 +18,7 @@ func New() *deliverd {
 	return &deliverd{}
 }*/
 
-// LaunchDeliverd
+// LaunchDeliverd launch deliverd
 func LaunchDeliverd() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
