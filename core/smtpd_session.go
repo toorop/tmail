@@ -109,7 +109,7 @@ func (s *SMTPServerSession) raiseTimeout() {
 // recoverOnPanic handles panic
 func (s *SMTPServerSession) recoverOnPanic() {
 	if err := recover(); err != nil {
-		s.logError(fmt.Sprintf("PANIC: %s - Stack: %s", err.(error).Error(), debug.Stack()))
+		s.LogError(fmt.Sprintf("PANIC: %s - Stack: %s", err.(error).Error(), debug.Stack()))
 		s.Out("421 sorry I have an emergency")
 		s.ExitAsap()
 	}
@@ -155,7 +155,7 @@ func (s *SMTPServerSession) Log(msg ...string) {
 }
 
 // logError is a log helper for ERROR logs
-func (s *SMTPServerSession) logError(msg ...string) {
+func (s *SMTPServerSession) LogError(msg ...string) {
 	Logger.Error("smtpd ", s.uuid, "-", s.Conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
 
@@ -424,7 +424,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		// domain part should be FQDN
 		ok, err := isFQN(localDomain[1])
 		if err != nil {
-			s.logError("MAIL - fail to do lookup on domain part. " + err.Error())
+			s.LogError("MAIL - fail to do lookup on domain part. " + err.Error())
 			s.Out("451 unable to resolve " + localDomain[1] + " due to timeout or srv failure")
 			s.SMTPResponseCode = 451
 			return
@@ -534,7 +534,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	if !s.relayGranted {
 		rcpthost, err := RcpthostGet(localDom[1])
 		if err != nil && err != gorm.ErrRecordNotFound {
-			s.logError("RCPT - relay access failed while queriyng for rcpthost. " + err.Error())
+			s.LogError("RCPT - relay access failed while queriyng for rcpthost. " + err.Error())
 			s.Out("455 4.3.0 oops, problem with relay access")
 			s.SMTPResponseCode = 455
 			return
@@ -548,7 +548,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 				// check destination
 				exists, err := IsValidLocalRcpt(strings.ToLower(rcptto))
 				if err != nil {
-					s.logError("RCPT - relay access failed while checking validity of local rpctto. " + err.Error())
+					s.LogError("RCPT - relay access failed while checking validity of local rpctto. " + err.Error())
 					s.Out("455 4.3.0 oops, problem with relay access")
 					s.SMTPResponseCode = 455
 					return
@@ -576,7 +576,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	if !s.relayGranted {
 		s.relayGranted, err = IpCanRelay(s.Conn.RemoteAddr())
 		if err != nil {
-			s.logError("RCPT - relay access failed while checking if IP is allowed to relay. " + err.Error())
+			s.LogError("RCPT - relay access failed while checking if IP is allowed to relay. " + err.Error())
 			s.Out("455 4.3.0 oops, problem with relay access")
 			s.SMTPResponseCode = 455
 			return
@@ -669,7 +669,7 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 
 	rcpthost, err := RcpthostGet(localDom[1])
 	if err != nil && err != gorm.ErrRecordNotFound {
-		s.logError("VRFY - relay access failed while queriyng for rcpthost. " + err.Error())
+		s.LogError("VRFY - relay access failed while queriyng for rcpthost. " + err.Error())
 		s.Out("455 4.3.0 oops, internal failure")
 		s.SMTPResponseCode = 455
 		return
@@ -681,7 +681,7 @@ func (s *SMTPServerSession) smtpVrfy(msg []string) {
 			// check destination
 			exists, err := IsValidLocalRcpt(strings.ToLower(rcptto))
 			if err != nil {
-				s.logError("VRFY - relay access failed while checking validity of local rpctto. " + err.Error())
+				s.LogError("VRFY - relay access failed while checking validity of local rpctto. " + err.Error())
 				s.Out("455 4.3.0 oops, internal failure")
 				s.SMTPResponseCode = 455
 				return
@@ -765,7 +765,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		if err != nil {
 			// we will tryc to send an error message to client, but there is a LOT of
 			// chance that is gone
-			s.logError("DATA - unable to read byte from conn. " + err.Error())
+			s.LogError("DATA - unable to read byte from conn. " + err.Error())
 			s.Out("454 something wrong append will reading data from you")
 			s.SMTPResponseCode = 454
 			s.ExitAsap()
@@ -911,7 +911,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		found, virusName, err := NewClamav().ScanStream(bytes.NewReader(s.CurrentRawMail))
 		Logger.Debug("clamav scan result", found, virusName, err)
 		if err != nil {
-			s.logError("MAIL - clamav: " + err.Error())
+			s.LogError("MAIL - clamav: " + err.Error())
 			s.Out("454 4.3.0 scanner failure")
 			s.SMTPResponseCode = 454
 			//s.purgeConn()
@@ -1005,7 +1005,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 
 	id, err := QueueAddMessage(&s.CurrentRawMail, s.envelope, authUser)
 	if err != nil {
-		s.logError("MAIL - unable to put message in queue -", err.Error())
+		s.LogError("MAIL - unable to put message in queue -", err.Error())
 		s.Out("451 temporary queue error")
 		s.SMTPResponseCode = 451
 		s.reset()
@@ -1038,7 +1038,7 @@ func (s *SMTPServerSession) smtpStartTLS() {
 	cert, err := tls.LoadX509KeyPair(path.Join(GetBasePath(), "ssl/server.crt"), path.Join(GetBasePath(), "ssl/server.key"))
 	if err != nil {
 		msg := "TLS failed unable to load server keys: " + err.Error()
-		s.logError(msg)
+		s.LogError(msg)
 		s.Out("454 " + msg)
 		s.SMTPResponseCode = 454
 		return
@@ -1065,7 +1065,7 @@ func (s *SMTPServerSession) smtpStartTLS() {
 		if err.Error() == "tls: unsupported SSLv2 handshake received" {
 			s.Log(msg)
 		} else {
-			s.logError(msg)
+			s.LogError(msg)
 		}
 		s.Out(msg)
 		return
@@ -1214,7 +1214,7 @@ func (s *SMTPServerSession) handle() {
 				} else if strings.Contains(err.Error(), "connection reset by peer") {
 					s.Log(err.Error())
 				} else if !strings.Contains(err.Error(), "use of closed network connection") {
-					s.logError("unable to read data from client - ", err.Error())
+					s.LogError("unable to read data from client - ", err.Error())
 				}
 				s.ExitAsap()
 				break
