@@ -89,13 +89,12 @@ func NewSMTPServerSession(conn net.Conn, isTLS bool) (sss *SMTPServerSession, er
 	sss.exitasap = make(chan int, 1)
 	sss.timeout = time.Duration(Cfg.GetSmtpdServerTimeout()) * time.Second
 	sss.timer = time.AfterFunc(sss.timeout, sss.raiseTimeout)
-
 	return
 }
 
 // GetLastClientCmd returns lastClientCmd (splited)
 func (s *SMTPServerSession) GetLastClientCmd() []byte {
-	return s.lastClientCmd
+	return bytes.TrimSuffix(s.lastClientCmd, []byte{13})
 }
 
 // timeout
@@ -122,14 +121,20 @@ func (s *SMTPServerSession) ExitAsap() {
 		return
 	}
 	s.exiting = true
-	s.timer.Stop()
+	if !s.timer.Stop() {
+		go func() { <-s.timer.C }()
+	}
 	// Plugins
 	execSMTPdPlugins("exitasap", s)
 	s.exitasap <- 1
+
 }
 
 // resetTimeout reset timeout
 func (s *SMTPServerSession) resetTimeout() {
+	if !s.timer.Stop() {
+		go func() { <-s.timer.C }()
+	}
 	s.timer.Reset(s.timeout)
 }
 
@@ -761,7 +766,6 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		}
 		s.resetTimeout()
 		_, err := s.Conn.Read(ch)
-		s.timer.Stop()
 		if err != nil {
 			// we will tryc to send an error message to client, but there is a LOT of
 			// chance that is gone
@@ -1100,9 +1104,8 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 		s.SMTPResponseCode = 334
 		// get encoded by reading next line
 		for {
-			s.timer.Reset(time.Duration(Cfg.GetSmtpdServerTimeout()) * time.Second)
+			s.resetTimeout()
 			_, err := s.Conn.Read(ch)
-			s.timer.Stop()
 			if err != nil {
 				s.Out("501 malformed auth input (#5.5.4)")
 				s.SMTPResponseCode = 501
@@ -1112,8 +1115,7 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 			}
 			if ch[0] == 10 {
 				s.timer.Stop()
-				encoded = string(line)
-				s.LogDebug("< " + encoded)
+				s.LogDebug("< " + string(line))
 				break
 			}
 			line = append(line, ch[0])
@@ -1187,9 +1189,9 @@ func (s *SMTPServerSession) rset() {
 
 // NOOP SMTP handler
 func (s *SMTPServerSession) noop() {
-	s.resetTimeout()
 	s.Out("250 2.0.0 ok")
 	s.SMTPResponseCode = 250
+	s.resetTimeout()
 }
 
 // Handle SMTP session
@@ -1284,5 +1286,6 @@ func (s *SMTPServerSession) handle() {
 	<-s.exitasap
 	s.Conn.Close()
 	s.Log("EOT")
+	s.exiting = false
 	return
 }
