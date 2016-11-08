@@ -44,9 +44,10 @@ type SMTPServerSession struct {
 	lastClientCmd    []byte
 	helo             string
 	envelope         message.Envelope
+	LastRcptTo       string
 	exitasap         chan int
 	rcptCount        int
-	badRcptToCount   int
+	BadRcptToCount   int
 	vrfyCount        int
 	remoteAddr       string
 	SMTPResponseCode uint32
@@ -77,7 +78,7 @@ func NewSMTPServerSession(conn net.Conn, isTLS bool) (sss *SMTPServerSession, er
 	sss.relayGranted = false
 
 	sss.rcptCount = 0
-	sss.badRcptToCount = 0
+	sss.BadRcptToCount = 0
 	sss.vrfyCount = 0
 
 	sss.lastClientCmd = []byte{}
@@ -92,9 +93,15 @@ func NewSMTPServerSession(conn net.Conn, isTLS bool) (sss *SMTPServerSession, er
 	return
 }
 
-// GetLastClientCmd returns lastClientCmd (splited)
+// GetLastClientCmd returns lastClientCmd (not splited)
 func (s *SMTPServerSession) GetLastClientCmd() []byte {
 	return bytes.TrimSuffix(s.lastClientCmd, []byte{13})
+}
+
+// GetEnvelope returns pointer to current envelope
+// mainly used for plugin
+func (s *SMTPServerSession) GetEnvelope() *message.Envelope {
+	return &s.envelope
 }
 
 // timeout
@@ -159,7 +166,7 @@ func (s *SMTPServerSession) Log(msg ...string) {
 	Logger.Info("smtpd ", s.uuid, "-", s.Conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
 
-// logError is a log helper for ERROR logs
+// LogError is a log helper for ERROR logs
 func (s *SMTPServerSession) LogError(msg ...string) {
 	Logger.Error("smtpd ", s.uuid, "-", s.Conn.RemoteAddr().String(), "-", strings.Join(msg, " "))
 }
@@ -323,8 +330,8 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 		return
 	}
 
-	// Plugin - hook "mail"
-	execSMTPdPlugins("mail", s)
+	// Plugin - hook "mailpre"
+	execSMTPdPlugins("mailpre", s)
 
 	// mail from:<user> EXT || mail from: <user> EXT
 	if len(msg[1]) > 5 { // mail from:<user> EXT
@@ -441,6 +448,8 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 			return
 		}
 	}
+	// Plugin - hook "mailpost"
+	execSMTPdPlugins("mailpost", s)
 	s.seenMail = true
 	s.Log("MAIL FROM " + s.envelope.MailFrom)
 	s.Out("250 ok")
@@ -451,9 +460,9 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	defer s.recoverOnPanic()
 	var err error
-	rcptto := ""
+	s.LastRcptTo = ""
 	s.rcptCount++
-	s.LogDebug(fmt.Sprintf("RCPT TO %d/%d", s.rcptCount, Cfg.GetSmtpdMaxRcptTo()))
+	//s.LogDebug(fmt.Sprintf("RCPT TO %d/%d", s.rcptCount, Cfg.GetSmtpdMaxRcptTo()))
 	if Cfg.GetSmtpdMaxRcptTo() != 0 && s.rcptCount > Cfg.GetSmtpdMaxRcptTo() {
 		s.Log(fmt.Sprintf("max RCPT TO command reached (%d)", Cfg.GetSmtpdMaxRcptTo()))
 		s.Out("451 4.5.3 max RCPT To commands reached for this sessions")
@@ -483,31 +492,31 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	// rcpt to: user
 	if len(msg[1]) > 3 {
 		t := strings.Split(msg[1], ":")
-		rcptto = strings.Join(t[1:], ":")
+		s.LastRcptTo = strings.Join(t[1:], ":")
 	} else if len(msg) > 2 {
-		rcptto = msg[2]
+		s.LastRcptTo = msg[2]
 	}
 
-	if len(rcptto) == 0 {
+	if len(s.LastRcptTo) == 0 {
 		s.Log("RCPT - Bad syntax : %s " + strings.Join(msg, " "))
 		s.pause(2)
 		s.Out("501 5.5.4 syntax: RCPT TO:<address>")
 		s.SMTPResponseCode = 501
 		return
 	}
-	rcptto = RemoveBrackets(rcptto)
+	s.LastRcptTo = RemoveBrackets(s.LastRcptTo)
 
 	// We MUST recognize source route syntax but SHOULD strip off source routing
 	// RFC 5321 4.1.1.3
-	t := strings.SplitAfter(rcptto, ":")
-	rcptto = t[len(t)-1]
+	t := strings.SplitAfter(s.LastRcptTo, ":")
+	s.LastRcptTo = t[len(t)-1]
 
 	// if no domain part and local part is postmaster FRC 5321 2.3.5
-	if strings.ToLower(rcptto) == "postmaster" {
-		rcptto += "@" + Cfg.GetMe()
+	if strings.ToLower(s.LastRcptTo) == "postmaster" {
+		s.LastRcptTo += "@" + Cfg.GetMe()
 	}
 	// Check validity
-	_, err = mail.ParseAddress(rcptto)
+	_, err = mail.ParseAddress(s.LastRcptTo)
 	if err != nil {
 		s.Log(fmt.Sprintf("RCPT - bad email format : %s - %s ", strings.Join(msg, " "), err))
 		s.pause(2)
@@ -517,7 +526,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	}
 
 	// rcpt accepted ?
-	localDom := strings.Split(rcptto, "@")
+	localDom := strings.Split(s.LastRcptTo, "@")
 	if len(localDom) != 2 {
 		s.Log(fmt.Sprintf("RCPT - Bad email format : %s ", strings.Join(msg, " ")))
 		s.pause(2)
@@ -527,13 +536,13 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	}
 
 	// make domain part insensitive
-	rcptto = localDom[0] + "@" + strings.ToLower(localDom[1])
+	s.LastRcptTo = localDom[0] + "@" + strings.ToLower(localDom[1])
 
 	// Relay granted for this recipient ?
 	s.relayGranted = false
 
 	// Plugins
-	execSMTPdPlugins("rrcptto", s)
+	execSMTPdPlugins("rcptto", s)
 
 	// check DB for rcpthost
 	if !s.relayGranted {
@@ -551,7 +560,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 			if rcpthost.IsLocal {
 				s.LogDebug(rcpthost.Hostname + " is local")
 				// check destination
-				exists, err := IsValidLocalRcpt(strings.ToLower(rcptto))
+				exists, err := IsValidLocalRcpt(strings.ToLower(s.LastRcptTo))
 				if err != nil {
 					s.LogError("RCPT - relay access failed while checking validity of local rpctto. " + err.Error())
 					s.Out("455 4.3.0 oops, problem with relay access")
@@ -559,11 +568,11 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 					return
 				}
 				if !exists {
-					s.Log("RCPT - no mailbox here by that name: " + rcptto)
+					s.Log("RCPT - no mailbox here by that name: " + s.LastRcptTo)
 					s.Out("550 5.5.1 Sorry, no mailbox here by that name")
 					s.SMTPResponseCode = 550
-					s.badRcptToCount++
-					if Cfg.GetSmtpdMaxBadRcptTo() != 0 && s.badRcptToCount > Cfg.GetSmtpdMaxBadRcptTo() {
+					s.BadRcptToCount++
+					if Cfg.GetSmtpdMaxBadRcptTo() != 0 && s.BadRcptToCount > Cfg.GetSmtpdMaxBadRcptTo() {
 						s.Log("RCPT - too many bad rcpt to, connection droped")
 						s.ExitAsap()
 					}
@@ -590,7 +599,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 
 	// Relay denied
 	if !s.relayGranted {
-		s.Log("Relay access denied - from " + s.envelope.MailFrom + " to " + rcptto)
+		s.Log("Relay access denied - from " + s.envelope.MailFrom + " to " + s.LastRcptTo)
 		s.Out("554 5.7.1 Relay access denied")
 		s.SMTPResponseCode = 554
 		s.pause(2)
@@ -598,9 +607,9 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	}
 
 	// Check if there is already this recipient
-	if !IsStringInSlice(rcptto, s.envelope.RcptTo) {
-		s.envelope.RcptTo = append(s.envelope.RcptTo, rcptto)
-		s.Log("RCPT - + " + rcptto)
+	if !IsStringInSlice(s.LastRcptTo, s.envelope.RcptTo) {
+		s.envelope.RcptTo = append(s.envelope.RcptTo, s.LastRcptTo)
+		s.Log("RCPT - + " + s.LastRcptTo)
 	}
 	s.Out("250 ok")
 	s.SMTPResponseCode = 250
