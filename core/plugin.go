@@ -34,7 +34,7 @@ func execTmailPlugins(hook string) {
 // Smtpd plugins
 
 // SMTPdPlugin is the type for SMTPd plugins
-type SMTPdPlugin func(s *SMTPServerSession)
+type SMTPdPlugin func(s *SMTPServerSession) bool
 
 // SMTPdPlugins is a map of SMTPd plugins
 var SMTPdPlugins map[string][]SMTPdPlugin
@@ -44,13 +44,16 @@ func RegisterSMTPdPlugin(hook string, plugin SMTPdPlugin) {
 	SMTPdPlugins[hook] = append(SMTPdPlugins[hook], plugin)
 }
 
-func execSMTPdPlugins(hook string, s *SMTPServerSession) {
+func execSMTPdPlugins(hook string, s *SMTPServerSession) bool {
+
 	if plugins, found := SMTPdPlugins[hook]; found {
 		for _, plugin := range plugins {
-			plugin(s)
+			if plugin(s) {
+				return true
+			}
 		}
 	}
-	return
+	return false
 }
 
 // Deliverd plugins
