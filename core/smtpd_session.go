@@ -37,7 +37,7 @@ type SMTPServerSession struct {
 	timeout          time.Duration
 	tls              bool
 	tlsVersion       string
-	relayGranted     bool
+	RelayGranted     bool
 	user             *User
 	seenHelo         bool
 	seenMail         bool
@@ -75,7 +75,7 @@ func NewSMTPServerSession(conn net.Conn, isTLS bool) (sss *SMTPServerSession, er
 	sss.remoteAddr = conn.RemoteAddr().String()
 	//sss.logger = Log
 
-	sss.relayGranted = false
+	sss.RelayGranted = false
 
 	sss.rcptCount = 0
 	sss.BadRcptToCount = 0
@@ -539,13 +539,15 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	s.LastRcptTo = localDom[0] + "@" + strings.ToLower(localDom[1])
 
 	// Relay granted for this recipient ?
-	s.relayGranted = false
+	s.RelayGranted = false
 
 	// Plugins
-	execSMTPdPlugins("rcptto", s)
+	if execSMTPdPlugins("rcptto", s) {
+		return
+	}
 
 	// check DB for rcpthost
-	if !s.relayGranted {
+	if !s.RelayGranted {
 		rcpthost, err := RcpthostGet(localDom[1])
 		if err != nil && err != gorm.ErrRecordNotFound {
 			s.LogError("RCPT - relay access failed while queriyng for rcpthost. " + err.Error())
@@ -555,7 +557,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 		}
 		if err == nil {
 			// rcpthost exists relay granted
-			s.relayGranted = true
+			s.RelayGranted = true
 			// if local check "mailbox" (destination)
 			if rcpthost.IsLocal {
 				s.LogDebug(rcpthost.Hostname + " is local")
@@ -582,13 +584,13 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 		}
 	}
 	// User authentified & access granted ?
-	if !s.relayGranted && s.user != nil {
-		s.relayGranted = s.user.AuthRelay
+	if !s.RelayGranted && s.user != nil {
+		s.RelayGranted = s.user.AuthRelay
 	}
 
 	// Remote IP authorised ?
-	if !s.relayGranted {
-		s.relayGranted, err = IpCanRelay(s.Conn.RemoteAddr())
+	if !s.RelayGranted {
+		s.RelayGranted, err = IpCanRelay(s.Conn.RemoteAddr())
 		if err != nil {
 			s.LogError("RCPT - relay access failed while checking if IP is allowed to relay. " + err.Error())
 			s.Out("455 4.3.0 oops, problem with relay access")
@@ -598,7 +600,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	}
 
 	// Relay denied
-	if !s.relayGranted {
+	if !s.RelayGranted {
 		s.Log("Relay access denied - from " + s.envelope.MailFrom + " to " + s.LastRcptTo)
 		s.Out("554 5.7.1 Relay access denied")
 		s.SMTPResponseCode = 554
