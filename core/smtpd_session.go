@@ -43,7 +43,7 @@ type SMTPServerSession struct {
 	seenMail         bool
 	lastClientCmd    []byte
 	helo             string
-	envelope         message.Envelope
+	Envelope         message.Envelope
 	LastRcptTo       string
 	exitasap         chan int
 	rcptCount        int
@@ -101,7 +101,7 @@ func (s *SMTPServerSession) GetLastClientCmd() []byte {
 // GetEnvelope returns pointer to current envelope
 // mainly used for plugin
 func (s *SMTPServerSession) GetEnvelope() *message.Envelope {
-	return &s.envelope
+	return &s.Envelope
 }
 
 // timeout
@@ -146,10 +146,10 @@ func (s *SMTPServerSession) resetTimeout() {
 }
 
 // Reset session
-func (s *SMTPServerSession) reset() {
-	s.envelope.MailFrom = ""
+func (s *SMTPServerSession) Reset() {
+	s.Envelope.MailFrom = ""
 	s.seenMail = false
-	s.envelope.RcptTo = []string{}
+	s.Envelope.RcptTo = []string{}
 	s.rcptCount = 0
 	s.resetTimeout()
 }
@@ -311,7 +311,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 	extension := []string{}
 
 	// Reset
-	s.reset()
+	s.Reset()
 
 	// cmd EHLO ?
 	if Cfg.getRFCHeloMandatory() && !s.seenHelo {
@@ -336,17 +336,17 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 	// mail from:<user> EXT || mail from: <user> EXT
 	if len(msg[1]) > 5 { // mail from:<user> EXT
 		t := strings.Split(msg[1], ":")
-		s.envelope.MailFrom = t[1]
+		s.Envelope.MailFrom = t[1]
 		if msgLen > 2 {
 			extension = append(extension, msg[2:]...)
 		}
 	} else if msgLen > 2 { // mail from: user EXT
-		s.envelope.MailFrom = msg[2]
+		s.Envelope.MailFrom = msg[2]
 		if msgLen > 3 {
 			extension = append(extension, msg[3:]...)
 		}
 	} else { // null sender
-		s.envelope.MailFrom = ""
+		s.Envelope.MailFrom = ""
 	}
 
 	// Extensions size
@@ -395,19 +395,19 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 	}
 
 	// remove <>
-	s.envelope.MailFrom = RemoveBrackets(s.envelope.MailFrom)
+	s.Envelope.MailFrom = RemoveBrackets(s.Envelope.MailFrom)
 
 	// mail from is valid ?
-	reversePathlen := len(s.envelope.MailFrom)
+	reversePathlen := len(s.Envelope.MailFrom)
 	if reversePathlen > 0 { // 0 -> null reverse path (bounce)
 		if reversePathlen > 256 { // RFC 5321 4.3.5.1.3
-			s.Log("MAIL - reverse path is too long: " + s.envelope.MailFrom)
+			s.Log("MAIL - reverse path is too long: " + s.Envelope.MailFrom)
 			s.Out("550 reverse path must be lower than 255 char (RFC 5321 4.5.1.3.1)")
 			s.SMTPResponseCode = 550
 			s.pause(2)
 			return
 		}
-		localDomain := strings.Split(s.envelope.MailFrom, "@")
+		localDomain := strings.Split(s.Envelope.MailFrom, "@")
 		if len(localDomain) == 1 {
 			s.Log("MAIL - invalid address " + localDomain[0])
 			s.pause(2)
@@ -416,18 +416,18 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 			return
 			/*
 				localDomain = append(localDomain, Cfg.GetMe())
-				s.envelope.MailFrom = localDomain[0] + "@" + localDomain[1]
+				s.Envelope.MailFrom = localDomain[0] + "@" + localDomain[1]
 			*/
 		}
 		if Cfg.getRFCMailFromLocalpartSize() && len(localDomain[0]) > 64 {
-			s.Log("MAIL - local part is too long: " + s.envelope.MailFrom)
+			s.Log("MAIL - local part is too long: " + s.Envelope.MailFrom)
 			s.Out("550 local part of reverse path MUST be lower than 65 char (RFC 5321 4.5.3.1.1)")
 			s.SMTPResponseCode = 550
 			s.pause(2)
 			return
 		}
 		if len(localDomain[1]) > 255 {
-			s.Log("MAIL - domain part is too long: " + s.envelope.MailFrom)
+			s.Log("MAIL - domain part is too long: " + s.Envelope.MailFrom)
 			s.Out("550 domain part of reverse path MUST be lower than 255 char (RFC 5321 4.5.3.1.2)")
 			s.SMTPResponseCode = 550
 			s.pause(2)
@@ -451,7 +451,7 @@ func (s *SMTPServerSession) smtpMailFrom(msg []string) {
 	// Plugin - hook "mailpost"
 	execSMTPdPlugins("mailpost", s)
 	s.seenMail = true
-	s.Log("MAIL FROM " + s.envelope.MailFrom)
+	s.Log("MAIL FROM " + s.Envelope.MailFrom)
 	s.Out("250 ok")
 	s.SMTPResponseCode = 250
 }
@@ -601,7 +601,7 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 
 	// Relay denied
 	if !s.RelayGranted {
-		s.Log("Relay access denied - from " + s.envelope.MailFrom + " to " + s.LastRcptTo)
+		s.Log("Relay access denied - from " + s.Envelope.MailFrom + " to " + s.LastRcptTo)
 		s.Out("554 5.7.1 Relay access denied")
 		s.SMTPResponseCode = 554
 		s.pause(2)
@@ -609,8 +609,8 @@ func (s *SMTPServerSession) smtpRcptTo(msg []string) {
 	}
 
 	// Check if there is already this recipient
-	if !IsStringInSlice(s.LastRcptTo, s.envelope.RcptTo) {
-		s.envelope.RcptTo = append(s.envelope.RcptTo, s.LastRcptTo)
+	if !IsStringInSlice(s.LastRcptTo, s.Envelope.RcptTo) {
+		s.Envelope.RcptTo = append(s.Envelope.RcptTo, s.LastRcptTo)
 		s.Log("RCPT - + " + s.LastRcptTo)
 	}
 	s.Out("250 ok")
@@ -737,7 +737,7 @@ func (s *SMTPServerSession) smtpExpn(msg []string) {
 // Voir un truc comme DATA -> temp file -> mv queue file
 func (s *SMTPServerSession) smtpData(msg []string) {
 	defer s.recoverOnPanic()
-	if !s.seenMail || len(s.envelope.RcptTo) == 0 {
+	if !s.seenMail || len(s.Envelope.RcptTo) == 0 {
 		s.Log("DATA - out of sequence")
 		s.pause(2)
 		s.Out("503 5.5.1 command out of sequence")
@@ -905,7 +905,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			s.Out("554 5.4.6 too many hops, this message is looping")
 			s.SMTPResponseCode = 554
 			s.purgeConn()
-			s.reset()
+			s.Reset()
 			return
 		}
 
@@ -915,7 +915,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			s.Out("552 5.3.4 sorry, that message size exceeds my databytes limit")
 			s.SMTPResponseCode = 552
 			s.purgeConn()
-			s.reset()
+			s.Reset()
 			return
 		}
 	}
@@ -930,7 +930,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			s.Out("454 4.3.0 scanner failure")
 			s.SMTPResponseCode = 454
 			//s.purgeConn()
-			s.reset()
+			s.Reset()
 			return
 		}
 		if found {
@@ -938,7 +938,7 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 			s.SMTPResponseCode = 554
 			s.Log("MAIL - infected by " + virusName)
 			//s.purgeConn()
-			s.reset()
+			s.Reset()
 			return
 		}
 	}
@@ -947,17 +947,14 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	HeaderMessageID := message.RawGetMessageId(&s.CurrentRawMail)
 	if len(HeaderMessageID) == 0 {
 		atDomain := Cfg.GetMe()
-		if strings.Count(s.envelope.MailFrom, "@") != 0 {
-			atDomain = strings.ToLower(strings.Split(s.envelope.MailFrom, "@")[1])
+		if strings.Count(s.Envelope.MailFrom, "@") != 0 {
+			atDomain = strings.ToLower(strings.Split(s.Envelope.MailFrom, "@")[1])
 		}
 		HeaderMessageID = []byte(fmt.Sprintf("%d.%s@%s", time.Now().Unix(), s.uuid, atDomain))
 		s.CurrentRawMail = append([]byte(fmt.Sprintf("Message-ID: <%s>\r\n", HeaderMessageID)), s.CurrentRawMail...)
 
 	}
 	s.Log("message-id:", string(HeaderMessageID))
-
-	// Plugins
-	execSMTPdPlugins("data", s)
 
 	// Add recieved header
 	remoteIP := strings.Split(s.Conn.RemoteAddr().String(), ":")[0]
@@ -1007,7 +1004,12 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	s.CurrentRawMail = append(h, s.CurrentRawMail...)
 	recieved = ""
 
-	s.CurrentRawMail = append([]byte("X-Env-From: "+s.envelope.MailFrom+"\r\n"), s.CurrentRawMail...)
+	s.CurrentRawMail = append([]byte("X-Env-From: "+s.Envelope.MailFrom+"\r\n"), s.CurrentRawMail...)
+
+	// Plugins
+	if execSMTPdPlugins("data", s) {
+		return
+	}
 
 	// put message in queue
 	authUser := ""
@@ -1018,18 +1020,18 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 	// Plugins
 	execSMTPdPlugins("beforequeue", s)
 
-	id, err := QueueAddMessage(&s.CurrentRawMail, s.envelope, authUser)
+	id, err := QueueAddMessage(&s.CurrentRawMail, s.Envelope, authUser)
 	if err != nil {
 		s.LogError("MAIL - unable to put message in queue -", err.Error())
 		s.Out("451 temporary queue error")
 		s.SMTPResponseCode = 451
-		s.reset()
+		s.Reset()
 		return
 	}
 	s.Log("message queued as", id)
 	s.Out(fmt.Sprintf("250 2.0.0 Ok: queued %s", id))
 	s.SMTPResponseCode = 250
-	s.reset()
+	s.Reset()
 	return
 }
 
@@ -1193,7 +1195,7 @@ func (s *SMTPServerSession) smtpAuth(rawMsg string) {
 
 // RSET SMTP ahandler
 func (s *SMTPServerSession) rset() {
-	s.reset()
+	s.Reset()
 	s.Out("250 2.0.0 ok")
 	s.SMTPResponseCode = 250
 }
