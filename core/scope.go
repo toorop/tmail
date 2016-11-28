@@ -68,8 +68,6 @@ func Bootstrap() (err error) {
 			return
 		}
 	}
-	logrus.SetOutput(out)
-
 	customFormatter := new(logrus.TextFormatter)
 	customFormatter.TimestampFormat = time.RFC3339Nano
 	customFormatter.FullTimestamp = true
@@ -81,6 +79,7 @@ func Bootstrap() (err error) {
 	} else {
 		Logger.Level = logrus.InfoLevel
 	}
+	Logger.Out = out
 	Logger.Debug("Logger initialized")
 
 	// Init DB
