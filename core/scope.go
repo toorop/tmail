@@ -57,6 +57,7 @@ func Bootstrap() (err error) {
 	// linit logger
 	var out io.Writer
 	logPath := Cfg.GetLogPath()
+	customFormatter := new(logrus.TextFormatter)
 	if logPath == "stdout" {
 		out = os.Stdout
 	} else if logPath == "discard" {
@@ -64,11 +65,12 @@ func Bootstrap() (err error) {
 	} else {
 		file := path.Join(logPath, "current.log")
 		out, err = os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		customFormatter = *logrus.TextFormatter(new(FileFormatter))
 		if err != nil {
 			return
 		}
 	}
-	customFormatter := new(logrus.TextFormatter)
+	
 	customFormatter.TimestampFormat = time.RFC3339Nano
 	customFormatter.FullTimestamp = true
 
