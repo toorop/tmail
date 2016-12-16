@@ -1,12 +1,13 @@
 package core
 
 import (
-    "github.com/Sirupsen/logrus"
-    "bytes"
-    "sort"
-    "strings"
-    "fmt"
-    "time"
+	"bytes"
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/Sirupsen/logrus"
 )
 
 var (
@@ -18,12 +19,12 @@ func init() {
 }
 
 type FileFormatter struct {
-    // Set to true to bypass checking for a TTY before outputting colors.
+	// Set to true to bypass checking for a TTY before outputting colors.
 	ForceColors bool
 
 	// Force disabling colors.
 	DisableColors bool
-    
+
 	// Disable timestamp logging. useful when output is redirected to logging
 	// system that already adds timestamps.
 	DisableTimestamp bool
@@ -63,8 +64,8 @@ func (f *FileFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	if timestampFormat == "" {
 		timestampFormat = logrus.DefaultTimestampFormat
 	}
-	
-    levelText := strings.ToUpper(entry.Level.String())[0:4]
+
+	levelText := strings.ToUpper(entry.Level.String())[0:4]
 
 	if !f.FullTimestamp {
 		fmt.Fprintf(b, "%s[%04d] %-44s ", levelText, miniTS(), entry.Message)
@@ -117,6 +118,14 @@ func (f *FileFormatter) appendValue(b *bytes.Buffer, value interface{}) {
 	}
 }
 
+func (f *FileFormatter) appendKeyValue(b *bytes.Buffer, key string, value interface{}) {
+
+	b.WriteString(key)
+	b.WriteByte('=')
+	f.appendValue(b, value)
+	b.WriteByte(' ')
+}
+
 func prefixFieldClashes(data logrus.Fields) {
 	if t, ok := data["time"]; ok {
 		data["fields.time"] = t
@@ -129,4 +138,8 @@ func prefixFieldClashes(data logrus.Fields) {
 	if l, ok := data["level"]; ok {
 		data["fields.level"] = l
 	}
+}
+
+//printColored need for logrus.TextFormatter compatibility
+func (f *FileFormatter) printColored(b *bytes.Buffer, entry *logrus.Entry, keys []string, timestampFormat string) {
 }

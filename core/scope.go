@@ -70,7 +70,7 @@ func Bootstrap() (err error) {
 			return
 		}
 	}
-	
+
 	customFormatter.TimestampFormat = time.RFC3339Nano
 	customFormatter.FullTimestamp = true
 
