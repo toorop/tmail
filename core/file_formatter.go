@@ -14,6 +14,7 @@ var (
 	baseTimestamp time.Time
 )
 
+//init inits timestamp on start time to be support of miniTS
 func init() {
 	baseTimestamp = time.Now()
 }
@@ -42,6 +43,7 @@ type FileFormatter struct {
 	DisableSorting bool
 }
 
+//Format formats the log entry
 func (f *FileFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var b *bytes.Buffer
 	var keys []string = make([]string, 0, len(entry.Data))
@@ -82,10 +84,12 @@ func (f *FileFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+//miniTS return the mini timestamp (ie seconds since logger start)
 func miniTS() int {
 	return int(time.Since(baseTimestamp) / time.Second)
 }
 
+//needsQuoting quotes string if needed
 func needsQuoting(text string) bool {
 	for _, ch := range text {
 		if !((ch >= 'a' && ch <= 'z') ||
@@ -98,6 +102,7 @@ func needsQuoting(text string) bool {
 	return false
 }
 
+//appendValue add value to log line output
 func (f *FileFormatter) appendValue(b *bytes.Buffer, value interface{}) {
 	switch value := value.(type) {
 	case string:
@@ -118,6 +123,7 @@ func (f *FileFormatter) appendValue(b *bytes.Buffer, value interface{}) {
 	}
 }
 
+//appendKeyValue add key=value to log line output
 func (f *FileFormatter) appendKeyValue(b *bytes.Buffer, key string, value interface{}) {
 
 	b.WriteString(key)
@@ -126,6 +132,7 @@ func (f *FileFormatter) appendKeyValue(b *bytes.Buffer, key string, value interf
 	b.WriteByte(' ')
 }
 
+//prefixFieldClashes avoid conflict for time / msg / level indexes
 func prefixFieldClashes(data logrus.Fields) {
 	if t, ok := data["time"]; ok {
 		data["fields.time"] = t
