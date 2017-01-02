@@ -56,24 +56,36 @@ func Bootstrap() (err error) {
 
 	// linit logger
 	var out io.Writer
+
 	logPath := Cfg.GetLogPath()
+	Logger = logrus.New()
+	//customFormatter := new(logrus.TextFormatter)
+	//customFormatter := new(FileFormatter)
 	if logPath == "stdout" {
 		out = os.Stdout
+		f := new(logrus.TextFormatter)
+		f.TimestampFormat = time.RFC3339Nano
+		f.FullTimestamp = true
+		Logger.Formatter = f
+
 	} else if logPath == "discard" {
 		out = ioutil.Discard
+		f := new(logrus.TextFormatter)
+		f.TimestampFormat = time.RFC3339Nano
+		f.FullTimestamp = true
+		Logger.Formatter = f
 	} else {
 		file := path.Join(logPath, "current.log")
 		out, err = os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			return
 		}
+		f := new(FileFormatter)
+		f.TimestampFormat = time.RFC3339Nano
+		f.FullTimestamp = true
+		Logger.Formatter = f
 	}
-	customFormatter := new(logrus.TextFormatter)
-	customFormatter.TimestampFormat = time.RFC3339Nano
-	customFormatter.FullTimestamp = true
 
-	Logger = logrus.New()
-	Logger.Formatter = customFormatter
 	if Cfg.GetDebugEnabled() {
 		Logger.Level = logrus.DebugLevel
 	} else {
