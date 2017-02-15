@@ -6,8 +6,6 @@ func init() {
 	DeliverdPlugins = make(map[string][]DeliverdPlugin)
 }
 
-//
-
 // Tmail core plugin
 
 // TmailPlugin base plugin for hooks:
@@ -45,15 +43,15 @@ func RegisterSMTPdPlugin(hook string, plugin SMTPdPlugin) {
 }
 
 func execSMTPdPlugins(hook string, s *SMTPServerSession) bool {
-
 	if plugins, found := SMTPdPlugins[hook]; found {
 		for _, plugin := range plugins {
 			if plugin(s) {
 				return true
 			}
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 // Deliverd plugins
