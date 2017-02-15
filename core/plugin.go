@@ -51,7 +51,7 @@ func execSMTPdPlugins(hook string, s *SMTPServerSession) bool {
 			return false
 		}
 	}
-	return true
+	return false
 }
 
 // Deliverd plugins
