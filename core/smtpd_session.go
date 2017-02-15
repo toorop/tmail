@@ -221,7 +221,9 @@ func (s *SMTPServerSession) smtpGreeting() {
 	s.Log(fmt.Sprintf("starting new transaction %d/%d", SmtpSessionsCount, Cfg.GetSmtpdConcurrencyIncoming()))
 
 	// Plugins
-	execSMTPdPlugins("connect", s)
+	if execSMTPdPlugins("connect", s) {
+		return
+	}
 
 	o := "220 " + Cfg.GetMe() + " ESMTP"
 	if !Cfg.GetHideServerSignature() {
@@ -246,7 +248,9 @@ func (s *SMTPServerSession) heloBase(msg []string) (cont bool) {
 	}
 
 	// Plugins
-	execSMTPdPlugins("helo", s)
+	if execSMTPdPlugins("helo", s) {
+		return false
+	}
 
 	s.helo = ""
 	if len(msg) > 1 {
