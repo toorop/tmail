@@ -1023,7 +1023,6 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 
 	// Plugins
 	execSMTPdPlugins("beforequeue", s)
-
 	id, err := QueueAddMessage(&s.CurrentRawMail, s.Envelope, authUser)
 	if err != nil {
 		s.LogError("MAIL - unable to put message in queue -", err.Error())
