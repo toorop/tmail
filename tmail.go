@@ -178,7 +178,9 @@ func main() {
 			}
 
 			// deliverd
-			go core.LaunchDeliverd()
+			if core.Cfg.GetLaunchDeliverd() {
+				go core.LaunchDeliverd()
+			}
 
 			// HTTP REST server
 			if core.Cfg.GetRestServerLaunch() {

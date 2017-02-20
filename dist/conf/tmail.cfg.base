@@ -142,6 +142,9 @@ export TMAIL_SMTPD_SCAN_CLAMAV_DSNS="/var/run/clamav/clamd.ctl"
 ###
 # deliverd
 
+# Launch deliverd ?
+export TMAIL_DELIVERD_LAUNCH=true
+
 # Locals addresses
 #
 # Formating :
