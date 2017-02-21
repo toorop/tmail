@@ -191,7 +191,9 @@ func main() {
 			core.Logger.Info("Exiting...")
 
 			// close NsqQueueProducer if exists
-			core.NsqQueueProducer.Stop()
+			if core.Cfg.GetLaunchSmtpd() {
+				core.NsqQueueProducer.Stop()
+			}
 
 			// flush nsqd memory to disk
 			nsqd.Exit()
