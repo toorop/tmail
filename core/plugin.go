@@ -57,7 +57,7 @@ func execSMTPdPlugins(hook string, s *SMTPServerSession) bool {
 // Deliverd plugins
 
 // DeliverdPlugin type for deliverd plugin
-type DeliverdPlugin func(d *delivery)
+type DeliverdPlugin func(d *Delivery) bool
 
 // DeliverdPlugins map of deliverd plugins
 var DeliverdPlugins map[string][]DeliverdPlugin
@@ -67,7 +67,7 @@ func RegisterDeliverdPlugin(hook string, plugin DeliverdPlugin) {
 	DeliverdPlugins[hook] = append(DeliverdPlugins[hook], plugin)
 }
 
-func execDeliverdPlugins(hook string, d *delivery) {
+func execDeliverdPlugins(hook string, d *Delivery) {
 	if plugins, found := DeliverdPlugins[hook]; found {
 		for _, plugin := range plugins {
 			plugin(d)

@@ -11,7 +11,7 @@ import (
 	"github.com/toorop/go-dkim"
 )
 
-func deliverRemote(d *delivery) {
+func deliverRemote(d *Delivery) {
 	var err error
 	ChDeliverdConcurrencyRemoteCount <- 1
 	defer func() { ChDeliverdConcurrencyRemoteCount <- -1 }()
@@ -23,10 +23,10 @@ func deliverRemote(d *delivery) {
 	}
 
 	time.Sleep(100 * time.Nanosecond)
-	Logger.Info(fmt.Sprintf("delivery-remote %s: starting new remote delivery %d/%d from %s to %s - Message-Id: %s - Queue-Id: %s", d.id, DeliverdConcurrencyRemoteCount, Cfg.GetDeliverdConcurrencyRemote(), d.qMsg.MailFrom, d.qMsg.RcptTo, d.qMsg.MessageId, d.qMsg.Uuid))
+	Logger.Info(fmt.Sprintf("delivery-remote %s: starting new remote delivery %d/%d from %s to %s - Message-Id: %s - Queue-Id: %s", d.ID, DeliverdConcurrencyRemoteCount, Cfg.GetDeliverdConcurrencyRemote(), d.QMsg.MailFrom, d.QMsg.RcptTo, d.QMsg.MessageId, d.QMsg.Uuid))
 
 	// gatling tests
-	//Logger.Info(fmt.Sprintf("deliverd-remote %s: done for gatling test", d.id))
+	//Logger.Info(fmt.Sprintf("deliverd-remote %s: done for gatling test", d.ID))
 	//d.dieOk()
 	//return
 
@@ -38,44 +38,44 @@ func deliverRemote(d *delivery) {
 
 	// Default routes
 	if len(d.RemoteRoutes) == 0 {
-		d.RemoteRoutes, err = getRoutes(d.qMsg.MailFrom, d.qMsg.Host, d.qMsg.AuthUser)
+		d.RemoteRoutes, err = getRoutes(d.QMsg.MailFrom, d.QMsg.Host, d.QMsg.AuthUser)
 		if err != nil {
-			d.dieTemp("unable to get route to host "+d.qMsg.Host+". "+err.Error(), true)
+			d.dieTemp("unable to get route to host "+d.QMsg.Host+". "+err.Error(), true)
 			return
 		}
 	}
 
 	// No routes ?? WTF !
 	if len(d.RemoteRoutes) == 0 {
-		d.dieTemp("no route to host "+d.qMsg.Host, true)
+		d.dieTemp("no route to host "+d.QMsg.Host, true)
 		return
 	}
 
 	// Get client
 	client, err := newSMTPClient(d, d.RemoteRoutes, Cfg.GetDeliverdRemoteTimeout())
 	if err != nil {
-		Logger.Error(fmt.Sprintf("deliverd-remote %s - %s", d.id, err.Error()))
+		Logger.Error(fmt.Sprintf("deliverd-remote %s - %s", d.ID, err.Error()))
 		d.dieTemp("unable to get client", false)
 		return
 	}
 	defer client.close()
 
-	d.remoteAddr = client.RemoteAddr()
-	d.localAddr = client.LocalAddr()
+	d.RemoteAddr = client.RemoteAddr()
+	d.LocalAddr = client.LocalAddr()
 
 	// EHLO
 	code, msg, err := client.Hello()
-	d.remoteSMTPresponseCode = code
+	d.RemoteSMTPresponseCode = code
 	if err != nil {
 		switch {
 		case code > 399 && code < 500:
-			d.dieTemp(fmt.Sprintf("deliverd-remote %s - %s - HELO failed %v - remote server reply %d %s ", d.id, client.RemoteAddr(), err.Error(), code, msg), true)
+			d.dieTemp(fmt.Sprintf("deliverd-remote %s - %s - HELO failed %v - remote server reply %d %s ", d.ID, client.RemoteAddr(), err.Error(), code, msg), true)
 			return
 		case code > 499:
-			d.diePerm(fmt.Sprintf("deliverd-remote %s - %s - HELO failed %v - remote server reply %d %s ", d.id, client.RemoteAddr(), err.Error(), code, msg), true)
+			d.diePerm(fmt.Sprintf("deliverd-remote %s - %s - HELO failed %v - remote server reply %d %s ", d.ID, client.RemoteAddr(), err.Error(), code, msg), true)
 			return
 		default:
-			Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - HELO unexpected code, remote server reply %d %s ", d.id, client.RemoteAddr(), code, msg))
+			Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - HELO unexpected code, remote server reply %d %s ", d.ID, client.RemoteAddr(), code, msg))
 		}
 	}
 
@@ -88,18 +88,18 @@ func deliverRemote(d *delivery) {
 		config.InsecureSkipVerify = Cfg.GetDeliverdRemoteTLSSkipVerify()
 		//config.ServerName = Cfg.GetMe()
 		code, msg, err = client.StartTLS(&config)
-		d.remoteSMTPresponseCode = code
+		d.RemoteSMTPresponseCode = code
 		// Warning debug
 		//err := fmt.Errorf("fake tls error")
 		if err != nil {
-			Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - TLS negociation failed %d - %s - %v .", d.id, client.conn.RemoteAddr().String(), code, msg, err))
+			Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - TLS negociation failed %d - %s - %v .", d.ID, client.conn.RemoteAddr().String(), code, msg, err))
 			if Cfg.GetDeliverdRemoteTLSFallback() {
 				// fall back to noTLS
-				Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - fallback to no TLS.", d.id, client.conn.RemoteAddr().String()))
+				Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - fallback to no TLS.", d.ID, client.conn.RemoteAddr().String()))
 				client.close()
 				client, err = newSMTPClient(d, d.RemoteRoutes, Cfg.GetDeliverdRemoteTimeout())
 				if err != nil {
-					Logger.Error(fmt.Sprintf("deliverd-remote %s - fallback to no TLS failed - %s", d.id, err.Error()))
+					Logger.Error(fmt.Sprintf("deliverd-remote %s - fallback to no TLS failed - %s", d.ID, err.Error()))
 					d.dieTemp("unable to get client", false)
 					return
 				}
@@ -108,23 +108,23 @@ func deliverRemote(d *delivery) {
 				if err != nil {
 					switch {
 					case code > 399 && code < 500:
-						d.dieTemp(fmt.Sprintf("deliverd-remote %s - %s - HELO failed %v - remote server reply %d %s ", d.id, client.RemoteAddr(), err.Error(), code, msg), true)
+						d.dieTemp(fmt.Sprintf("deliverd-remote %s - %s - HELO failed %v - remote server reply %d %s ", d.ID, client.RemoteAddr(), err.Error(), code, msg), true)
 						return
 					case code > 499:
-						d.diePerm(fmt.Sprintf("deliverd-remote %s - %s - HELO failed %v - remote server reply %d %s ", d.id, client.RemoteAddr(), err.Error(), code, msg), true)
+						d.diePerm(fmt.Sprintf("deliverd-remote %s - %s - HELO failed %v - remote server reply %d %s ", d.ID, client.RemoteAddr(), err.Error(), code, msg), true)
 						return
 					default:
-						d.dieTemp(fmt.Sprintf("deliverd-remote %s - %s - HELO unexpected code, remote server reply %d %s ", d.id, client.RemoteAddr(), code, msg), true)
+						d.dieTemp(fmt.Sprintf("deliverd-remote %s - %s - HELO unexpected code, remote server reply %d %s ", d.ID, client.RemoteAddr(), code, msg), true)
 						return
-						//Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - HELO unexpected code, remote server reply %d %s ", d.id, client.RemoteAddr(), code, msg))
+						//Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - HELO unexpected code, remote server reply %d %s ", d.ID, client.RemoteAddr(), code, msg))
 					}
 				}
 			} else {
-				d.dieTemp(fmt.Sprintf("deliverd-remote %s - %s - TLS negociation failed %d - %s - %v .", d.id, client.conn.RemoteAddr().String(), code, msg, err), true)
+				d.dieTemp(fmt.Sprintf("deliverd-remote %s - %s - TLS negociation failed %d - %s - %v .", d.ID, client.conn.RemoteAddr().String(), code, msg, err), true)
 				return
 			}
 		} else {
-			Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - TLS negociation succeed - %s %s", d.id, client.RemoteAddr(), client.TLSGetVersion(), client.TLSGetCipherSuite()))
+			Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - TLS negociation succeed - %s %s", d.ID, client.RemoteAddr(), client.TLSGetVersion(), client.TLSGetCipherSuite()))
 		}
 	}
 
@@ -140,7 +140,7 @@ func deliverRemote(d *delivery) {
 		if auth != nil {
 			_, msg, err := client.Auth(auth)
 			if err != nil {
-				message := fmt.Sprintf("deliverd-remote %s - %s - AUTH failed - %s - %s", d.id, client.RemoteAddr(), msg, err)
+				message := fmt.Sprintf("deliverd-remote %s - %s - AUTH failed - %s - %s", d.ID, client.RemoteAddr(), msg, err)
 				Logger.Error(message)
 				d.diePerm(message, false)
 				return
@@ -149,20 +149,20 @@ func deliverRemote(d *delivery) {
 	}
 
 	// MAIL FROM
-	code, msg, err = client.Mail(d.qMsg.MailFrom)
-	d.remoteSMTPresponseCode = code
+	code, msg, err = client.Mail(d.QMsg.MailFrom)
+	d.RemoteSMTPresponseCode = code
 	if err != nil {
-		message := fmt.Sprintf("deliverd-remote %s - %s - MAIL FROM %s failed %s - %s", d.id, client.RemoteAddr(), d.qMsg.MailFrom, msg, err)
+		message := fmt.Sprintf("deliverd-remote %s - %s - MAIL FROM %s failed %s - %s", d.ID, client.RemoteAddr(), d.QMsg.MailFrom, msg, err)
 		Logger.Error(message)
 		d.handleSMTPError(code, message)
 		return
 	}
 
 	// RCPT TO
-	code, msg, err = client.Rcpt(d.qMsg.RcptTo)
-	d.remoteSMTPresponseCode = code
+	code, msg, err = client.Rcpt(d.QMsg.RcptTo)
+	d.RemoteSMTPresponseCode = code
 	if err != nil {
-		message := fmt.Sprintf("deliverd-remote %s - %s - RCPT TO %s failed - %s - %s", d.id, client.RemoteAddr(), d.qMsg.RcptTo, msg, err)
+		message := fmt.Sprintf("deliverd-remote %s - %s - RCPT TO %s failed - %s - %s", d.ID, client.RemoteAddr(), d.QMsg.RcptTo, msg, err)
 		Logger.Error(message)
 		d.handleSMTPError(code, message)
 		return
@@ -170,46 +170,46 @@ func deliverRemote(d *delivery) {
 
 	// DATA
 	dataPipe, code, msg, err := client.Data()
-	d.remoteSMTPresponseCode = code
+	d.RemoteSMTPresponseCode = code
 	if err != nil {
-		message := fmt.Sprintf("deliverd-remote %s - %s - DATA command failed - %s - %s", d.id, client.RemoteAddr(), msg, err)
+		message := fmt.Sprintf("deliverd-remote %s - %s - DATA command failed - %s - %s", d.ID, client.RemoteAddr(), msg, err)
 		Logger.Error(message)
 		d.handleSMTPError(code, message)
 		return
 	}
 
 	// add Received headers
-	*d.rawData = append([]byte("Received: tmail deliverd remote "+d.id+"; "+time.Now().Format(Time822)+"\r\n"), *d.rawData...)
+	*d.RawData = append([]byte("Received: tmail deliverd remote "+d.ID+"; "+time.Now().Format(Time822)+"\r\n"), *d.RawData...)
 
 	// DKIM ?
 	if Cfg.GetDeliverdDkimSign() {
-		userDomain := strings.SplitN(d.qMsg.MailFrom, "@", 2)
+		userDomain := strings.SplitN(d.QMsg.MailFrom, "@", 2)
 		if len(userDomain) == 2 {
 			dkc, err := DkimGetConfig(userDomain[1])
 			if err != nil {
-				message := "deliverd-remote " + d.id + " - unable to get DKIM config for domain " + userDomain[1] + " - " + err.Error()
+				message := "deliverd-remote " + d.ID + " - unable to get DKIM config for domain " + userDomain[1] + " - " + err.Error()
 				Logger.Error(message)
 				d.dieTemp(message, false)
 				return
 			}
 			if dkc != nil {
-				Logger.Debug(fmt.Sprintf("deliverd-remote %s: add dkim sign", d.id))
+				Logger.Debug(fmt.Sprintf("deliverd-remote %s: add dkim sign", d.ID))
 				dkimOptions := dkim.NewSigOptions()
 				dkimOptions.PrivateKey = []byte(dkc.PrivKey)
 				dkimOptions.AddSignatureTimestamp = true
 				dkimOptions.Domain = userDomain[1]
 				dkimOptions.Selector = dkc.Selector
 				dkimOptions.Headers = []string{"from", "subject", "date", "message-id"}
-				dkim.Sign(d.rawData, dkimOptions)
-				Logger.Debug(fmt.Sprintf("deliverd-remote %s: end dkim sign", d.id))
+				dkim.Sign(d.RawData, dkimOptions)
+				Logger.Debug(fmt.Sprintf("deliverd-remote %s: end dkim sign", d.ID))
 			}
 		}
 	}
 
-	dataBuf := bytes.NewBuffer(*d.rawData)
+	dataBuf := bytes.NewBuffer(*d.RawData)
 	_, err = io.Copy(dataPipe, dataBuf)
 	if err != nil {
-		message := "deliverd-remote " + d.id + " - " + client.RemoteAddr() + " - unable to copy dataBuf to dataPipe DKIM config for domain " + " - " + err.Error()
+		message := "deliverd-remote " + d.ID + " - " + client.RemoteAddr() + " - unable to copy dataBuf to dataPipe DKIM config for domain " + " - " + err.Error()
 		Logger.Error(message)
 		d.dieTemp(message, false)
 		return
@@ -217,17 +217,17 @@ func deliverRemote(d *delivery) {
 
 	dataPipe.WriteCloser.Close()
 	code, msg, err = dataPipe.s.text.ReadResponse(-1)
-	d.remoteSMTPresponseCode = code
-	Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - reply to DATA cmd: %d - %s - %v", d.id, client.RemoteAddr(), code, msg, err))
+	d.RemoteSMTPresponseCode = code
+	Logger.Info(fmt.Sprintf("deliverd-remote %s - %s - reply to DATA cmd: %d - %s - %v", d.ID, client.RemoteAddr(), code, msg, err))
 	if err != nil {
-		message := fmt.Sprintf("deliverd-remote %s - %s - DATA command failed - %s - %s", d.id, client.RemoteAddr(), msg, err)
+		message := fmt.Sprintf("deliverd-remote %s - %s - DATA command failed - %s - %s", d.ID, client.RemoteAddr(), msg, err)
 		Logger.Error(message)
 		d.dieTemp(message, false)
 		return
 	}
 
 	if code != 250 {
-		message := fmt.Sprintf("deliverd-remote %s - %s - DATA command failed - %d - %s", d.id, client.RemoteAddr(), code, msg)
+		message := fmt.Sprintf("deliverd-remote %s - %s - DATA command failed - %d - %s", d.ID, client.RemoteAddr(), code, msg)
 		Logger.Error(message)
 		d.handleSMTPError(code, message)
 		return

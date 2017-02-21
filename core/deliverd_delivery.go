@@ -16,31 +16,31 @@ import (
 	"github.com/toorop/tmail/message"
 )
 
-type delivery struct {
-	id                     string
-	nsqMsg                 *nsq.Message
-	qMsg                   *QMessage
-	rawData                *[]byte
-	qStore                 Storer
-	startAt                time.Time
-	isLocal                bool
-	localAddr              string
+// Delivery is a deliver process
+type Delivery struct {
+	ID                     string
+	NSQMsg                 *nsq.Message
+	QMsg                   *QMessage
+	RawData                *[]byte
+	QStore                 Storer
+	StartAt                time.Time
+	IsLocal                bool
+	LocalAddr              string
 	RemoteRoutes           []Route
-	remoteAddr             string
-	remoteSMTPresponseCode int
-
-	success bool
+	RemoteAddr             string
+	RemoteSMTPresponseCode int
+	Success                bool
 }
 
 // processMsg processes message
-func (d *delivery) processMsg() {
+func (d *Delivery) processMsg() {
 	var err error
 	flagBounce := false
 
 	// defer
 	defer func() {
 		if err := recover(); err != nil {
-			Logger.Error(fmt.Sprintf("deliverd %s : PANIC \r\n %s \r\n %s", d.id, err, debug.Stack()))
+			Logger.Error(fmt.Sprintf("deliverd %s : PANIC \r\n %s \r\n %s", d.ID, err, debug.Stack()))
 		}
 		execDeliverdPlugins("exit", d)
 
@@ -49,7 +49,7 @@ func (d *delivery) processMsg() {
 	}()
 
 	// decode message from json
-	if err = json.Unmarshal([]byte(d.nsqMsg.Body), d.qMsg); err != nil {
+	if err = json.Unmarshal([]byte(d.NSQMsg.Body), d.QMsg); err != nil {
 		Logger.Error("deliverd: unable to parse nsq message - " + err.Error())
 		// TODO
 		// in this case :
@@ -67,53 +67,52 @@ func (d *delivery) processMsg() {
 	for {
 		loop++
 		if loop > 2 {
-			Logger.Info(fmt.Sprintf("deliverd %s : queued message %s not in Db, already delivered, discarding", d.id, d.qMsg.Uuid))
+			Logger.Info(fmt.Sprintf("deliverd %s : queued message %s not in Db, already delivered, discarding", d.ID, d.QMsg.Uuid))
 			d.discard()
 			return
 		}
-		if err = d.qMsg.UpdateFromDb(); err != nil {
+		if err = d.QMsg.UpdateFromDb(); err != nil {
 			if err == gorm.ErrRecordNotFound {
 				time.Sleep(1 * time.Second)
 				continue
 			} else {
-				Logger.Error(fmt.Sprintf("deliverd %s : unable to get queued message  %s from Db - %s", d.id, d.qMsg.Uuid, err))
+				Logger.Error(fmt.Sprintf("deliverd %s : unable to get queued message  %s from Db - %s", d.ID, d.QMsg.Uuid, err))
 				d.requeue()
 			}
 			return
 		}
-
 		break
 	}
 
 	// Already in delivery ?
-	if d.qMsg.Status == 0 {
+	if d.QMsg.Status == 0 {
 		// if lastupdate is too old, something fails, requeue message
-		if time.Since(d.qMsg.LastUpdate) > 3600*time.Second {
-			Logger.Error(fmt.Sprintf("deliverd %s : queued message  %s is marked as being in delivery for more than one hour. I will try to requeue it.", d.id, d.qMsg.Uuid))
+		if time.Since(d.QMsg.LastUpdate) > 3600*time.Second {
+			Logger.Error(fmt.Sprintf("deliverd %s : queued message  %s is marked as being in delivery for more than one hour. I will try to requeue it.", d.ID, d.QMsg.Uuid))
 			d.requeue(2)
 			return
 		}
-		Logger.Info(fmt.Sprintf("deliverd %s : queued message %s is marked as being in delivery by another process", d.id, d.qMsg.Uuid))
-		d.nsqMsg.RequeueWithoutBackoff(time.Duration(600 * time.Second))
+		Logger.Info(fmt.Sprintf("deliverd %s : queued message %s is marked as being in delivery by another process", d.ID, d.QMsg.Uuid))
+		d.NSQMsg.RequeueWithoutBackoff(time.Duration(600 * time.Second))
 		return
 	}
 
 	// Discard ?
-	if d.qMsg.Status == 1 {
-		d.qMsg.Status = 0
-		d.qMsg.SaveInDb()
+	if d.QMsg.Status == 1 {
+		d.QMsg.Status = 0
+		d.QMsg.SaveInDb()
 		d.discard()
 		return
 	}
 
 	// Bounce  ?
-	if d.qMsg.Status == 3 {
+	if d.QMsg.Status == 3 {
 		flagBounce = true
 	}
 
 	// update status to: delivery in progress
-	d.qMsg.Status = 0
-	d.qMsg.SaveInDb()
+	d.QMsg.Status = 0
+	d.QMsg.SaveInDb()
 
 	// {"Id":7,"Key":"7f88b72858ae57c17b6f5e89c1579924615d7876","MailFrom":"toorop@toorop.fr",
 	// "RcptTo":"toorop@toorop.fr","Host":"toorop.fr","AddedAt":"2014-12-02T09:05:59.342268145+01:00",
@@ -122,31 +121,31 @@ func (d *delivery) processMsg() {
 
 	// Retrieve message from store
 	// c'est le plus long (enfin ça peut si c'est par exemple sur du S3 ou RA)
-	d.qStore, err = NewStore(Cfg.GetStoreDriver(), Cfg.GetStoreSource())
+	d.QStore, err = NewStore(Cfg.GetStoreDriver(), Cfg.GetStoreSource())
 	if err != nil {
 		// TODO
 		// On va considerer que c'est une erreur temporaire
 		// il se peut que le store soit momentanément injoignable
-		Logger.Error(fmt.Sprintf("deliverd %s : unable to get rawmail of queued message %s from store- %s", d.id, d.qMsg.Uuid, err))
+		Logger.Error(fmt.Sprintf("deliverd %s : unable to get rawmail of queued message %s from store- %s", d.ID, d.QMsg.Uuid, err))
 		d.requeue()
 		return
 	}
-	//d.qStore = qStore
-	dataReader, err := d.qStore.Get(d.qMsg.Uuid)
+	//d.QStore = QStore
+	dataReader, err := d.QStore.Get(d.QMsg.Uuid)
 	if err != nil {
 		Logger.Error("unable to retrieve raw mail from store. " + err.Error())
 		d.dieTemp("unable to retrieve raw mail from store", false)
 		return
 	}
 
-	// get rawData
+	// get RawData
 	t, err := ioutil.ReadAll(dataReader)
 	if err != nil {
 		Logger.Error("unable to read raw mail from dataReader. " + err.Error())
 		d.dieTemp("unable to read raw mail from dataReader", false)
 		return
 	}
-	d.rawData = &t
+	d.RawData = &t
 
 	// Bounce  ?
 	if flagBounce {
@@ -157,13 +156,13 @@ func (d *delivery) processMsg() {
 	//
 	// Local or  remote ?
 	//
-	d.isLocal, err = isLocalDelivery(d.qMsg.RcptTo)
+	d.IsLocal, err = isLocalDelivery(d.QMsg.RcptTo)
 	if err != nil {
 		Logger.Error("unable to check if it's local delivery. " + err.Error())
 		d.dieTemp("unable to check if it's local delivery", false)
 		return
 	}
-	if d.isLocal {
+	if d.IsLocal {
 		deliverLocal(d)
 	} else {
 		deliverRemote(d)
@@ -171,28 +170,28 @@ func (d *delivery) processMsg() {
 	return
 }
 
-func (d *delivery) dieOk() {
-	d.success = true
-	Logger.Info("deliverd " + d.id + ": success")
-	if err := d.qMsg.Delete(); err != nil {
-		Logger.Error("deliverd " + d.id + ": unable remove queued message " + d.qMsg.Uuid + " from queue." + err.Error())
+func (d *Delivery) dieOk() {
+	d.Success = true
+	Logger.Info("deliverd " + d.ID + ": Success")
+	if err := d.QMsg.Delete(); err != nil {
+		Logger.Error("deliverd " + d.ID + ": unable remove queued message " + d.QMsg.Uuid + " from queue." + err.Error())
 	}
-	d.nsqMsg.Finish()
+	d.NSQMsg.Finish()
 }
 
 // dieTemp die when a 4** error occured
-func (d *delivery) dieTemp(msg string, logit bool) {
+func (d *Delivery) dieTemp(msg string, logit bool) {
 	if logit {
-		Logger.Info("deliverd " + d.id + ": temp failure - " + msg)
+		Logger.Info("deliverd " + d.ID + ": temp failure - " + msg)
 	}
 
 	// discard bounce
-	if d.qMsg.MailFrom == "" && time.Since(d.qMsg.AddedAt) > time.Duration(Cfg.GetDeliverdQueueBouncesLifetime())*time.Minute {
+	if d.QMsg.MailFrom == "" && time.Since(d.QMsg.AddedAt) > time.Duration(Cfg.GetDeliverdQueueBouncesLifetime())*time.Minute {
 		d.discard()
 		return
 	}
 
-	if time.Since(d.qMsg.AddedAt) < time.Duration(Cfg.GetDeliverdQueueLifetime())*time.Minute {
+	if time.Since(d.QMsg.AddedAt) < time.Duration(Cfg.GetDeliverdQueueLifetime())*time.Minute {
 		d.requeue()
 		return
 	}
@@ -201,9 +200,9 @@ func (d *delivery) dieTemp(msg string, logit bool) {
 }
 
 // diePerm when a 5** error occured
-func (d *delivery) diePerm(msg string, logit bool) {
+func (d *Delivery) diePerm(msg string, logit bool) {
 	if logit {
-		Logger.Info("deliverd " + d.id + ": perm failure - " + msg)
+		Logger.Info("deliverd " + d.ID + ": perm failure - " + msg)
 	}
 	// bounce message
 	d.bounce(msg)
@@ -211,39 +210,39 @@ func (d *delivery) diePerm(msg string, logit bool) {
 }
 
 // discard remove a message from queue
-func (d *delivery) discard() {
-	Logger.Info("deliverd " + d.id + " discard message queued as " + d.qMsg.Uuid)
-	if err := d.qMsg.Delete(); err != nil {
-		Logger.Error("deliverd " + d.id + ": unable remove message queued as " + d.qMsg.Uuid + " from queue. " + err.Error())
+func (d *Delivery) discard() {
+	Logger.Info("deliverd " + d.ID + " discard message queued as " + d.QMsg.Uuid)
+	if err := d.QMsg.Delete(); err != nil {
+		Logger.Error("deliverd " + d.ID + ": unable remove message queued as " + d.QMsg.Uuid + " from queue. " + err.Error())
 		d.requeue(1)
 	} else {
-		d.nsqMsg.Finish()
+		d.NSQMsg.Finish()
 	}
 	return
 }
 
 // bounce creates & enqueues a bounce message
-func (d *delivery) bounce(errMsg string) {
+func (d *Delivery) bounce(errMsg string) {
 	// If returnPath =="" -> double bounce -> discard
-	if d.qMsg.MailFrom == "" {
-		Logger.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " double bounce: discarding")
-		if err := d.qMsg.Delete(); err != nil {
-			Logger.Error("deliverd " + d.id + ": unable remove message queued as " + d.qMsg.Uuid + " from queue. " + err.Error())
+	if d.QMsg.MailFrom == "" {
+		Logger.Info("deliverd " + d.ID + ": message from: " + d.QMsg.MailFrom + " to: " + d.QMsg.RcptTo + " double bounce: discarding")
+		if err := d.QMsg.Delete(); err != nil {
+			Logger.Error("deliverd " + d.ID + ": unable remove message queued as " + d.QMsg.Uuid + " from queue. " + err.Error())
 			d.requeue(1)
 		} else {
-			d.nsqMsg.Finish()
+			d.NSQMsg.Finish()
 		}
 		return
 	}
 
 	// triple bounce
-	if d.qMsg.MailFrom == "#@[]" {
-		Logger.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " triple bounce: discarding")
-		if err := d.qMsg.Delete(); err != nil {
-			Logger.Error("deliverd " + d.id + ": unable remove message " + d.qMsg.Uuid + " from queue. " + err.Error())
+	if d.QMsg.MailFrom == "#@[]" {
+		Logger.Info("deliverd " + d.ID + ": message from: " + d.QMsg.MailFrom + " to: " + d.QMsg.RcptTo + " triple bounce: discarding")
+		if err := d.QMsg.Delete(); err != nil {
+			Logger.Error("deliverd " + d.ID + ": unable remove message " + d.QMsg.Uuid + " from queue. " + err.Error())
 			d.requeue(1)
 		} else {
-			d.nsqMsg.Finish()
+			d.NSQMsg.Finish()
 		}
 		return
 	}
@@ -258,15 +257,15 @@ func (d *delivery) bounce(errMsg string) {
 	}
 
 	// Si ça bounce car le mail a disparu de la queue:
-	if d.rawData == nil {
+	if d.RawData == nil {
 		t := []byte("Raw mail was not found in the store")
-		d.rawData = &t
+		d.RawData = &t
 	}
 
-	tData := templateData{time.Now().Format(Time822), Cfg.GetMe(), d.qMsg.MailFrom, d.qMsg.RcptTo, errMsg, string(*d.rawData)}
+	tData := templateData{time.Now().Format(Time822), Cfg.GetMe(), d.QMsg.MailFrom, d.QMsg.RcptTo, errMsg, string(*d.RawData)}
 	t, err := template.ParseFiles(path.Join(GetBasePath(), "tpl/bounce.tpl"))
 	if err != nil {
-		Logger.Error("deliverd " + d.id + ": unable to bounce message queued as " + d.qMsg.Uuid + " " + err.Error())
+		Logger.Error("deliverd " + d.ID + ": unable to bounce message queued as " + d.QMsg.Uuid + " " + err.Error())
 		d.requeue(3)
 		return
 	}
@@ -274,13 +273,13 @@ func (d *delivery) bounce(errMsg string) {
 	bouncedMailBuf := new(bytes.Buffer)
 	err = t.Execute(bouncedMailBuf, tData)
 	if err != nil {
-		Logger.Error("deliverd " + d.id + ": unable to bounce message queued as " + d.qMsg.Uuid + " " + err.Error())
+		Logger.Error("deliverd " + d.ID + ": unable to bounce message queued as " + d.QMsg.Uuid + " " + err.Error())
 		d.requeue(3)
 		return
 	}
 	b, err := ioutil.ReadAll(bouncedMailBuf)
 	if err != nil {
-		Logger.Error("deliverd " + d.id + ": unable to bounce message queued as " + d.qMsg.Uuid + " " + err.Error())
+		Logger.Error("deliverd " + d.ID + ": unable to bounce message queued as " + d.QMsg.Uuid + " " + err.Error())
 		d.requeue(3)
 		return
 	}
@@ -288,39 +287,39 @@ func (d *delivery) bounce(errMsg string) {
 	// unix2dos it
 	err = Unix2dos(&b)
 	if err != nil {
-		Logger.Error("deliverd " + d.id + ": unable to convert bounce from unix to dos. " + err.Error())
+		Logger.Error("deliverd " + d.ID + ": unable to convert bounce from unix to dos. " + err.Error())
 		d.requeue(3)
 		return
 	}
 
 	// enqueue
-	envelope := message.Envelope{MailFrom: "", RcptTo: []string{d.qMsg.MailFrom}}
+	envelope := message.Envelope{MailFrom: "", RcptTo: []string{d.QMsg.MailFrom}}
 	/*message, err := message.New(&b)
 	if err != nil {
-		Logger.Error("deliverd " + d.id + ": unable to bounce message " + d.qMsg.Key + " " + err.Error())
+		Logger.Error("deliverd " + d.ID + ": unable to bounce message " + d.QMsg.Key + " " + err.Error())
 		d.requeue(3)
 		return
 	}*/
 	id, err := QueueAddMessage(&b, envelope, "")
 	if err != nil {
-		Logger.Error("deliverd " + d.id + ": unable to bounce message queued as " + d.qMsg.Uuid + " " + err.Error())
+		Logger.Error("deliverd " + d.ID + ": unable to bounce message queued as " + d.QMsg.Uuid + " " + err.Error())
 		d.requeue(3)
 		return
 	}
 
-	if err := d.qMsg.Delete(); err != nil {
-		Logger.Error("deliverd " + d.id + ": unable remove bounced message queued as " + d.qMsg.Uuid + " from queue. " + err.Error())
+	if err := d.QMsg.Delete(); err != nil {
+		Logger.Error("deliverd " + d.ID + ": unable remove bounced message queued as " + d.QMsg.Uuid + " from queue. " + err.Error())
 		d.requeue(1)
 	} else {
-		d.nsqMsg.Finish()
+		d.NSQMsg.Finish()
 	}
 
-	Logger.Info("deliverd " + d.id + ": message from: " + d.qMsg.MailFrom + " to: " + d.qMsg.RcptTo + " queued with id " + id + " for being bounced.")
+	Logger.Info("deliverd " + d.ID + ": message from: " + d.QMsg.MailFrom + " to: " + d.QMsg.RcptTo + " queued with id " + id + " for being bounced.")
 	return
 }
 
 // requeue requeues the message increasing the delay
-func (d *delivery) requeue(newStatus ...uint32) {
+func (d *Delivery) requeue(newStatus ...uint32) {
 	var status uint32
 	status = 2
 	if len(newStatus) != 0 {
@@ -328,28 +327,28 @@ func (d *delivery) requeue(newStatus ...uint32) {
 	}
 
 	// Si entre deux le status a changé
-	//d.qMsg.UpdateFromDb()
+	//d.QMsg.UpdateFromDb()
 	//si il y a eu un changement entre temps  discard or bounce
-	//if d.qMsg.Status == 1 || d.qMsg.Status == 3 {
+	//if d.QMsg.Status == 1 || d.QMsg.Status == 3 {
 	//	return
 	//}
 	// Calcul du delais, pour le moment on accroit betement de 60 secondes a chaque tentative
 	// + random
 	rand.Seed(rand.Int63())
-	delay := time.Duration(d.nsqMsg.Attempts*uint16(rand.Intn(180)+60)) * time.Second
+	delay := time.Duration(d.NSQMsg.Attempts*uint16(rand.Intn(180)+60)) * time.Second
 	if delay >= time.Hour {
 		delay = time.Duration(rand.Intn(2000)+1599) * time.Second
 	}
 	// Todo update next delivery en DB
-	d.qMsg.NextDeliveryScheduledAt = time.Now().Add(delay)
-	d.qMsg.Status = status
-	d.qMsg.SaveInDb() // Todo: check error
-	d.nsqMsg.RequeueWithoutBackoff(delay)
+	d.QMsg.NextDeliveryScheduledAt = time.Now().Add(delay)
+	d.QMsg.Status = status
+	d.QMsg.SaveInDb() // Todo: check error
+	d.NSQMsg.RequeueWithoutBackoff(delay)
 	return
 }
 
 // handleSmtpError handles SMTP error response
-func (d *delivery) handleSMTPError(code int, message string) {
+func (d *Delivery) handleSMTPError(code int, message string) {
 	if code > 499 {
 		d.diePerm(message, false)
 		return

@@ -36,7 +36,7 @@ type smtpClient struct {
 }
 
 // newSMTPClient return a connected SMTP client
-func newSMTPClient(d *delivery, routes []Route, timeoutBasePerCmd int) (client *smtpClient, err error) {
+func newSMTPClient(d *Delivery, routes []Route, timeoutBasePerCmd int) (client *smtpClient, err error) {
 	for _, route := range routes {
 		localIPs := []net.IP{}
 		remoteAddresses := []net.TCPAddr{}
@@ -186,7 +186,7 @@ func newSMTPClient(d *delivery, routes []Route, timeoutBasePerCmd int) (client *
 						Logger.Error("Bolt - ", errBolt)
 					}
 				}
-				Logger.Info(fmt.Sprintf("deliverd-remote %s - unable to get a SMTP client for %s->%s:%d - %s ", d.id, localIP, remoteAddr.IP.String(), remoteAddr.Port, err.Error()))
+				Logger.Info(fmt.Sprintf("deliverd-remote %s - unable to get a SMTP client for %s->%s:%d - %s ", d.ID, localIP, remoteAddr.IP.String(), remoteAddr.Port, err.Error()))
 			}
 		}
 	}
