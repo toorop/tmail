@@ -61,17 +61,28 @@ func (d *delivery) processMsg() {
 	}
 
 	// Get updated version of qMessage from db (check if exist)
-	if err = d.qMsg.UpdateFromDb(); err != nil {
-		// si on ne le trouve pas en DB il y a de forte chance pour que le message ait déja
-		// été traité
-		if err == gorm.ErrRecordNotFound {
+	// si on ne le trouve pas en DB il y a de forte chance pour que le message ait déja
+	// été traité ou dans le cas ou on utilise un cluster pour la DB que la synchro ne soit pas faite
+	loop := 0
+	for {
+		loop++
+		if loop > 2 {
 			Logger.Info(fmt.Sprintf("deliverd %s : queued message %s not in Db, already delivered, discarding", d.id, d.qMsg.Uuid))
 			d.discard()
-		} else {
-			Logger.Error(fmt.Sprintf("deliverd %s : unable to get queued message  %s from Db - %s", d.id, d.qMsg.Uuid, err))
-			d.requeue()
+			return
 		}
-		return
+		if err = d.qMsg.UpdateFromDb(); err != nil {
+			if err == gorm.ErrRecordNotFound {
+				time.Sleep(1 * time.Second)
+				continue
+			} else {
+				Logger.Error(fmt.Sprintf("deliverd %s : unable to get queued message  %s from Db - %s", d.id, d.qMsg.Uuid, err))
+				d.requeue()
+			}
+			return
+		}
+
+		break
 	}
 
 	// Already in delivery ?
