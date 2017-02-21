@@ -63,12 +63,12 @@ type Config struct {
 		// RFC compliance
 		// RFC 5321 2.3.5: the domain name givent MUST be either a primary hostname
 		// (resovable) or an address
-		RFCHeloNeedsFqnOrAddress bool `name:"rfc_helo_need_fqn" default:"true"`
+		RFCHeloNeedsFqnOrAddress bool `name:"rfc_helo_need_fqn" default:"false"`
 		// RFC 5321 4.1.1.1 a client SHOULD start an SMTP session with the EHLO
 		// command
 		RFCHeloMandatory bool `name:"rfc_helo_mandatory" default:"false"`
 
-		RFCMailFromLocalpartSize bool `name:"rfc_mailfrom_localpart_size" default:"true"`
+		RFCMailFromLocalpartSize bool `name:"rfc_mailfrom_localpart_size" default:"false"`
 
 		// microservices
 		MsUriSmtpdNewClient        string `name:"ms_smtpd_newclient" default:"_"`
