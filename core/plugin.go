@@ -67,10 +67,13 @@ func RegisterDeliverdPlugin(hook string, plugin DeliverdPlugin) {
 	DeliverdPlugins[hook] = append(DeliverdPlugins[hook], plugin)
 }
 
-func execDeliverdPlugins(hook string, d *Delivery) {
+func execDeliverdPlugins(hook string, d *Delivery) bool {
 	if plugins, found := DeliverdPlugins[hook]; found {
 		for _, plugin := range plugins {
-			plugin(d)
+			if !plugin(d) {
+				return false
+			}
 		}
 	}
+	return true
 }
