@@ -19,9 +19,9 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/nsqio/nsq/nsqd"
 
-	tcli "cli"
-	"core"
-	"rest"
+	tcli "github.com/toorop/tmail/cli"
+	"github.com/toorop/tmail/core"
+	"github.com/toorop/tmail/rest"
 )
 
 const (
