@@ -44,8 +44,8 @@ Under dist you will find:
 * ssl: is the place to store SSL cert. For testing purpose you can use those included.
 * tmail: tmail binary
 * tpl: text templates.
-* db: if you use sqlite as DB backend (MySQL and Postgresql are also supported), sqlite file will be strored in this directory.
-* store: principaly used to store raw email when they are in queue. (others kind of backend/storage engine are comming)
+* db: if you use sqlite as DB backend (MySQL and Postgresql are also supported), sqlite file will be stored in this directory.
+* store: mainly used to store raw email when they are in queue. (others kind of backend/storage engine are coming)
 * mailboxes: where mailboxes are stored if you activate Dovecot support.
 
 Make run script and tmail runnable:
@@ -75,13 +75,13 @@ Init you conf file:
 
 * TMAIL_ME: Hostname of the SMTP server (will be used for HELO|EHLO)
 
-* TMAIL_DB_DRIVER: i recommend sqlite3 unless you want to enabled clustering (or you have a lot of domains/mailboxes)
+* TMAIL_DB_DRIVER: I recommend sqlite3 unless you want to enable clustering (or you have a lot of domains/mailboxes)
 
 * TMAIL_SMTPD_DSNS: listening IP(s), port(s) and SSL options (see conf file for more info)
 
 * TMAIL_DELIVERD_LOCAL_IPS: IP(s) to use for sending mail to remote host.
 
-* TMAIL_SMTPD_CONCURRENCY_INCOMING: max conccurent incomming proccess
+* TMAIL_SMTPD_CONCURRENCY_INCOMING: max concurent incomming proccess
 
 * TMAIL_DELIVERD_MAX_IN_FLIGHT: concurrent delivery proccess
 
@@ -127,7 +127,7 @@ You got "Relay access denied" because by default noboby can use tmail for relayi
 
 ### Relaying mails for @example.com
 
-If you want that tmail accepts to relay mails for example.com, just run:
+If you want tmail to relay mails for example.com, just run:
 
 	tmail rcpthost add example.com
 
@@ -135,7 +135,7 @@ Note: If you have activated Dovecot support and example.com is a local domain, a
 
 	tmail rcpthost add -l example.com
 
-Does it work as exepected ?
+Does it work as expected ?
 
 	$ telnet dev.tmail.io 25
 	Trying 151.80.115.83...
@@ -172,12 +172,12 @@ For example:
 
 ### Basic routing
 
-By default tmail will use MX records for routing mails, but you can "manualy" configure alt routing.
-Suppose that you want tmail to route mail fro @example.com to mx.slowmail.com. It as easy as:dd this routing rule
+By default tmail will use MX records for routing mails, but you can "manualy" configure alternative routing.
+If you want tmail to route mail from @example.com to mx.slowmail.com. It is as easy as adding this routing rule
 
 	tmail routes add -d example.com -rh mx.slowmail.com
 
-You can find more elaborated routing rules on [tmail routing documentation (french)](http://tmail.io/doc/cli-gestion-route-smtp/) (translators are welcomed ;))
+You can find more elaborated routing rules on [tmail routing documentation (french)](http://tmail.io/doc/cli-gestion-route-smtp/) (translators are welcome ;))
 
 ### SMTP AUTH
 
@@ -193,7 +193,7 @@ If you want to delete user toorop@tmail.io :
 
 ### Let's Encrypt (TLS/SSL)
 
-If you want to activate TLS/SSL connexions with a valid certificate (not an auto-signed one as it's by default) between mail clients and your tmail server you can get a let's Encrypt certificate, you have first to install let's Encrypt :
+If you want to activate TLS/SSL connections with a valid certificate (not an auto-signed one as it's by default) between mail clients and your tmail server you can get a let's Encrypt certificate, you have first to install let's Encrypt :
 
 	cd ~
 	git clone https://github.com/letsencrypt/letsencrypt
@@ -215,13 +215,13 @@ And it's done !
 
 ## Contribute
 
-Feel free to inspect & improve tmail code, PR are welcomed ;)
+Feel free to inspect & improve tmail code, PR are welcome ;)
 
 If you are not a coder, you can contribute too:
 
-* install and use tmail, i need feebacks.
+* install and use tmail, I need feebacks.
 
-* as you can see reading this page, english is not my native language, so i need help to write english documentation.
+* as you can see reading this page, english is not my native language, so I need help to write english documentation.
 
 
 ## Roadmap
