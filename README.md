@@ -42,27 +42,27 @@ Under dist you will find:
 * conf: configuration.
 * run: script used to launch tmail
 * ssl: is the place to store SSL cert. For testing purpose you can use those included.
-* tmail: tmail binairie
-* tpl: text tempalates. 
+* tmail: tmail binary
+* tpl: text templates.
 * db: if you use sqlite as DB backend (MySQL and Postgresql are also supported), sqlite file will be strored in this directory.
 * store: principaly used to store raw email when they are in queue. (others kind of backend/storage engine are comming)
 * mailboxes: where mailboxes are stored if you activate Dovecot support.
 
 Make run script and tmail runnable:
 
-	chmod 700 run tmail	
+	chmod 700 run tmail
 
 add directories:
 
 	mkdir db
-	mkdir store	
+	mkdir store
 
 
 if you want to enable Dovecot support add mailboxes directory:
 
 	mkdir mailboxes
 
-See [Enabling Dovecot support for tmail (french)](http://tmail.io/doc/mailboxes/) for more info.	
+See [Enabling Dovecot support for tmail (french)](http://tmail.io/doc/mailboxes/) for more info.
 
 
 ### Configuration
@@ -71,7 +71,7 @@ Init you conf file:
 
 	cd conf
 	cp tmail.cfg.base tmail.cfg
-	chmod 600 tmail.cfg 
+	chmod 600 tmail.cfg
 
 * TMAIL_ME: Hostname of the SMTP server (will be used for HELO|EHLO)
 
@@ -88,7 +88,7 @@ Init you conf file:
 
 ### Init database
 
-	tmail@dev:~/dist$ ./run 
+	tmail@dev:~/dist$ ./run
 	Database 'driver: sqlite3, source: /home/tmail/dist/db/tmail.db' misses some tables.
 	Should i create them ? (y/n): y
 
@@ -101,7 +101,7 @@ Init you conf file:
 
 As you run tmail under tmail user, it can't open port under 1024 (and for now tmail can be launched as root, open port under 25 and fork itself to unprivilegied user).
 
-The workaround is to use iptables to forward ports.  
+The workaround is to use iptables to forward ports.
 For example, if we have tmail listening on ports 2525, and 5877 and we want tu use 25 and 587 as public ports, we have to use those iptables rules:
 
 	iptables -t nat -A PREROUTING -p tcp --dport 25 -j REDIRECT --to-port 2525
@@ -123,12 +123,12 @@ For example, if we have tmail listening on ports 2525, and 5877 and we want tu u
 	Connection closed by foreign host.
 
 Perfect !
-You got "Relay access denied" because by default noboby can use tmail for relaying mails. 
+You got "Relay access denied" because by default noboby can use tmail for relaying mails.
 
 ### Relaying mails for @example.com
 
-If you want that tmail accepts to relay mails for example.com, just run: 
-	
+If you want that tmail accepts to relay mails for example.com, just run:
+
 	tmail rcpthost add example.com
 
 Note: If you have activated Dovecot support and example.com is a local domain, add -l flag :
@@ -170,20 +170,20 @@ For example:
 	tmail relayip add 127.0.0.1
 
 
-### Basic routing 
+### Basic routing
 
-By default tmail will use MX records for routing mails, but you can "manualy" configure alt routing.  
+By default tmail will use MX records for routing mails, but you can "manualy" configure alt routing.
 Suppose that you want tmail to route mail fro @example.com to mx.slowmail.com. It as easy as:dd this routing rule
 
 	tmail routes add -d example.com -rh mx.slowmail.com
 
-You can find more elaborated routing rules on [tmail routing documentation (french)](http://tmail.io/doc/cli-gestion-route-smtp/) (translators are welcomed ;)) 
+You can find more elaborated routing rules on [tmail routing documentation (french)](http://tmail.io/doc/cli-gestion-route-smtp/) (translators are welcomed ;))
 
 ### SMTP AUTH
 
-If you want to enable relaying after SMTP AUTH for user toorop@tmail.io, just enter: 
+If you want to enable relaying after SMTP AUTH for user toorop@tmail.io, just enter:
 
-	tmail user add -r toorop@tmail.io password 
+	tmail user add -r toorop@tmail.io password
 
 
 If you want to delete user toorop@tmail.io :
@@ -226,9 +226,9 @@ If you are not a coder, you can contribute too:
 
 ## Roadmap
 
- * clustering 
+ * clustering
  * IPV6
- * write unit tests (yes i know...)	
+ * write unit tests (yes i know...)
  * improve, refactor, optimize
  * test test test test
 
@@ -239,15 +239,15 @@ MIT, see LICENSE
 
 ## Imported packages
 
-github.com/bitly/nsq/...  
-github.com/codegangsta/cli  
-github.com/codegangsta/negroni  
-github.com/go-sql-driver/mysql  
-github.com/jinzhu/gorm  
-github.com/julienschmidt/httprouter  
-github.com/kless/osutil/user/crypt/...  
-github.com/lib/pq  
-github.com/mattn/go-sqlite3  
-github.com/nbio/httpcontext  
-golang.org/x/crypto/bcrypt  
-golang.org/x/crypto/blowfish  
+github.com/nsqio/nsq/...
+github.com/codegangsta/cli
+github.com/codegangsta/negroni
+github.com/go-sql-driver/mysql
+github.com/jinzhu/gorm
+github.com/julienschmidt/httprouter
+github.com/kless/osutil/user/crypt/...
+github.com/lib/pq
+github.com/mattn/go-sqlite3
+github.com/nbio/httpcontext
+golang.org/x/crypto/bcrypt
+golang.org/x/crypto/blowfish
