@@ -177,7 +177,7 @@ If you want tmail to route mail from @example.com to mx.slowmail.com. It is as e
 
 	tmail routes add -d example.com -rh mx.slowmail.com
 
-You can find more elaborated routing rules on [tmail routing documentation (french)](http://tmail.io/doc/cli-gestion-route-smtp/) (translators are welcome ;))
+You can find more elaborated routing rules on [tmail routing documentation (french)](http://tmail.io/doc/cli-gestion-route-smtp/) (translators are welcomed ;))
 
 ### SMTP AUTH
 
@@ -215,7 +215,7 @@ And it's done !
 
 ## Contribute
 
-Feel free to inspect & improve tmail code, PR are welcome ;)
+Feel free to inspect & improve tmail code, PR are welcomed ;)
 
 If you are not a coder, you can contribute too:
 
