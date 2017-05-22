@@ -269,8 +269,8 @@ export TMAIL_MS_SMTPD_RCPTTO=""
 # Call after DATA command
 export TMAIL_MS_SMTPD_DATA=""
 
-# smtpd before queueing: used to change envelope
-export TMAIL_MS_SMTPD_BEFORE_QUEUEING=""
+# smtpd before queuing: used to change envelope
+export TMAIL_MS_SMTPD_BEFORE_QUEUING=""
 
 #smtpd telemetry
 export TMAIL_MS_SMTPD_SEND_TELEMETRY=""
