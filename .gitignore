@@ -16,3 +16,6 @@ dist/tmail64
 dist/tools/
 tmail.zip
 
+### golang
+vendor/**/**/
+
