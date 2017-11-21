@@ -64,7 +64,7 @@ func (f *FileFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	timestampFormat := f.TimestampFormat
 	if timestampFormat == "" {
-		timestampFormat = logrus.DefaultTimestampFormat
+		timestampFormat = time.RFC3339
 	}
 
 	levelText := strings.ToUpper(entry.Level.String())[0:4]
