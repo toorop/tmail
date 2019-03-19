@@ -109,6 +109,11 @@ var user = cgCli.Command{
 					} else {
 						line += " - active: no"
 					}
+					if user.IsCatchall {
+						line += " - catchall: yes"
+					} else {
+						line += " - catchall: no"
+					}
 					println(line)
 				}
 			},
