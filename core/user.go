@@ -51,6 +51,7 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay, isCatchall b
 		Login:       login,
 		AuthRelay:   authRelay,
 		HaveMailbox: haveMailbox,
+		IsCatchall:  isCatchall,
 	}
 
 	// if we have to create mailbox, login must be a valid email address
@@ -103,11 +104,15 @@ func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay, isCatchall b
 			// is there another catchall for this domain
 			u, err := UserGetCatchallForDomain(t[1])
 			if err != nil {
-				return errors.New("unable to check catchall existense for domain " + t[1])
+				if err != gorm.ErrRecordNotFound {
+					return errors.New("unable to check catchall existense for domain " + t[1] + ": " + err.Error())
+				}
+				u = nil
 			}
 			if u != nil {
-				return errors.New("domain " + t[1] + "already have a catchall: " + u.Login)
+				return errors.New("domain " + t[1] + " already have a catchall: " + u.Login)
 			}
+			user.IsCatchall = true
 		}
 	}
 
