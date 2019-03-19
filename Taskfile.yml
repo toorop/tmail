@@ -1,0 +1,21 @@
+version: '2'
+
+tasks:
+  build:
+    cmds:
+      - go build -o dist/tmail
+
+  run:
+    deps: [build]
+    dir: dist
+    cmds:
+      - source conf/tmail.cfg && ./tmail
+
+  builddist:
+    deps: [build]
+    cmds:
+      - zip -r tmail.zip dist/conf/tmail.cfg.base
+      - zip -r tmail.zip dist/ssl
+      - zip -r tmail.zip dist/tpl
+      - zip -r tmail.zip dist/run
+      - zip -r tmail.zip dist/tmail
