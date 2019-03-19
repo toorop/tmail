@@ -17,7 +17,7 @@ func UserGetByLogin(login string) (user *core.User, err error) {
 	return core.UserGetByLogin(login)
 }
 
-// UserAdd add a new usere
+// UserAdd add a new user
 func UserAdd(login, passwd, mbQuota string, haveMailbox, authRelay, isCatchall bool) error {
 	return core.UserAdd(login, passwd, mbQuota, haveMailbox, authRelay, isCatchall)
 }
@@ -175,13 +175,13 @@ func RcpthostList() (hosts []core.RcptHost, err error) {
 
 // DKIM
 
-// DkimEnable Enable DKIL for domain domain
+// DkimEnable Enable DKIM for domain domain
 // DkimEnable will create keys pair
 func DkimEnable(domain string) (dkimConfig *core.DkimConfig, err error) {
 	return core.DkimEnable(domain)
 }
 
-// DkimDisable will remove DKIM confi for doimain domain from DB
+// DkimDisable will remove DKIM config for domain domain from DB
 // resulting in desactivate DKIM for outgoing message from the domain.
 func DkimDisable(domain string) error {
 	return core.DkimDisable(domain)
