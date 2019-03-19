@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -64,7 +64,7 @@ func (f *FileFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	timestampFormat := f.TimestampFormat
 	if timestampFormat == "" {
-		timestampFormat = "Mon Jan 2 15:04:05 -0700 MST 2006"
+		timestampFormat = time.RFC3339
 	}
 
 	levelText := strings.ToUpper(entry.Level.String())[0:4]
