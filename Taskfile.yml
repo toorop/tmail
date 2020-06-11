@@ -19,3 +19,10 @@ tasks:
       - zip -r tmail.zip dist/tpl
       - zip -r tmail.zip dist/run
       - zip -r tmail.zip dist/tmail
+
+  deploy:
+    deps: [build]
+    cmds:
+      - rsync dist/tmail root@51.15.212.212:/home/tmail/dist/tmail
+      - ssh root@51.15.212.212 setcap cap_net_bind_service=+ep /home/tmail/dist/tmail
+      - ssh root@51.15.212.212 systemctl restart tmail

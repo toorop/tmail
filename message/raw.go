@@ -34,7 +34,8 @@ func RawGetMessageId(raw *[]byte) []byte {
 	for _, line := range bytes.Split(RawGetHeaders(raw), []byte{13, 10}) {
 		if bytes.HasPrefix(bytes.ToLower(line), bHeader) {
 			// strip <>
-			return bytes.TrimPrefix(bytes.TrimSuffix(line[12:], []byte{62}), []byte{60})
+			p := bytes.SplitN(line, []byte{58}, 2)
+			return bytes.TrimPrefix(bytes.TrimSuffix(p[0], []byte{62}), []byte{60})
 		}
 	}
 	return []byte{}
