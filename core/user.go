@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/jinzhu/gorm"
-	"github.com/kless/osutil/user/crypt/sha512_crypt"
+	"github.com/tredoe/osutil/user/crypt/sha512_crypt"
 	"golang.org/x/crypto/bcrypt"
 )
 

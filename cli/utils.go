@@ -1,8 +1,9 @@
 package cli
 
 import (
-	cgCli "github.com/codegangsta/cli"
 	"os"
+
+	cgCli "github.com/urfave/cli"
 )
 
 // gotError handle error from cli

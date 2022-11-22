@@ -16,8 +16,8 @@ import (
 
 	//"github.com/bitly/nsq/nsqd"
 
-	"github.com/codegangsta/cli"
 	"github.com/nsqio/nsq/nsqd"
+	"github.com/urfave/cli"
 
 	tcli "github.com/toorop/tmail/cli"
 	"github.com/toorop/tmail/core"
@@ -121,7 +121,7 @@ func main() {
 			opts := nsqd.NewOptions()
 			opts.Logger = log.New(ioutil.Discard, "", 0)
 			opts.Logger = core.NewNSQLogger()
-			opts.Verbose = core.Cfg.GetDebugEnabled()
+			//opts.Verbose = core.Cfg.GetDebugEnabled()
 			opts.DataPath = core.GetBasePath() + "/nsq"
 			// if cluster get lookupd addresses
 			if core.Cfg.GetClusterModeEnabled() {
@@ -151,7 +151,10 @@ func main() {
 			// Number of message in RAM before synching to disk
 			opts.MemQueueSize = 0
 
-			nsqd := nsqd.New(opts)
+			nsqd, err := nsqd.New(opts)
+			if err != nil {
+				log.Fatalf("ERROR: nsqd.New failed  with error -  %s", err.Error())
+			}
 			nsqd.LoadMetadata()
 			if err = nsqd.PersistMetadata(); err != nil {
 				log.Fatalf("ERROR: failed to persist metadata - %s", err.Error())

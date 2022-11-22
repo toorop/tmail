@@ -19,3 +19,4 @@ tmail.zip
 ### golang
 vendor/**/**/
 
+dist/tmail-2019-03-17

@@ -2,10 +2,11 @@ package cli
 
 import (
 	"fmt"
-	"github.com/toorop/tmail/api"
-	cgCli "github.com/codegangsta/cli"
 	"os"
 	"strconv"
+
+	"github.com/toorop/tmail/api"
+	cgCli "github.com/urfave/cli"
 )
 
 var Routes = cgCli.Command{
