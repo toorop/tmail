@@ -956,7 +956,6 @@ func (s *SMTPServerSession) smtpData(msg []string) {
 		}
 		HeaderMessageID = []byte(fmt.Sprintf("%d.%s@%s", time.Now().Unix(), s.uuid, atDomain))
 		s.CurrentRawMail = append([]byte(fmt.Sprintf("Message-ID: <%s>\r\n", HeaderMessageID)), s.CurrentRawMail...)
-
 	}
 	s.Log("message-id:", string(HeaderMessageID))
 
