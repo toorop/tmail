@@ -1,5 +1,7 @@
 package main
 
+import _ "github.com/toorop/tmail/plugins/connect"
+
 //import _ "github.com/toorop/protecmail/tmailplugins/postinit"
 
 //import _ "github.com/toorop/protecmail/tmailplugins/connect"

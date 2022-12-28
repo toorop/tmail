@@ -99,6 +99,7 @@ func main() {
 		if len(c.Args()) != 0 {
 			cli.ShowAppHelp(c)
 		} else {
+
 			// if there is nothing to do then... do nothing
 			if !core.Cfg.GetLaunchDeliverd() && !core.Cfg.GetLaunchSmtpd() {
 				log.Fatalln("I have nothing to do, so i do nothing. Bye.")
@@ -159,9 +160,12 @@ func main() {
 			if err = nsqd.PersistMetadata(); err != nil {
 				log.Fatalf("ERROR: failed to persist metadata - %s", err.Error())
 			}
-			nsqd.Main()
+			//log.Fatalln("ICI")
+			go nsqd.Main()
+			//log.Fatalln("LA")
 
 			// smtpd
+			//log.Fatalln("LaunchSmtpd -", core.Cfg.GetLaunchSmtpd())
 			if core.Cfg.GetLaunchSmtpd() {
 				// clamav ?
 				if core.Cfg.GetSmtpdClamavEnabled() {
